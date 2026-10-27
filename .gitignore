@@ -1,0 +1,22 @@
+# Dependencies and builds
+node_modules/
+dist/
+build/
+.vite/
+
+# Secrets (keep .env.example committed)
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Claude Code personal settings (project settings.json IS committed)
+.claude/settings.local.json
+
+# Private local context (recruiter email, job posting) — public repo
+project-email.md
+SWE-intern.md
