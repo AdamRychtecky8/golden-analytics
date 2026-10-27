@@ -159,6 +159,14 @@ Status: tentative
 Decision: "Use this" copies the previewed fields and sum/mean choice to the card and clears any highlight; it never changes the card's title or takeaway. Highlighting works on the story card's chart (click a mark to highlight, click it again to clear). The preview in the assist layer is not clickable. On a multi-series line, clicking any point highlights that whole series. A custom persona with no name is named from its parts (e.g. "Retail analyst").
 Status: tentative
 
+## D-030 — 2026-10-26 — Slider and assist-layer mechanics (Claude Code choice, Adam to review)
+Decision: The slider is a native range input stood up with CSS (keyboard and screen readers work). Its labels are also buttons, and Levels 2–3 are tagged "AI" and 0–1 "NO AI". Each panel fills the column's height; panels the user can't see are made inert so tabbing can't scroll the column behind the slider's back. The page opens on Level 2 without animating, and the column snaps back to the current panel when the window is resized. Dragging the slider across several levels records one history step per level crossed.
+Status: tentative
+
+## D-031 — 2026-10-26 — Name shown in the top bar (Claude Code choice, Adam to review)
+Decision: The app is labeled "Autonomy Slider", not "Golden Analytics", so it can't be mistaken for Golden's own product or branding (D-016).
+Status: tentative
+
 ---
 
 ## Parking lot (ideas not yet decided)

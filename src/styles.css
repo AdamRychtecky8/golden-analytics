@@ -1,10 +1,501 @@
+/*
+  Visual style (D-016): the UI follows the same rules as a good chart.
+  Grey/hairlines for structure, navy for content, ONE orange accent for what matters
+  (the current level, selected fields, the highlighted mark). Square corners, no
+  gradients, no shadows. Chart colors in chartRules.ts must match these values.
+*/
 :root {
   --cream: #f7f3ea;
+  --paper: #fbf9f4;
   --navy: #14213d;
+  --navy-soft: #4a5470;
+  --rule: #d9d3c5;
+  --grey: #c4c0b6;
+  --accent: #e8590c;
+  --accent-wash: #fbe7dc;
+
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --gutter: 20px;
+  --card-width: 440px;
+  --slider-width: 132px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
 }
 
 body {
-  margin: 0;
   background: var(--cream);
   color: var(--navy);
+  font: 15px/1.45 var(--sans);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Monospace, uppercase, letter-spaced: the label voice used across the UI. */
+.label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--navy-soft);
+}
+
+.btn {
+  border: 1px solid var(--navy);
+  background: transparent;
+  border-radius: 0;
+  padding: 5px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) {
+  background: var(--navy);
+  color: var(--cream);
+}
+.btn:disabled {
+  border-color: var(--grey);
+  color: var(--grey);
+  cursor: default;
+}
+.btn-primary {
+  background: var(--navy);
+  color: var(--cream);
+}
+
+select,
+input[type='text'],
+textarea {
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: var(--paper);
+  padding: 5px 8px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Page layout: top bar over three pinned columns ---------- */
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: var(--slider-width) 1fr var(--card-width);
+  min-height: 0; /* lets the middle column scroll instead of growing the page */
+}
+
+/* ---------- Top bar ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px var(--gutter);
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+.topbar-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.topbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topbar-spacer {
+  flex: 1;
+}
+.dataset-name {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  padding: 1px 5px;
+}
+.load-errors {
+  grid-column: 1 / -1;
+  border: 1px solid var(--accent);
+  padding: 8px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+.load-errors ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* Persona "build your own" form drops below the picker. */
+.persona {
+  position: relative;
+}
+.persona-form {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 10;
+  width: 300px;
+  background: var(--paper);
+  border: 1px solid var(--navy);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.persona-form label {
+  display: grid;
+  gap: 3px;
+}
+.persona-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ---------- Slider (left, pinned) ---------- */
+
+.slider {
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px 8px;
+}
+.slider-track {
+  display: flex;
+  gap: 10px;
+  height: 320px;
+}
+.slider-input {
+  /* A native range input turned vertical: writing-mode stands it up, and direction:rtl
+     puts the minimum (Level 0) at the bottom. Keyboard arrows and screen readers keep
+     working because it's still a real <input type="range">. */
+  writing-mode: vertical-lr;
+  direction: rtl;
+  height: 100%;
+  width: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.slider-labels {
+  position: relative;
+  width: 64px;
+  --thumb: 16px; /* native range thumb size; the thumb's center never reaches the very ends */
+}
+.slider-label {
+  /* Each label sits at its stop: --pos is 0 for Level 3 (top) through 1 for Level 0. */
+  position: absolute;
+  left: 0;
+  top: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--pos));
+  transform: translateY(-50%);
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  line-height: 1.2;
+}
+.slider-label .label {
+  color: var(--navy-soft);
+}
+.slider-label-num {
+  font-family: var(--mono);
+  font-size: 18px;
+}
+.slider-label.is-current .slider-label-num,
+.slider-label.is-current .label {
+  color: var(--accent);
+}
+.slider-ai {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--navy-soft);
+}
+
+/* ---------- Assist layer (middle, scrolls only when the slider moves) ---------- */
+
+.assist {
+  overflow: hidden; /* D-007: the column moves only with the slider */
+  position: relative;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .assist {
+    scroll-behavior: smooth;
+  }
+}
+.panel {
+  height: 100%;
+  overflow-y: auto; /* a panel may scroll internally if its content overflows */
+  padding: var(--gutter) calc(var(--gutter) + 4px);
+  border-bottom: 1px solid var(--rule);
+}
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid var(--navy);
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+.panel-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+.placeholder {
+  border: 1px dashed var(--grey);
+  padding: 20px;
+  max-width: 560px;
+}
+.placeholder p {
+  margin: 6px 0 0;
+}
+.section {
+  margin-bottom: 22px;
+}
+.section > .label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+/* Level 0 field list */
+.field-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.field-chip {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-radius: 0;
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.field-chip[aria-pressed='true'],
+.field-card[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.field-type {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--navy-soft);
+}
+
+/* Level 1 field cards */
+.field-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.field-card {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-radius: 0;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+}
+.field-card-name {
+  font-weight: 600;
+}
+.field-card-stat {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--navy-soft);
+}
+.mini-dist {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 28px;
+  margin-top: 4px;
+}
+.mini-dist span {
+  flex: 1;
+  background: var(--grey);
+  min-height: 1px;
+}
+.mini-dist-cats {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+}
+.mini-dist-cat {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+}
+.mini-dist-cat span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mini-dist-cat i {
+  display: block;
+  height: 6px;
+  background: var(--grey);
+}
+
+/* Level 1 chart ideas */
+.ideas {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--rule);
+}
+.idea {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: none;
+  text-align: left;
+  padding: 8px 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+}
+.idea:hover {
+  background: var(--paper);
+}
+.idea[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+/* Chart preview in the assist layer */
+.preview {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 14px;
+}
+.preview-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.preview-title {
+  font-weight: 600;
+}
+.toggle {
+  display: inline-flex;
+}
+.toggle .btn + .btn {
+  border-left: 0;
+}
+.toggle .btn[aria-pressed='true'] {
+  background: var(--navy);
+  color: var(--cream);
+}
+.empty-note {
+  color: var(--navy-soft);
+  margin: 0;
+}
+.chart-notes {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--navy-soft);
+}
+.chart {
+  width: 100%;
+}
+
+/* ---------- Story card (right, pinned) ---------- */
+
+.story {
+  border-left: 1px solid var(--rule);
+  padding: var(--gutter);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.story-card {
+  border: 1px solid var(--navy);
+  background: var(--paper);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.story-title {
+  font-size: 20px;
+  font-weight: 600;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: transparent;
+  padding: 4px 0;
+  width: 100%;
+}
+.story-takeaway {
+  border: 0;
+  border-top: 1px solid var(--rule);
+  background: transparent;
+  padding: 8px 0 0;
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+}
+.story-hint {
+  font-size: 12px;
+  color: var(--navy-soft);
+  margin: 0;
 }
