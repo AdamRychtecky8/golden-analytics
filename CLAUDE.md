@@ -15,12 +15,13 @@ The brief says the reviewers want proof that Adam guided the AI to build what *h
 ## How to work with Adam
 - **Product or design question?** Offer 2–3 options with tradeoffs, give a recommendation only if asked, then wait for his choice. Never silently pick a product direction, add features he didn't ask for, or swap libraries.
 - **Non-trivial change?** Post a short plan first and wait for his OK.
-- **Stack:** not decided yet (React + TypeScript is expected by the role). Do not scaffold an app until Adam decides.
+- **Stack (decided, D-004):** Vite + React + TypeScript, Papa Parse for CSV, Vega-Lite via vega-embed for charts, plain CSS, Vitest for tests. Don't add or swap libraries without asking.
 - **Commits:** small and frequent, with plain messages that say what changed and why.
 - **When you finish a task,** tell him exactly what to look at or click to verify it.
 
 ## Teaching (important)
 Adam reads React/TypeScript through AI; he does not write it from memory. The goal is reading literacy: enough to understand and defend every file in an interview.
+- **Explanations go in `docs/LEARNING.md`, not in chat.** When you add a file or a new pattern, update LEARNING.md (file map, pattern list, defend-this questions) in the same commit.
 - The first time a new pattern appears (a hook, prop types, a generic, a reducer, an effect…), explain it in 2–3 plain sentences: what it does and why it is here instead of the alternative.
 - Prefer simple, readable code over clever code. If something must be clever, comment why.
 - When asked "why does this work," answer the mechanism, not just the behavior.

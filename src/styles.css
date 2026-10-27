@@ -1,0 +1,10 @@
+:root {
+  --cream: #f7f3ea;
+  --navy: #14213d;
+}
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--navy);
+}

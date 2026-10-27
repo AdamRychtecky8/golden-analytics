@@ -45,3 +45,10 @@ Asked: The claude.ai Project suggested asking Claude Code to restate its role fr
 AI proposed: Claude Code summarized its role, what it must never do, and what is still undecided.
 Adam chose / changed: The summary was accurate, so no changes were needed.
 Why: To verify the instructions work before building.
+
+## #5 — 2026-10-26 — Phase 1 plan
+Tool: Claude (claude.ai Project) drafted the Phase 1 prompt; Adam finalized it · Claude Code (VS Code) proposed the plan
+Asked: Read CLAUDE.md and docs/, then propose a plan for Phase 1 (autonomy-slider workspace, no AI yet) and wait for approval.
+AI proposed: An 18-file structure, a reducer with past/present/future history, 7 commit steps, and 10 open questions (where the chart appears, third-field behavior, aggregation, uncovered field combinations, history while typing, manual scrolling, breadcrumb, Vitest + generator, the private course notes, persona lists). Flagged that the .gitignore line for the course notes didn't match anything, so the file would have been published.
+Adam chose / changed: Preview in the assist layer with "use this"; oldest field drops off; sum by default with a sum/mean toggle and honest axis labels, time unit picked automatically; added three rules (date only, date + category, category + category); one snapshot on blur; the middle column only moves with the slider; breadcrumb deferred to Phase 2; yes to Vitest and the generator; course notes stay private; kept the persona lists and added "just exploring"; native smooth scroll instead of a custom 350 ms animation. Authorized Claude Code to build all of Phase 1 without pausing, record its own small choices in DECISIONS.md for review, and write explanations in docs/LEARNING.md instead of chat.
+Why: TODO(adam)

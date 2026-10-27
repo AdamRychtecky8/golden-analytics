@@ -17,6 +17,7 @@ Thumbs.db
 # Claude Code personal settings (project settings.json IS committed)
 .claude/settings.local.json
 
-# Private local context (recruiter email, job posting) — public repo
+# Private local context (recruiter email, job posting, course notes) — public repo
 project-email.md
 SWE-intern.md
+docs/context/DATA511-viz-principles.md
