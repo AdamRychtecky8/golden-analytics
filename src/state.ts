@@ -1,4 +1,5 @@
 import type { Aggregate } from './aggregate';
+import type { Path, PathFilter, PathSource } from './paths';
 import { DEFAULT_PERSONA, type Persona } from './personas';
 
 // The slider levels (D-005). 3 is the top of the slider, 0 the bottom.
@@ -15,8 +16,10 @@ export const MAX_SELECTED = 2;
 export interface StoryCard {
   fields: string[]; // the chart on the card; empty until the user picks "use this"
   aggregate: Aggregate;
+  filter: PathFilter | null; // set when the chart came from a Level 2 path with a filter
+  source: PathSource | null; // 'ai' or 'rules' for a Level 2 path; null for the user's own chart
   highlight: string | null; // key of the highlighted mark (see chartRules.ts)
-  title: string; // written by the user in Phase 1
+  title: string; // always written by the user, whatever the chart's source
   takeaway: string;
 }
 
@@ -29,6 +32,10 @@ export interface Snapshot {
   selected: string[]; // oldest first, at most MAX_SELECTED
   aggregate: Aggregate;
   persona: Persona;
+  // Level 2: the paths from the top level down to the one the user is going deeper on.
+  // Empty means the top-level paths. Whole paths (not just ids) are stored, so the
+  // breadcrumb can be drawn from the snapshot alone.
+  branch: Path[];
   card: StoryCard;
 }
 
@@ -47,18 +54,29 @@ export type Action =
   | { type: 'setAggregate'; aggregate: Aggregate }
   | { type: 'setPersona'; persona: Persona }
   | { type: 'useChart' }
+  | { type: 'goDeeper'; path: Path }
+  | { type: 'jumpTo'; depth: number }
+  | { type: 'usePath'; path: Path }
   | { type: 'toggleHighlight'; key: string }
   | { type: 'setCardText'; title: string; takeaway: string }
   | { type: 'newDataset' }
   | { type: 'back' }
   | { type: 'forward' };
 
-export const EMPTY_CARD: StoryCard = { fields: [], aggregate: 'sum', highlight: null, title: '', takeaway: '' };
+export const EMPTY_CARD: StoryCard = {
+  fields: [],
+  aggregate: 'sum',
+  filter: null,
+  source: null,
+  highlight: null,
+  title: '',
+  takeaway: '',
+};
 
 export function initialHistory(): History {
   return {
     past: [],
-    present: { level: 2, selected: [], aggregate: 'sum', persona: DEFAULT_PERSONA, card: EMPTY_CARD },
+    present: { level: 2, selected: [], aggregate: 'sum', persona: DEFAULT_PERSONA, branch: [], card: EMPTY_CARD },
     future: [],
   };
 }
@@ -84,11 +102,25 @@ function step(s: Snapshot, action: Action): Snapshot {
     case 'setAggregate':
       return { ...s, aggregate: action.aggregate };
     case 'setPersona':
-      // Changing the persona keeps everything else (D-014).
-      return { ...s, persona: action.persona };
+      // Changing the persona keeps the selection and the card (D-014). Level 2 returns to
+      // the top, because the new persona gets its own top-level paths.
+      return { ...s, persona: action.persona, branch: [] };
     case 'useChart':
       // Sends the previewed chart to the card. The user's title and takeaway stay as they are.
-      return { ...s, card: { ...s.card, fields: s.selected, aggregate: s.aggregate, highlight: null } };
+      return {
+        ...s,
+        card: { ...s.card, fields: s.selected, aggregate: s.aggregate, filter: null, source: null, highlight: null },
+      };
+    case 'goDeeper':
+      // Level 2 actions never touch the Level 0/1 selection.
+      return { ...s, branch: [...s.branch, action.path] };
+    case 'jumpTo':
+      // A breadcrumb click: keep the first `depth` steps (0 = back to the top-level paths).
+      return { ...s, branch: s.branch.slice(0, action.depth) };
+    case 'usePath': {
+      const { fields, aggregate, filter, source } = action.path;
+      return { ...s, card: { ...s.card, fields, aggregate, filter, source, highlight: null } };
+    }
     case 'toggleHighlight': {
       const highlight = s.card.highlight === action.key ? null : action.key;
       return { ...s, card: { ...s.card, highlight } };
