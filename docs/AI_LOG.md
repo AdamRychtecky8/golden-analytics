@@ -59,3 +59,10 @@ Asked: Build all of Phase 1 in one run under the rules in #5: decide small imple
 AI proposed: Built the seven steps as planned. Changes from the plan, all logged as "Claude Code choice, Adam to review" (D-019 to D-033): all aggregation computed in a new src/aggregate.ts instead of inside Vega-Lite; Level 0/1 content split into src/components/Levels.tsx; added src/state.test.ts and a Vega render test; malformed CSVs rejected rather than repaired; long category lists combined into "Other"; the app labeled "Autonomy Slider" rather than with Golden's name.
 Adam chose / changed: TODO(adam): review D-019 to D-033.
 Why: TODO(adam)
+
+## #7 — 2026-10-26 — Phase 2: Level 2 (Suggest)
+Tool: Prompt drafted with the claude.ai Project and finalized by Adam · Claude Code (VS Code) built it
+Asked: Remove docs/MAIN_Prompts.md from the public repo, history included, and gitignore it. Then build Level 2 straight through: analytical paths as plain data (question, kind, 1–2 fields, sum/mean, optional filter, parent), an AI call in a server-side handler that sees only the profile, persona, and parent path, code validation of everything the AI returns, a rule-based fallback so the app works with no key, the Level 2 panel with a breadcrumb and AI/Rules labels, caching, and back/forward through all of it. Record small choices in DECISIONS.md for review, extend LEARNING.md, push.
+AI proposed: Built it in five commits. Default model claude-haiku-5-5, chosen after checking the current model list. The validator in the browser checks AI paths and rule paths alike. A headless-browser check (Edge, driven by script) found a Phase 1 bug: the date format on time axes was being dropped. Fixed it in its own commit. Ran the AI path end to end against a local mock of the Anthropic API (no real key, no cost) and confirmed no row values reached it. The history rewrite was done locally, but the force push was blocked by Claude Code's permission check and left for Adam. Implementation choices logged as D-039 to D-046.
+Adam chose / changed: The Phase 2 spec itself (D-034 to D-038). TODO(adam): review D-039 to D-046.
+Why: TODO(adam)

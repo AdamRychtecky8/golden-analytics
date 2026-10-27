@@ -13,6 +13,30 @@ npm run dev
 
 Stop the server with `Ctrl+C` in the terminal.
 
+## AI suggestions (Level 2): with or without an API key
+
+Level 2 works either way.
+
+**Without a key** (the default): Level 2 shows three paths suggested by rules, each tagged **Rules**, with one quiet line saying "AI suggestions are off (no API key)". Everything else, including go deeper, the breadcrumb, "Use this", and back/forward, works the same.
+
+**With a key:**
+
+1. Get an API key from the Anthropic Console (console.anthropic.com).
+2. In the project folder, copy `.env.example` to a new file named `.env`:
+   ```
+   cp .env.example .env
+   ```
+3. Open `.env` and replace `your-anthropic-api-key-here` with your key. Optionally set `ANTHROPIC_MODEL` (default: `claude-haiku-5-5`).
+4. Restart `npm run dev`. The dev server reads `.env` only when it starts.
+
+Level 2 then opens with paths tagged **AI**. If some AI paths fail the checks, rules fill the gaps and a notice says so. If the call fails (bad key, no network, timeout), the paths come from rules and the notice says the AI couldn't be reached.
+
+**Where the key lives:** only in `.env` (gitignored, never committed) and in the server-side handler `api/suggest.ts`. The browser never sees it: it calls `/api/suggest` on the dev server, which calls Anthropic. Each AI request sends only the data profile (column names, types, ranges, top values, missing counts), the persona, and the parent path. It never sends rows.
+
+**Cost:** one request each time the app opens, when you switch persona, and when you go deeper on a new path. Revisiting a branch, back/forward, and moving the slider reuse cached answers.
+
+`npm run preview` and the plain `dist/` build have no server behind `/api`, so they always show rule-based paths. The handler is written as a Vercel serverless function (`api/`), but nothing is deployed yet.
+
 ## Run the tests
 
 ```
@@ -23,7 +47,13 @@ This runs every `*.test.ts` file once with Vitest:
 
 - `src/profile.test.ts`: number and date parsing, type detection, missing counts, ranges, bins, and CSV loading errors.
 - `src/chartRules.test.ts`: which chart each field combination gets, the numbers each chart would draw (sums, means, counts, empty periods, "Other" grouping), and a check that every chart renders in Vega.
-- `src/state.test.ts`: back/forward history, the two-field limit, and that the user's text is never overwritten.
+- `src/state.test.ts`: back/forward history, the two-field limit, that the user's text is never overwritten, and Level 2's go deeper, breadcrumb jumps, "use this", and persona changes.
+- `src/paths.test.ts`: the path validator (bad fields, bad filters, duplicate kinds, repeats of the parent), row filtering, filtered charts, and what is sent to the AI.
+- `src/fallbackPaths.test.ts`: the rule-based paths for every persona, the outlier finder, and go deeper two levels down.
+- `src/suggest.test.ts`: how the browser combines AI and rule paths, with the network faked (no key, errors, invalid answers).
+- `api/suggest.test.ts`: the server handler, with the Anthropic API faked.
+
+No test calls the real API.
 
 `npm run test:watch` reruns the tests whenever a file changes.
 
