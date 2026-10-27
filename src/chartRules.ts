@@ -104,6 +104,8 @@ export interface ChartOptions {
   // The key of the highlighted mark, or null. Each datum gets a `key` field so a click
   // can name exactly one mark (or one series, for multi-line charts).
   highlight: string | null;
+  // Chart height in pixels. Defaults to the story card's size; path cards use a smaller one.
+  height?: number;
 }
 
 const TIME_FORMAT: Record<TimeUnit, string> = { day: '%b %d, %Y', month: '%b %Y', year: '%Y' };
@@ -188,7 +190,7 @@ export function buildChart(fields: ColumnProfile[], rows: Row[], options: ChartO
   // The builders return plain objects rather than Vega-Lite's own (very large) types, to
   // keep them readable. The tests check the specs' contents; `as unknown as` tells
   // TypeScript we've taken on that responsibility.
-  const spec = { ...built, usermeta, height: HEIGHT, width: 'container' } as unknown as TopLevelSpec;
+  const spec = { ...built, usermeta, height: options.height ?? HEIGHT, width: 'container' } as unknown as TopLevelSpec;
   return { rule, title, notes, spec };
 }
 
