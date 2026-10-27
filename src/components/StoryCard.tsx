@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Row } from '../aggregate';
-import { buildChart } from '../chartRules';
+import { chartForView } from '../paths';
 import type { DataProfile } from '../profile';
 import type { StoryCard as Card } from '../state';
 import { Chart } from './Chart';
@@ -26,11 +26,13 @@ export function StoryCard({ card, profile, rows, onHighlight, onText }: StoryCar
   useEffect(() => setTitle(card.title), [card.title]);
   useEffect(() => setTakeaway(card.takeaway), [card.takeaway]);
 
+  // The same function draws path previews, so a filtered chart on the card shows the same
+  // numbers and the same "Only rows where…" note as it did in Level 2.
   const chart = useMemo(() => {
     if (card.fields.length === 0) return null;
-    const cols = card.fields.map((n) => profile.columns.find((c) => c.name === n)!);
-    return buildChart(cols, rows, { aggregate: card.aggregate, highlight: card.highlight });
-  }, [card.fields, card.aggregate, card.highlight, profile, rows]);
+    const view = { fields: card.fields, aggregate: card.aggregate, filter: card.filter };
+    return chartForView(view, profile, rows, { highlight: card.highlight });
+  }, [card.fields, card.aggregate, card.filter, card.highlight, profile, rows]);
 
   const commit = () => onText(title, takeaway);
 
@@ -49,7 +51,12 @@ export function StoryCard({ card, profile, rows, onHighlight, onText }: StoryCar
         />
         {chart ? (
           <>
-            <span className="label">{chart.title}</span>
+            <div className="story-chart-head">
+              <span className="label">{chart.title}</span>
+              {card.source && (
+                <span className={`source source-${card.source}`}>Suggested by {card.source === 'ai' ? 'AI' : 'rules'}</span>
+              )}
+            </div>
             <Chart spec={chart.spec} label={chart.title} onMarkClick={onHighlight} />
             {chart.notes.length > 0 && (
               <ul className="chart-notes">

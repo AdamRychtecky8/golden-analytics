@@ -3,12 +3,14 @@ import sampleText from './data/sample-sales-synthetic.csv?raw';
 import { AssistLayer } from './components/AssistLayer';
 import { ExploreLevel, MapLevel } from './components/Levels';
 import { Slider } from './components/Slider';
+import { SuggestLevel } from './components/SuggestLevel';
 import { StoryCard } from './components/StoryCard';
 import { TopBar } from './components/TopBar';
 import type { Aggregate } from './aggregate';
 import { parseCsv, type Dataset } from './loadCsv';
 import { profileDataset } from './profile';
 import { historyReducer, initialHistory } from './state';
+import { useSuggestions } from './useSuggestions';
 
 // The bundled sample is parsed once when the app loads. If it ever failed to parse,
 // that's a bug in the repo, not a user error, so it throws loudly.
@@ -21,11 +23,18 @@ const SAMPLE: Dataset = (() => {
 export default function App() {
   const [history, dispatch] = useReducer(historyReducer, undefined, initialHistory);
   const [dataset, setDataset] = useState<Dataset>(SAMPLE);
+  // Counts dataset loads. The suggestion cache is keyed on it, so a new file never shows
+  // paths that were picked for the old one.
+  const [datasetId, setDatasetId] = useState(0);
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
   // Recompute the profile only when the dataset changes, not on every click.
   const profile = useMemo(() => profileDataset(dataset.columns, dataset.rows), [dataset]);
 
   const state = history.present;
+  // Level 2 shows the follow-ups of the last path in the branch (or the top-level paths).
+  // The request starts as soon as the app opens, whatever the slider level.
+  const parent = state.branch.at(-1) ?? null;
+  const suggestions = useSuggestions(datasetId, profile, dataset.rows, state.persona, parent);
 
   // Both non-AI levels get the same props, so they share one selection (D-008).
   const levelProps = {
@@ -33,7 +42,9 @@ export default function App() {
     rows: dataset.rows,
     selected: state.selected,
     aggregate: state.aggregate,
-    cardFields: state.card.fields,
+    // A card chart from a Level 2 path (with its source label or filter) isn't the same as
+    // the user's own selection, so Levels 0/1 offer "Use this" rather than "Update card".
+    cardFields: state.card.source || state.card.filter ? [] : state.card.fields,
     onToggleField: (field: string) => dispatch({ type: 'toggleField', field }),
     onSelectFields: (fields: string[]) => dispatch({ type: 'selectFields', fields }),
     onAggregate: (aggregate: Aggregate) => dispatch({ type: 'setAggregate', aggregate }),
@@ -42,6 +53,7 @@ export default function App() {
 
   function switchDataset(next: Dataset) {
     setDataset(next);
+    setDatasetId((id) => id + 1);
     setLoadErrors([]);
     dispatch({ type: 'newDataset' });
   }
@@ -85,6 +97,19 @@ export default function App() {
           persona={state.persona}
           explore={<ExploreLevel {...levelProps} />}
           map={<MapLevel {...levelProps} />}
+          suggest={
+            <SuggestLevel
+              persona={state.persona}
+              branch={state.branch}
+              suggestions={suggestions}
+              profile={profile}
+              rows={dataset.rows}
+              card={state.card}
+              onGoDeeper={(path) => dispatch({ type: 'goDeeper', path })}
+              onJump={(depth) => dispatch({ type: 'jumpTo', depth })}
+              onUsePath={(path) => dispatch({ type: 'usePath', path })}
+            />
+          }
         />
         <StoryCard
           card={state.card}

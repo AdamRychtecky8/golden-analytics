@@ -459,6 +459,133 @@ textarea {
   width: 100%;
 }
 
+/* ---------- Level 2: analytical paths ---------- */
+
+.suggest-persona {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.link-btn:hover {
+  color: var(--accent);
+}
+.crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+.crumbs li + li::before {
+  content: '›';
+  margin-right: 6px;
+  color: var(--navy-soft);
+}
+.crumbs [aria-current] {
+  font-weight: 600;
+}
+/* A quiet one-line notice: grey text with a hairline, never an alarm. */
+.notice {
+  margin: 0 0 12px;
+  padding-left: 8px;
+  border-left: 2px solid var(--grey);
+  font-size: 12px;
+  color: var(--navy-soft);
+}
+.paths {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.path-card {
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+.path-tags {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+/* Kind chip: mono uppercase on a hairline box. */
+.chip {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--navy);
+  padding: 1px 6px;
+}
+/* Source tag: filled navy for AI, outlined grey for rules, so the two read apart at a
+   glance without using the orange accent (reserved for highlights). */
+.source {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border: 1px solid var(--navy);
+}
+.source-ai {
+  background: var(--navy);
+  color: var(--cream);
+}
+.source-rules {
+  border-color: var(--grey);
+  color: var(--navy-soft);
+}
+.path-question {
+  margin: 2px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.path-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.skeleton {
+  min-height: 210px;
+  align-content: start;
+}
+.skeleton-line,
+.skeleton-block {
+  display: block;
+  background: var(--rule);
+  height: 12px;
+}
+.skeleton-line.short {
+  width: 30%;
+}
+.skeleton-block {
+  height: 130px;
+  opacity: 0.5;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton {
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
 /* ---------- Story card (right, pinned) ---------- */
 
 .story {
@@ -493,6 +620,12 @@ textarea {
   width: 100%;
   resize: vertical;
   min-height: 60px;
+}
+.story-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 .story-hint {
   font-size: 12px;

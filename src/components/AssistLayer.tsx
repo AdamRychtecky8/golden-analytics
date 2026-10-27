@@ -7,6 +7,7 @@ interface AssistLayerProps {
   persona: Persona;
   explore: ReactNode; // Level 0 content
   map: ReactNode; // Level 1 content
+  suggest: ReactNode; // Level 2 content
 }
 
 /**
@@ -14,7 +15,7 @@ interface AssistLayerProps {
  * (D-007): the column itself has overflow hidden, and an effect scrolls it to the
  * current level's panel whenever the level changes.
  */
-export function AssistLayer({ level, persona, explore, map }: AssistLayerProps) {
+export function AssistLayer({ level, persona, explore, map, suggest }: AssistLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<Record<Level, HTMLElement | null>>({ 0: null, 1: null, 2: null, 3: null });
   // The level we last scrolled to. null until the first render.
@@ -45,12 +46,7 @@ export function AssistLayer({ level, persona, explore, map }: AssistLayerProps) 
         editable.
       </Placeholder>
     ),
-    2: (
-      <Placeholder persona={persona}>
-        Analytical paths: questions picked by the AI, each answered by a chart computed in code. Go deeper on any
-        path to build a tree of questions.
-      </Placeholder>
-    ),
+    2: suggest,
     1: map,
     0: explore,
   };
@@ -83,7 +79,7 @@ export function AssistLayer({ level, persona, explore, map }: AssistLayerProps) 
 function Placeholder({ persona, children }: { persona: Persona; children: ReactNode }) {
   return (
     <div className="placeholder">
-      <span className="label">Arrives in Phase 2</span>
+      <span className="label">Not built yet</span>
       <p>{children}</p>
       <p>
         <span className="label">Tailored to</span> {describePersona(persona)}
