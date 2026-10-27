@@ -127,6 +127,30 @@ Decision: The file is src/data/sample-sales-synthetic.csv (2025, 200 rows: date,
 Why: A comment line would make the sample unlike the CSVs users upload.
 Status: tentative
 
+## D-023 — 2026-10-26 — Long category lists are combined into "Other" (Claude Code choice, Adam to review)
+Decision: Bars show at most 20 categories, multi-series lines at most 8, heatmaps at most 12 per axis. Past that, the smallest groups are combined into one "Other (n values)" mark, always listed last, and the chart notes say so. Nothing is dropped: the Other bar's value is computed from all the remaining rows.
+Options considered: show everything (unreadable for 1,000 names); show the top N only (silently drops data).
+Why: Keeps charts readable without breaking the precision rule.
+Status: tentative
+
+## D-024 — 2026-10-26 — Empty time periods and missing values in charts (Claude Code choice, Adam to review)
+Decision: Rows missing any selected field are left out of that chart, and a note under the chart says how many. Empty periods count as 0 for counts and sums (a sum of nothing is 0). For a mean, an empty period has no value, so it is left out of the line and the note says how many periods were skipped. Heatmaps list every combination, so a zero shows as a pale cell instead of a hole.
+Why: A chart must never silently drop or invent data (CLAUDE.md).
+Status: tentative
+
+## D-025 — 2026-10-26 — Which field goes on which axis (Claude Code choice, Adam to review)
+Decision: Time charts always put the date on x, and bars always put the category on the bar axis, whatever the click order. Scatter and heatmap use selection order (first selected → x). Bars are horizontal so long category names stay readable. Scatter axes don't force zero, since position, not length, carries the value. Bars and histograms always start at zero.
+Status: tentative
+
+## D-026 — 2026-10-26 — Level 1 chart ideas (Claude Code choice, Adam to review)
+Decision: Nothing selected → one idea per field. One field selected → that field alone, plus that field paired with each other field. Two selected → the pair, plus each field alone. Only combinations a rule covers are listed. Titles are plain descriptions of what the chart shows ("Sum of revenue by region"), not explanations of why that chart was chosen.
+Status: tentative
+
+## D-027 — 2026-10-26 — Chart colors (Claude Code choice, Adam to review)
+Decision: Marks are navy by default. With a highlight, the highlighted mark (or series) is orange and everything else is grey. Multi-series lines use a muted hue palette with orange left out, so orange always means "highlighted." Heatmaps use a cream-to-navy lightness ramp.
+Why: One accent for meaning (D-016); lightness for ordered values, hue for categories (DATA511-viz-principles.md §4).
+Status: tentative
+
 ---
 
 ## Parking lot (ideas not yet decided)
