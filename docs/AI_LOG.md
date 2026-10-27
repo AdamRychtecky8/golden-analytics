@@ -52,3 +52,10 @@ Asked: Read CLAUDE.md and docs/, then propose a plan for Phase 1 (autonomy-slide
 AI proposed: An 18-file structure, a reducer with past/present/future history, 7 commit steps, and 10 open questions (where the chart appears, third-field behavior, aggregation, uncovered field combinations, history while typing, manual scrolling, breadcrumb, Vitest + generator, the private course notes, persona lists). Flagged that the .gitignore line for the course notes didn't match anything, so the file would have been published.
 Adam chose / changed: Preview in the assist layer with "use this"; oldest field drops off; sum by default with a sum/mean toggle and honest axis labels, time unit picked automatically; added three rules (date only, date + category, category + category); one snapshot on blur; the middle column only moves with the slider; breadcrumb deferred to Phase 2; yes to Vitest and the generator; course notes stay private; kept the persona lists and added "just exploring"; native smooth scroll instead of a custom 350 ms animation. Authorized Claude Code to build all of Phase 1 without pausing, record its own small choices in DECISIONS.md for review, and write explanations in docs/LEARNING.md instead of chat.
 Why: TODO(adam)
+
+## #6 — 2026-10-26 — Phase 1 build
+Tool: Claude Code (VS Code)
+Asked: Build all of Phase 1 in one run under the rules in #5: decide small implementation choices and record them in DECISIONS.md for review, one commit per step, explanations in docs/LEARNING.md, run tests and a production build, check the "Done when" list, push.
+AI proposed: Built the seven steps as planned. Changes from the plan, all logged as "Claude Code choice, Adam to review" (D-019 to D-033): all aggregation computed in a new src/aggregate.ts instead of inside Vega-Lite; Level 0/1 content split into src/components/Levels.tsx; added src/state.test.ts and a Vega render test; malformed CSVs rejected rather than repaired; long category lists combined into "Other"; the app labeled "Autonomy Slider" rather than with Golden's name.
+Adam chose / changed: TODO(adam): review D-019 to D-033.
+Why: TODO(adam)

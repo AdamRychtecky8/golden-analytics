@@ -27,7 +27,7 @@ Status: decided
 ## D-003 — 2026-10-26 — Primary data operation: visualization / storytelling
 Decision: Focus on visualization and storytelling, keeping cleaning and transformation in view.
 Why: It's the operation I find most fun, and it's where my psychology and social-systems background can show.
-Status: direction set; no product chosen yet
+Status: decided; the product is chosen in D-005
 
 ## D-004 — 2026-10-26 — Stack
 Decision: Vite + React + TypeScript. CSV parsing with Papa Parse. Charts with Vega-Lite via vega-embed. Plain CSS. Vitest for tests.
