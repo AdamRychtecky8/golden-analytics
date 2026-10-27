@@ -172,3 +172,28 @@ describe('chartIdeas', () => {
     ]);
   });
 });
+
+describe('every rule renders in Vega', () => {
+  // Compiles each spec and draws it to SVG in Node, so a spec Vega rejects fails here
+  // rather than only in the browser. Width is fixed because there's no container in Node.
+  const combos = [
+    ['date', 'revenue'],
+    ['region', 'revenue'],
+    ['units', 'revenue'],
+    ['revenue'],
+    ['region'],
+    ['date'],
+    ['date', 'category'],
+    ['region', 'category'],
+  ];
+  it.each(combos)('%s + %s', async (...fields) => {
+    const { compile } = await import('vega-lite');
+    const { View, parse } = await import('vega');
+    for (const highlight of [null, 'West']) {
+      const chart = buildChart(fields.filter(Boolean).map(col), rows, { aggregate: 'sum', highlight })!;
+      const vgSpec = compile({ ...chart.spec, width: 400 } as never).spec;
+      const svg = await new View(parse(vgSpec), { renderer: 'none' }).toSVG();
+      expect(svg).toContain('<svg');
+    }
+  });
+});

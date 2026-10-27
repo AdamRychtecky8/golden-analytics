@@ -167,6 +167,15 @@ Status: tentative
 Decision: The app is labeled "Autonomy Slider", not "Golden Analytics", so it can't be mistaken for Golden's own product or branding (D-016).
 Status: tentative
 
+## D-032 — 2026-10-26 — Level 0 and Level 1 details (Claude Code choice, Adam to review)
+Decision: Level 0 is a row of field chips showing each field's type, with a #1/#2 badge for selection order (so it's visible which field drops off next). Level 1 cards show type, range (or top value), distinct and missing counts, and an unlabeled mini distribution (bins for numbers and dates, top 3 values for categories). Clicking a chart idea selects its fields. Both levels show the same preview of the current selection with the sum/mean toggle (only for charts that aggregate) and "Use this →", which reads "Update card" when the card already shows those fields. Level 0/1 content lives in src/components/Levels.tsx rather than inside AssistLayer.tsx as planned, so each file stays readable.
+Status: tentative
+
+## D-033 — 2026-10-26 — Render test for every chart rule (Claude Code choice, Adam to review)
+Decision: chartRules.test.ts also compiles every rule's spec with Vega-Lite and renders it to SVG in Node, with and without a highlight.
+Why: The number tests can't catch a spec Vega rejects; this catches it before the browser does.
+Status: tentative
+
 ---
 
 ## Parking lot (ideas not yet decided)

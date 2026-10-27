@@ -181,7 +181,15 @@ export function buildChart(fields: ColumnProfile[], rows: Row[], options: ChartO
   }
 
   const built = BUILDERS[rule](ordered, complete, options, notes);
-  return { rule, title, notes, spec: { ...built, height: HEIGHT, width: 'container' } as TopLevelSpec };
+  // usermeta is Vega-Lite's slot for app data; Vega ignores it. Chart.tsx reads it to know
+  // whether a click on a line counts. On a single line every point has its own key, so
+  // only the points are clickable; on a multi-series line the line itself names a series.
+  const usermeta = { lineClickable: rule === 'count-line-by-category' };
+  // The builders return plain objects rather than Vega-Lite's own (very large) types, to
+  // keep them readable. The tests check the specs' contents; `as unknown as` tells
+  // TypeScript we've taken on that responsibility.
+  const spec = { ...built, usermeta, height: HEIGHT, width: 'container' } as unknown as TopLevelSpec;
+  return { rule, title, notes, spec };
 }
 
 type Builder = (fields: ColumnProfile[], rows: Row[], options: ChartOptions, notes: string[]) => object;

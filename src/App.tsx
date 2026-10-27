@@ -1,8 +1,11 @@
 import { useMemo, useReducer, useState } from 'react';
 import sampleText from './data/sample-sales-synthetic.csv?raw';
 import { AssistLayer } from './components/AssistLayer';
+import { ExploreLevel, MapLevel } from './components/Levels';
 import { Slider } from './components/Slider';
+import { StoryCard } from './components/StoryCard';
 import { TopBar } from './components/TopBar';
+import type { Aggregate } from './aggregate';
 import { parseCsv, type Dataset } from './loadCsv';
 import { profileDataset } from './profile';
 import { historyReducer, initialHistory } from './state';
@@ -23,6 +26,19 @@ export default function App() {
   const profile = useMemo(() => profileDataset(dataset.columns, dataset.rows), [dataset]);
 
   const state = history.present;
+
+  // Both non-AI levels get the same props, so they share one selection (D-008).
+  const levelProps = {
+    profile,
+    rows: dataset.rows,
+    selected: state.selected,
+    aggregate: state.aggregate,
+    cardFields: state.card.fields,
+    onToggleField: (field: string) => dispatch({ type: 'toggleField', field }),
+    onSelectFields: (fields: string[]) => dispatch({ type: 'selectFields', fields }),
+    onAggregate: (aggregate: Aggregate) => dispatch({ type: 'setAggregate', aggregate }),
+    onUseChart: () => dispatch({ type: 'useChart' }),
+  };
 
   function switchDataset(next: Dataset) {
     setDataset(next);
@@ -67,12 +83,16 @@ export default function App() {
         <AssistLayer
           level={state.level}
           persona={state.persona}
-          explore={<p className="empty-note">{profile.columns.length} fields (Level 0 arrives in the next step).</p>}
-          map={<p className="empty-note">Field cards arrive in the next step.</p>}
+          explore={<ExploreLevel {...levelProps} />}
+          map={<MapLevel {...levelProps} />}
         />
-        <aside className="story" aria-label="Story card">
-          <span className="label">Story card</span>
-        </aside>
+        <StoryCard
+          card={state.card}
+          profile={profile}
+          rows={dataset.rows}
+          onHighlight={(key) => dispatch({ type: 'toggleHighlight', key })}
+          onText={(title, takeaway) => dispatch({ type: 'setCardText', title, takeaway })}
+        />
       </div>
     </div>
   );
