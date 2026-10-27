@@ -197,3 +197,14 @@ describe('every rule renders in Vega', () => {
     }
   });
 });
+
+describe('dates on time charts', () => {
+  it.each([[['date', 'revenue']], [['date']], [['date', 'region']]])('%j labels periods in UTC, with our format', async (fields) => {
+    const { compile } = await import('vega-lite');
+    const vg = JSON.stringify(compile(buildChart(fields.map(col), rows, sum)!.spec as never).spec);
+    // A local-time formatter would print January's bucket (UTC midnight) as "Dec 2024"
+    // in US time zones. Every date label and tooltip must go through utcFormat.
+    expect(vg).toContain('utcFormat(datum[\\"period\\"], \\"%b %Y\\")');
+    expect(vg).not.toMatch(/timeFormat|timeMultiFormat/);
+  });
+});

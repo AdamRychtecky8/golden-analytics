@@ -233,9 +233,11 @@ function timeAxis(field: ColumnProfile, unit: TimeUnit) {
     type: 'temporal',
     // UTC scale: our buckets are UTC midnights (aggregate.ts); a local scale would show
     // "Dec 31" for January in US time zones.
+    // The UTC scale also makes the axis labels use UTC. Vega-Lite drops an axis format
+    // that has formatType 'utc' (it logs a warning), so the format is given on its own.
     scale: { type: 'utc' },
     title: `${field.name} (by ${unit})`,
-    axis: { format: TIME_FORMAT[unit], formatType: 'utc' },
+    axis: { format: TIME_FORMAT[unit] },
   };
 }
 
