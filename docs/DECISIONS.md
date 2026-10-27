@@ -151,6 +151,14 @@ Decision: Marks are navy by default. With a highlight, the highlighted mark (or 
 Why: One accent for meaning (D-016); lightness for ordered values, hue for categories (DATA511-viz-principles.md §4).
 Status: tentative
 
+## D-028 — 2026-10-26 — What a history step contains (Claude Code choice, Adam to review)
+Decision: A snapshot holds the slider level, selected fields, sum/mean choice, persona, and story card (chart fields, highlight, title, takeaway). The dataset is not in snapshots. Actions that change nothing don't create a step. Loading a new dataset starts a fresh history (old steps name columns the new file may not have) but keeps the persona and slider level. Added src/state.test.ts, which wasn't in the planned file list, because back/forward is a "Done when" item.
+Status: tentative
+
+## D-029 — 2026-10-26 — Story card chart and highlighting (Claude Code choice, Adam to review)
+Decision: "Use this" copies the previewed fields and sum/mean choice to the card and clears any highlight; it never changes the card's title or takeaway. Highlighting works on the story card's chart (click a mark to highlight, click it again to clear). The preview in the assist layer is not clickable. On a multi-series line, clicking any point highlights that whole series. A custom persona with no name is named from its parts (e.g. "Retail analyst").
+Status: tentative
+
 ---
 
 ## Parking lot (ideas not yet decided)
