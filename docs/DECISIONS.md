@@ -197,7 +197,7 @@ Why: TODO(adam)
 Status: decided
 
 ## D-038 — 2026-10-26 — Prompt file stays private
-Decision: docs/MAIN_Prompts.md is gitignored and removed from the repository's history, so the earlier committed copy isn't on GitHub either. The local file is kept.
+Decision: docs/MAIN_Prompts.md is untracked and gitignored; the local file is kept. Earlier commits still contain it: published history is not rewritten (see the git rules in CLAUDE.md). A history rewrite was made locally in Phase 2 and undone before it was pushed (AI_LOG #7).
 Why: TODO(adam)
 Status: decided
 

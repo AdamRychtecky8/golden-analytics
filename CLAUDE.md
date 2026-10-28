@@ -38,5 +38,10 @@ Any number shown to a user must be traceable to how it was computed. Validate in
 - **`docs/DECISIONS.md`** — When Adam makes a product or technical call, add a short record.
 - **`README.md`** is written by Adam, not AI. Do not create or edit it. Run instructions go in `docs/RUNNING.md`.
 
+## Git rules
+- Never rewrite published history and never force push.
+- Never run destructive git commands (`reset --hard`, `filter-branch`, deleting branches, and the like) unless Adam explicitly asks, for that specific step.
+- To fix a mistake, prefer a new commit that corrects it.
+
 ## Secrets
 Never commit API keys. Use `.env` (gitignored) and keep a `.env.example` with placeholder names only.
