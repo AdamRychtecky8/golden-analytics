@@ -42,14 +42,14 @@ export function TopBar(props: TopBarProps) {
         <span className="dataset-name">
           {dataset.name} · {dataset.rows.length} rows
         </span>
-        {dataset.synthetic && <span className="tag">Synthetic sample</span>}
+        {dataset.demo && <span className="tag">Fictional demo data</span>}
         <label className="btn">
           Load CSV
           <input className="visually-hidden" type="file" accept=".csv,text/csv" onChange={handleFile} />
         </label>
-        {!dataset.synthetic && (
+        {!dataset.demo && (
           <button type="button" className="btn" onClick={props.onSample}>
-            Use sample
+            Use demo data
           </button>
         )}
       </div>

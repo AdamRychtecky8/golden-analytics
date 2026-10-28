@@ -5,7 +5,7 @@ export interface Dataset {
   name: string;
   columns: string[];
   rows: Row[];
-  synthetic: boolean;
+  demo: boolean; // bundled demo data (fictional), as opposed to a file the user loaded
 }
 
 // A discriminated union: the `ok` field tells TypeScript which shape the rest has.
@@ -18,7 +18,7 @@ const MAX_ERRORS_SHOWN = 5;
  * of guessing or silently dropping bad rows, any structural problem rejects the file with
  * a message saying exactly which rows are wrong.
  */
-export function parseCsv(text: string, name: string, synthetic = false): LoadResult {
+export function parseCsv(text: string, name: string, demo = false): LoadResult {
   const result = Papa.parse<Row>(text, {
     header: true,
     skipEmptyLines: 'greedy',
@@ -61,5 +61,5 @@ export function parseCsv(text: string, name: string, synthetic = false): LoadRes
     return row;
   });
 
-  return { ok: true, dataset: { name, columns, rows, synthetic } };
+  return { ok: true, dataset: { name, columns, rows, demo } };
 }

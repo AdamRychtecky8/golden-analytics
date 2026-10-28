@@ -1,5 +1,5 @@
 import { useMemo, useReducer, useState } from 'react';
-import sampleText from './data/sample-sales-synthetic.csv?raw';
+import demoText from './data/bookshop-sales.csv?raw';
 import { AssistLayer } from './components/AssistLayer';
 import { ExploreLevel, MapLevel } from './components/Levels';
 import { Slider } from './components/Slider';
@@ -12,17 +12,18 @@ import { profileDataset } from './profile';
 import { historyReducer, initialHistory } from './state';
 import { useSuggestions } from './useSuggestions';
 
-// The bundled sample is parsed once when the app loads. If it ever failed to parse,
-// that's a bug in the repo, not a user error, so it throws loudly.
-const SAMPLE: Dataset = (() => {
-  const result = parseCsv(sampleText, 'sample-sales-synthetic.csv', true);
-  if (!result.ok) throw new Error(`Bundled sample failed to parse: ${result.errors.join('; ')}`);
+// The bundled demo data (fictional Bookshop sales, made by scripts/prepare-bookshop.py)
+// is parsed once when the app loads. If it ever failed to parse, that's a bug in the
+// repo, not a user error, so it throws loudly. The synthetic sample is kept for tests.
+const DEMO: Dataset = (() => {
+  const result = parseCsv(demoText, 'bookshop-sales.csv', true);
+  if (!result.ok) throw new Error(`Bundled demo data failed to parse: ${result.errors.join('; ')}`);
   return result.dataset;
 })();
 
 export default function App() {
   const [history, dispatch] = useReducer(historyReducer, undefined, initialHistory);
-  const [dataset, setDataset] = useState<Dataset>(SAMPLE);
+  const [dataset, setDataset] = useState<Dataset>(DEMO);
   // Counts dataset loads. The suggestion cache is keyed on it, so a new file never shows
   // paths that were picked for the old one.
   const [datasetId, setDatasetId] = useState(0);
@@ -73,7 +74,7 @@ export default function App() {
           canBack={history.past.length > 0}
           canForward={history.future.length > 0}
           onFile={handleFile}
-          onSample={() => switchDataset(SAMPLE)}
+          onSample={() => switchDataset(DEMO)}
           onPersona={(persona) => dispatch({ type: 'setPersona', persona })}
           onBack={() => dispatch({ type: 'back' })}
           onForward={() => dispatch({ type: 'forward' })}

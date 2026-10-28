@@ -28,6 +28,8 @@ const THEME: Config = {
   },
 };
 
+const CANVAS_ABOVE = 5000; // data points; below this SVG is fast and stays crisp
+
 interface ChartProps {
   spec: TopLevelSpec;
   label: string; // read out by screen readers in place of the drawing
@@ -53,8 +55,13 @@ export function Chart({ spec, label, onMarkClick }: ChartProps) {
     let result: Result | undefined;
     let cancelled = false;
     const lineClickable = (spec.usermeta as { lineClickable?: boolean } | undefined)?.lineClickable ?? false;
+    // SVG adds one page element per mark. A scatter of every row (56,350 points for the
+    // Bookshop data) froze the page for seconds, so big charts are drawn on a canvas:
+    // same spec, same numbers, same clicks, one element instead of thousands.
+    const marks = (spec as { data?: { values?: unknown[] } }).data?.values?.length ?? 0;
+    const renderer = marks > CANVAS_ABOVE ? 'canvas' : 'svg';
 
-    embed(el, { ...spec, config: THEME }, { actions: false, renderer: 'svg' }).then((r) => {
+    embed(el, { ...spec, config: THEME }, { actions: false, renderer }).then((r) => {
       // If the spec changed while Vega was still drawing, throw this view away.
       if (cancelled) {
         r.finalize();

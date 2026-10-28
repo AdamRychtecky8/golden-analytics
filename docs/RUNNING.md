@@ -1,6 +1,6 @@
 # Running the app
 
-Requires **Node.js 20.19 or newer** (developed on Node 22). Check with `node -v`.
+Requires **Node.js 20.19 or newer** (developed on Node 22). Check with `node -v`. Rebuilding the Bookshop data (`npm run prep:bookshop`) also needs **Python 3.9 or newer** (`python3 --version`), with no extra packages; running the app doesn't.
 
 ## Start it
 
@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts a local server and opens the app in your browser (usually at http://localhost:5173). It loads with the bundled synthetic sample and the "Store owner" persona, at Level 2.
+`npm run dev` starts a local server and opens the app in your browser (usually at http://localhost:5173). It loads with the Bookshop demo data (56,350 fictional book sales, dated in the year 2193) and the "Store owner" persona, at Level 2. Loading takes about a second: the whole file is parsed and profiled when the page opens.
 
 Stop the server with `Ctrl+C` in the terminal.
 
@@ -63,7 +63,8 @@ No test calls the real API.
 |---|---|
 | `npm run build` | Type-checks everything, then builds a production version into `dist/` |
 | `npm run preview` | Serves the `dist/` build locally, to check the production version |
-| `npm run sample` | Regenerates `src/data/sample-sales-synthetic.csv` from `scripts/make-sample.mjs`. It's seeded, so the output is identical every time |
+| `npm run prep:bookshop` | Rebuilds `src/data/bookshop-sales.csv` from `data/raw/Bookshop.xlsx` (see below) |
+| `npm run sample` | Regenerates `src/data/sample-sales-synthetic.csv` from `scripts/make-sample.mjs`. It's seeded, so the output is identical every time. The tests use this file; the app no longer shows it |
 
 The build warns that one file is larger than 500 kB. That's the Vega charting library; it's expected and harmless for now.
 
@@ -76,4 +77,16 @@ Click **Load CSV** in the top bar. The file must be a clean, typed CSV (D-010):
 - numbers written plainly (`1234.5`, not `$1,234.50`)
 - dates in ISO format (`2025-03-14`, optionally with a time)
 
-Empty cells are fine; they're counted as missing and reported under any chart that skips them. A file that breaks the structure rules is rejected with a message naming the lines at fault. Click **Use sample** to go back to the bundled data.
+Empty cells are fine; they're counted as missing and reported under any chart that skips them. A file that breaks the structure rules is rejected with a message naming the lines at fault. Click **Use demo data** to go back to the Bookshop data.
+
+## The Bookshop demo data: how it's made
+
+The raw workbook is `data/raw/Bookshop.xlsx` (fictional data: a bookshop's editions, books, authors, publishers, and four sheets of sales). The app needs one clean CSV, so a prep script joins it once:
+
+```
+npm run prep:bookshop
+```
+
+It reads Sales Q1–Q4 and joins each sale to Edition (by ISBN), Book (by BookID), Info (by BookID1 + BookID2, since that sheet splits the ID across two columns), Author (by AuthID), and Publisher (by PubID). It writes `src/data/bookshop-sales.csv` with one row per item sold: sale date (ISO), title, genre, format, publisher, author country, price, discount (empty = 0), revenue = price × (1 − discount), rounded to the cent.
+
+It checks as it goes and stops with an error if any join doesn't match, a lookup key appears twice, a price or discount is invalid, or the total isn't the expected 56,350 rows. It prints row counts for each quarter. It also lists two ItemIDs that each appear on two different orders; those rows are kept (see DECISIONS D-048). Running it twice gives an identical file. Every step is documented in the comment at the top of `scripts/prepare-bookshop.py`.

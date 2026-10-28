@@ -145,3 +145,46 @@ describe('the bundled sample', () => {
     expect(profile.columns.every((c) => c.missing === 0)).toBe(true);
   });
 });
+
+describe('the Bookshop demo data (made by scripts/prepare-bookshop.py)', () => {
+  const text = readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8');
+  const r = parseCsv(text, 'bookshop-sales.csv', true);
+  if (!r.ok) throw new Error(r.errors.join('; '));
+  const { rows, columns } = r.dataset;
+  const profile = profileDataset(columns, rows);
+  const col = (name: string) => profile.columns.find((c) => c.name === name)!;
+
+  it('has one row per item sold, typed as expected, with nothing missing', () => {
+    expect(profile.rowCount).toBe(56_350);
+    expect(profile.columns.map((c) => [c.name, c.type])).toEqual([
+      ['sale date', 'temporal'],
+      ['title', 'nominal'],
+      ['genre', 'nominal'],
+      ['format', 'nominal'],
+      ['publisher', 'nominal'],
+      ['author country', 'nominal'],
+      ['price', 'quantitative'],
+      ['discount', 'quantitative'],
+      ['revenue', 'quantitative'],
+    ]);
+    expect(profile.columns.every((c) => c.missing === 0)).toBe(true);
+  });
+
+  it('parses its year-2193 dates in UTC and buckets them by month', () => {
+    const date = col('sale date');
+    expect(new Date(date.min!).toISOString().slice(0, 10)).toBe('2193-01-02');
+    expect(new Date(date.max!).toISOString().slice(0, 10)).toBe('2193-12-31');
+    expect(date.timeUnit).toBe('month');
+    expect(date.bins).toHaveLength(12);
+  });
+
+  it('has revenue = price × (1 − discount), to the cent, on every row', () => {
+    const off = rows.filter((row) => {
+      const expected = Number(row.price) * (1 - Number(row.discount));
+      return Math.abs(Number(row.revenue) - expected) > 0.005 + 1e-9;
+    });
+    expect(off).toEqual([]);
+    expect(col('discount').min).toBe(0);
+    expect(col('discount').max).toBeLessThan(1);
+  });
+});

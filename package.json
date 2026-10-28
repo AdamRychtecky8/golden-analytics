@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "sample": "node scripts/make-sample.mjs"
+    "sample": "node scripts/make-sample.mjs",
+    "prep:bookshop": "python3 scripts/prepare-bookshop.py"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

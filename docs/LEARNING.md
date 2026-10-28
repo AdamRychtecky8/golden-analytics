@@ -33,7 +33,7 @@ Underneath all of this, **`aggregate.ts`** does the low-level math: parsing numb
 
 ```
 App                       owns: history (useReducer), dataset (useState), profile (useMemo)
-├── TopBar                Load CSV · Use sample · PersonaPicker · Back/Forward
+├── TopBar                Load CSV · Use demo data · PersonaPicker · Back/Forward
 ├── Slider                level 0–3 → dispatch setLevel
 ├── AssistLayer           scrolls to the current level's panel
 │   ├── Level 3           placeholder that shows the persona
@@ -98,8 +98,11 @@ Four things make this trustworthy:
 | [.env.example](../.env.example) | Placeholder names for the settings: `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`. | Copied to `.env` (gitignored) to turn the AI on. Never holds a real key. |
 | [tsconfig.json](../tsconfig.json) | TypeScript settings. `strict: true` turns on the strongest checks. | `npm run build` runs `tsc --noEmit` first: type errors fail the build. |
 | [index.html](../index.html) | The one HTML page. Has an empty `<div id="root">`. | React renders the whole app into that div. |
-| [scripts/make-sample.mjs](../scripts/make-sample.mjs) | Generates the synthetic sample CSV with a seeded random generator. | Seeded means reproducible: the CSV's origin is traceable (D-018, D-022). |
-| [src/data/sample-sales-synthetic.csv](../src/data/sample-sales-synthetic.csv) | 200 synthetic sales rows. | Loaded on startup so the app works on first open. |
+| [scripts/make-sample.mjs](../scripts/make-sample.mjs) | Generates the synthetic sample CSV with a seeded random generator. | Seeded means reproducible: the CSV's origin is traceable (D-018, D-022). The tests use it. |
+| [scripts/prepare-bookshop.py](../scripts/prepare-bookshop.py) | Python, standard library only. Joins the raw Bookshop workbook's sheets into one sales CSV, checking every join. | The "upstream prep tool" (D-010, D-047): cleaning and joining happen once, outside the app, in a script anyone can rerun. |
+| [data/raw/Bookshop.xlsx](../data/raw/Bookshop.xlsx) | The raw fictional bookshop workbook (13 sheets). | Committed so the prep step can be reproduced. |
+| [src/data/bookshop-sales.csv](../src/data/bookshop-sales.csv) | 56,350 sales rows, the app's default demo data. | Generated; rerun the prep script instead of editing it. |
+| [src/data/sample-sales-synthetic.csv](../src/data/sample-sales-synthetic.csv) | 200 synthetic sales rows. | Used by the tests: small and seeded, so expected numbers can be checked by hand. The app opens on the Bookshop data instead. |
 
 ### Logic (pure functions)
 | File | What it does | Why it exists / how it connects |
@@ -137,7 +140,7 @@ Four things make this trustworthy:
 ### Tests
 | File | What it checks |
 |---|---|
-| [src/profile.test.ts](../src/profile.test.ts) | Parsing, type detection, missing counts, bins, CSV errors, and that the sample profiles as expected. |
+| [src/profile.test.ts](../src/profile.test.ts) | Parsing, type detection, missing counts, bins, CSV errors, that the sample profiles as expected, and that the Bookshop CSV has 56,350 rows, 2193 dates, and correct revenue on every row. |
 | [src/chartRules.test.ts](../src/chartRules.test.ts) | Every rule, the exact numbers each chart draws, honest labels, "Other" grouping, highlight colors, chart ideas, and that every spec renders in Vega. |
 | [src/state.test.ts](../src/state.test.ts) | Back/forward, the two-field limit, no-op actions, that user text is never overwritten, and Level 2's history (go deeper, breadcrumb, use this, persona change). |
 | [src/paths.test.ts](../src/paths.test.ts) | The validator (bad fields, bad filters, duplicate kinds, repeats of the parent), row filtering, filtered charts, and that no rows are in the AI request. |
@@ -275,7 +278,19 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **Mocks with `vi.fn`.** `vi.fn(async () => …)` makes a fake function that records every call. Tests then check what it was called with (`create.mock.calls[0]`), for example that the request had no rows. *First seen:* [api/suggest.test.ts:24](../api/suggest.test.ts#L24).
 
+**Canvas vs SVG.** Vega can draw a chart as SVG (one page element per mark: crisp, inspectable) or on a `<canvas>` (one bitmap: fast for many marks). [Chart.tsx](../src/components/Chart.tsx) switches to canvas above 5,000 data points, because a 56,350-point scatter as SVG froze the page. It's the same spec either way, so the numbers can't differ.
+
 **Breadcrumb semantics.** The breadcrumb is a `<nav>` with an ordered list; earlier steps are buttons, and the current step is plain text marked `aria-current="location"`, so screen readers announce "current." *First seen:* [SuggestLevel.tsx:88](../src/components/SuggestLevel.tsx#L88).
+
+### The prep script (Python)
+
+**Reading .xlsx without a library.** An .xlsx file is a zip archive of XML files: `xl/workbook.xml` lists the sheets, each sheet is `xl/worksheets/sheetN.xml`, and text cells hold an index into `xl/sharedStrings.xml`. The script opens the zip with `zipfile` and walks the rows with `xml.etree.ElementTree.iterparse`, which reads one row at a time instead of the whole 9 MB sheet. *See:* `Workbook` in [prepare-bookshop.py](../scripts/prepare-bookshop.py).
+
+**Excel dates are day numbers.** Excel stores 2 January 2193 as 107020, the number of days since 30 December 1899 (its "1900 date system"). The script converts with `date(1899, 12, 30) + timedelta(days=n)`, and it refuses a workbook that uses the other (1904) system rather than shifting every date by four years.
+
+**Joins as dictionary lookups.** Each lookup sheet becomes a dict from key to row (`index()`), which also checks the key is unique. A join is then `table.get(key)`. A miss is recorded, and after all rows are read the script stops and lists the first ten, so you see every problem at once instead of one per run.
+
+**Fail loudly, print counts.** The script exits with an error (`sys.exit(1)`) for anything it can't explain, and otherwise prints what it did: rows per sheet, the total, repeated ItemIDs, empty values. A prep step that silently drops a row would break the precision rule before the app even starts.
 
 ---
 
@@ -328,3 +343,10 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 19. **The outlier finder said "Electronics is unusually high on revenue." Is that insight or artefact?** → `findStandout`, D-041. Electronics costs more per item, so a higher mean revenue is expected. What would a better outlier rule compare against? This is a good place to show judgment over the AI's (and the rules') output.
 20. **Why is `suggest()` separate from `POST()`?** → Dependency injection; how [api/suggest.test.ts](../api/suggest.test.ts) tests the handler without the network or a key.
 21. **What's the weakest part of Phase 2?** Honest candidates: one filter per path (third-level follow-ups can echo their parent's siblings), a failed AI call isn't retried until reload (D-042), field names used raw in rule questions ("How has units changed..."), and the real model is untested here (an end-to-end run used a local mock of the API).
+
+**The Bookshop data: "How would you defend this?"**
+
+22. **Why do the joins happen in a Python script instead of in the app?** → D-010, D-047. What would the app have to know about the workbook otherwise, and who would maintain that?
+23. **Two ItemIDs appear twice. Why keep them?** → D-048. How would you check whether they are two sales or one sale copied, and what would change your decision?
+24. **"Which title has the most price?" What went wrong, and whose call is the fix?** → `candidatesInScope` in [fallbackPaths.ts](../src/fallbackPaths.ts) picks the first number column. Summing list prices isn't revenue. Should the rules prefer a column by name, ask the user, or leave measures to the AI?
+25. **The scatter shows 56,350 sales as about 70 dots. Is that honest?** → Overplotting: many identical (price, revenue) pairs sit on one spot. What would show how many are stacked there?
