@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Row } from '../aggregate';
 import { MAX_FILTERS, chartForView, sameView, type Path } from '../paths';
 import { describePersona, type Persona } from '../personas';
 import type { DataProfile } from '../profile';
 import type { StoryCard } from '../state';
 import type { SuggestionState } from '../useSuggestions';
+import { runChecks } from '../checks';
 import { Chart } from './Chart';
 
 interface SuggestLevelProps {
@@ -63,9 +64,9 @@ export function SuggestLevel(props: SuggestLevelProps) {
                   path={path}
                   profile={props.profile}
                   rows={props.rows}
-                  onCard={props.card.source === path.source && sameView(props.card, path, props.profile)}
+                  card={props.card}
                   onGoDeeper={() => props.onGoDeeper(path)}
-                  onUse={() => props.onUsePath(path)}
+                  onUse={(shown) => props.onUsePath(shown)}
                 />
               ))}
             </ul>
@@ -115,17 +116,27 @@ interface PathCardProps {
   path: Path;
   profile: DataProfile;
   rows: Row[];
-  onCard: boolean;
+  card: StoryCard;
   onGoDeeper: () => void;
-  onUse: () => void;
+  onUse: (shown: Path) => void; // the path as shown: itself, or its by-count version
 }
 
-function PathCard({ path, profile, rows, onCard, onGoDeeper, onUse }: PathCardProps) {
+function PathCard({ path, profile, rows, card, onGoDeeper, onUse }: PathCardProps) {
+  // "View by count" is a look at this card only, so it's local state, not history.
+  const [byCount, setByCount] = useState(false);
+  const checks = useMemo(() => runChecks(path, profile, rows), [path, profile, rows]);
+  const countView = checks.find((c) => c.countView)?.countView;
+  // The path as shown: the same question and source, charted by count instead of money.
+  const shown = useMemo<Path>(
+    () => (byCount && countView ? { ...path, ...countView, id: `${path.id}-count`, question: `${path.question} (by count)` } : path),
+    [byCount, countView, path],
+  );
   // Cached paths are the same objects every render, so the chart is built once per path.
   const chart = useMemo(
-    () => chartForView(path, profile, rows, { highlight: null, height: PREVIEW_HEIGHT }),
-    [path, profile, rows],
+    () => chartForView(shown, profile, rows, { highlight: null, height: PREVIEW_HEIGHT }),
+    [shown, profile, rows],
   );
+  const onCard = card.source === shown.source && sameView(card, shown, profile);
   const from = path.source === 'ai' ? 'AI' : 'Rules';
   return (
     <li className="path-card">
@@ -151,6 +162,21 @@ function PathCard({ path, profile, rows, onCard, onGoDeeper, onUse }: PathCardPr
       ) : (
         <p className="empty-note">This path’s chart couldn’t be drawn.</p>
       )}
+      {checks.length > 0 && (
+        // Computed in code (checks.ts) and labeled as a check, never as AI.
+        <ul className="checks" aria-label="Checks on this chart">
+          {checks.map((c) => (
+            <li key={c.id}>
+              <span className="label">Check</span> {c.text}{' '}
+              {c.countView && (
+                <button type="button" className="link-btn" onClick={() => setByCount((b) => !b)}>
+                  {byCount ? 'Back to the original' : 'View by count'}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="path-actions">
         <button
           type="button"
@@ -162,7 +188,7 @@ function PathCard({ path, profile, rows, onCard, onGoDeeper, onUse }: PathCardPr
         >
           Go deeper
         </button>
-        <button type="button" className="btn btn-primary" onClick={onUse} disabled={onCard || !chart}>
+        <button type="button" className="btn btn-primary" onClick={() => onUse(shown)} disabled={onCard || !chart}>
           {onCard ? 'On the card' : 'Use this →'}
         </button>
       </div>
