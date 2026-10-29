@@ -30,9 +30,9 @@ export function StoryCard({ card, profile, rows, onHighlight, onText }: StoryCar
   // numbers and the same "Only rows where…" note as it did in Level 2.
   const chart = useMemo(() => {
     if (card.fields.length === 0) return null;
-    const view = { fields: card.fields, aggregate: card.aggregate, filter: card.filter };
+    const view = { fields: card.fields, aggregate: card.aggregate, filters: card.filters };
     return chartForView(view, profile, rows, { highlight: card.highlight });
-  }, [card.fields, card.aggregate, card.filter, card.highlight, profile, rows]);
+  }, [card.fields, card.aggregate, card.filters, card.highlight, profile, rows]);
 
   const commit = () => onText(title, takeaway);
 

@@ -45,7 +45,7 @@ export default function App() {
     aggregate: state.aggregate,
     // A card chart from a Level 2 path (with its source label or filter) isn't the same as
     // the user's own selection, so Levels 0/1 offer "Use this" rather than "Update card".
-    cardFields: state.card.source || state.card.filter ? [] : state.card.fields,
+    cardFields: state.card.source || state.card.filters.length > 0 ? [] : state.card.fields,
     onToggleField: (field: string) => dispatch({ type: 'toggleField', field }),
     onSelectFields: (fields: string[]) => dispatch({ type: 'selectFields', fields }),
     onAggregate: (aggregate: Aggregate) => dispatch({ type: 'setAggregate', aggregate }),

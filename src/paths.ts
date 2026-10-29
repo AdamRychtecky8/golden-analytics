@@ -23,8 +23,12 @@ export interface PathFilter {
 export interface ChartView {
   fields: string[];
   aggregate: Aggregate;
-  filter: PathFilter | null;
+  filters: PathFilter[]; // all must hold; empty = every row
 }
+
+// A path narrows the data by at most this many filters. Each "go deeper" adds one, so the
+// tree is at most three levels below a top-level path with no filter (D-051).
+export const MAX_FILTERS = 3;
 
 export interface Path extends ChartView {
   id: string; // position in the tree: "p2" is the second top-level path, "p2.1" its first follow-up
@@ -35,7 +39,7 @@ export interface Path extends ChartView {
 }
 
 /** The part of a path the AI writes (and the part it sees of a parent). */
-export type PathDraft = Pick<Path, 'question' | 'kind' | 'fields' | 'aggregate' | 'filter'>;
+export type PathDraft = Pick<Path, 'question' | 'kind' | 'fields' | 'aggregate' | 'filters'>;
 
 // ---------------------------------------------------------------------------------------
 // What the AI is allowed to see (D-011): the profile and the persona, never raw rows.
@@ -82,16 +86,21 @@ export function buildRequest(profile: DataProfile, persona: Persona, parent: Pat
 }
 
 function toDraft(p: PathDraft): PathDraft {
-  return { question: p.question, kind: p.kind, fields: p.fields, aggregate: p.aggregate, filter: p.filter };
+  return { question: p.question, kind: p.kind, fields: p.fields, aggregate: p.aggregate, filters: p.filters };
 }
 
 // ---------------------------------------------------------------------------------------
 // Turning a path into rows and a chart.
 
-/** The rows a filter keeps. Values are compared trimmed, the same way the profiler counts them. */
-export function filterRows(rows: Row[], filter: PathFilter | null): Row[] {
-  if (!filter) return rows;
-  return rows.filter((r) => !isMissing(r[filter.field]) && r[filter.field].trim() === filter.value);
+/** The rows every filter keeps. Values are compared trimmed, the way the profiler counts them. */
+export function filterRows(rows: Row[], filters: PathFilter[]): Row[] {
+  if (filters.length === 0) return rows;
+  return rows.filter((r) => filters.every((f) => !isMissing(r[f.field]) && r[f.field].trim() === f.value));
+}
+
+/** "genre = Fiction · format = Hardcover", for titles. */
+export function describeFilters(filters: PathFilter[], joiner = ' · '): string {
+  return filters.map((f) => `${f.field} = ${f.value}`).join(joiner);
 }
 
 /**
@@ -111,14 +120,14 @@ export function chartForView(
     if (!col) return null; // a field the current dataset doesn't have
     cols.push(col);
   }
-  const subset = filterRows(rows, view.filter);
+  const subset = filterRows(rows, view.filters);
   const chart = buildChart(cols, subset, { aggregate: view.aggregate, ...options });
-  if (!chart || !view.filter) return chart;
-  const { field, value } = view.filter;
+  if (!chart || view.filters.length === 0) return chart;
+  const where = view.filters.map((f) => `${f.field} is ${f.value}`).join(' and ');
   return {
     ...chart,
-    title: `${chart.title} · ${field} = ${value}`,
-    notes: [`Only rows where ${field} is ${value}: ${subset.length} of ${rows.length}.`, ...chart.notes],
+    title: `${chart.title} · ${describeFilters(view.filters)}`,
+    notes: [`Only rows where ${where}: ${subset.length} of ${rows.length}.`, ...chart.notes],
   };
 }
 
@@ -128,12 +137,20 @@ export function chartForView(
  */
 export function sameView(a: ChartView, b: ChartView, profile: DataProfile): boolean {
   if ([...a.fields].sort().join('|') !== [...b.fields].sort().join('|')) return false;
-  if ((a.filter?.field ?? '') !== (b.filter?.field ?? '') || (a.filter?.value ?? '') !== (b.filter?.value ?? '')) {
-    return false;
-  }
+  if (filterKey(a.filters) !== filterKey(b.filters)) return false;
   const types = a.fields.map((n) => profile.columns.find((c) => c.name === n)?.type);
   const rule = types.every((t) => t !== undefined) ? chooseRule(types as FieldType[]) : null;
   return rule !== null && usesAggregate(rule) ? a.aggregate === b.aggregate : true;
+}
+
+/** Filters as one comparable string, in any order: "format=Hardcover|genre=Fiction". */
+function filterKey(filters: PathFilter[]): string {
+  return filters.map((f) => `${f.field}=${f.value}`).sort().join('|');
+}
+
+/** Whether `child` keeps every one of the parent's filters. */
+function keepsFilters(child: PathFilter[], parent: PathFilter[]): boolean {
+  return parent.every((p) => child.some((c) => c.field === p.field && c.value === p.value));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -217,25 +234,44 @@ function checkOne(raw: unknown, { profile, rows, parent }: ValidationContext): P
     return `${label}: sums ${avg}, which can only be averaged.`;
   }
 
-  let filter: PathFilter | null = null;
-  if (c.filter !== undefined && c.filter !== null) {
-    const f = c.filter as Record<string, unknown>;
+  // Older replies (and some models) send one `filter`; accept it as a list of one.
+  const rawFilters = Array.isArray(c.filters) ? c.filters : c.filter ? [c.filter] : [];
+  if (rawFilters.length > MAX_FILTERS) return `${label}: more than ${MAX_FILTERS} filters.`;
+  const filters: PathFilter[] = [];
+  for (const raw of rawFilters) {
+    const f = (raw ?? {}) as Record<string, unknown>;
     const field = f.field;
     const rawValue = f.value;
     if (typeof field !== 'string' || typeof rawValue !== 'string') {
-      return `${label}: filter must have a field and a value.`;
+      return `${label}: each filter must have a field and a value.`;
     }
     const col = profile.columns.find((x) => x.name === field);
     if (!col) return `${label}: no column named "${field}" to filter on.`;
     if (col.type !== 'nominal') return `${label}: can only filter on a category column, not ${field}.`;
     // Filtering on a charted field would leave one bar or one line: nothing to compare.
     if (fields.includes(field)) return `${label}: filters on a field it also charts.`;
+    if (filters.some((x) => x.field === field)) return `${label}: filters on ${field} twice.`;
     const value = rawValue.trim();
-    if (filterRows(rows, { field, value }).length === 0) return `${label}: "${value}" never occurs in ${field}.`;
-    filter = { field, value };
+    if (filterRows(rows, [{ field, value }]).length === 0) return `${label}: "${value}" never occurs in ${field}.`;
+    filters.push({ field, value });
+  }
+  if (filters.length > 1 && filterRows(rows, filters).length === 0) {
+    return `${label}: no rows match ${describeFilters(filters, ' and ')}.`;
   }
 
-  const draft: PathDraft = { question, kind, fields, aggregate, filter };
+  // Follow-ups stay inside their parent (D-051): they keep all its filters and add exactly
+  // one, so a follow-up is always a narrower look at the parent's slice, never a repeat of
+  // a top-level path. Top-level paths start with at most one filter.
+  if (parent) {
+    if (parent.filters.length >= MAX_FILTERS) return `${label}: the parent already has ${MAX_FILTERS} filters.`;
+    if (!keepsFilters(filters, parent.filters) || filters.length !== parent.filters.length + 1) {
+      return `${label}: a follow-up must keep the parent's filters and add one.`;
+    }
+  } else if (filters.length > 1) {
+    return `${label}: a top-level path has at most one filter.`;
+  }
+
+  const draft: PathDraft = { question, kind, fields, aggregate, filters };
   if (parent && sameView(draft, parent, profile)) return `${label}: repeats its parent path.`;
   return draft;
 }

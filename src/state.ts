@@ -16,7 +16,7 @@ export const MAX_SELECTED = 2;
 export interface StoryCard {
   fields: string[]; // the chart on the card; empty until the user picks "use this"
   aggregate: Aggregate;
-  filter: PathFilter | null; // set when the chart came from a Level 2 path with a filter
+  filters: PathFilter[]; // set when the chart came from a Level 2 path that narrows the data
   source: PathSource | null; // 'ai' or 'rules' for a Level 2 path; null for the user's own chart
   highlight: string | null; // key of the highlighted mark (see chartRules.ts)
   title: string; // always written by the user, whatever the chart's source
@@ -66,7 +66,7 @@ export type Action =
 export const EMPTY_CARD: StoryCard = {
   fields: [],
   aggregate: 'sum',
-  filter: null,
+  filters: [],
   source: null,
   highlight: null,
   title: '',
@@ -109,7 +109,7 @@ function step(s: Snapshot, action: Action): Snapshot {
       // Sends the previewed chart to the card. The user's title and takeaway stay as they are.
       return {
         ...s,
-        card: { ...s.card, fields: s.selected, aggregate: s.aggregate, filter: null, source: null, highlight: null },
+        card: { ...s.card, fields: s.selected, aggregate: s.aggregate, filters: [], source: null, highlight: null },
       };
     case 'goDeeper':
       // Level 2 actions never touch the Level 0/1 selection.
@@ -118,8 +118,8 @@ function step(s: Snapshot, action: Action): Snapshot {
       // A breadcrumb click: keep the first `depth` steps (0 = back to the top-level paths).
       return { ...s, branch: s.branch.slice(0, action.depth) };
     case 'usePath': {
-      const { fields, aggregate, filter, source } = action.path;
-      return { ...s, card: { ...s.card, fields, aggregate, filter, source, highlight: null } };
+      const { fields, aggregate, filters, source } = action.path;
+      return { ...s, card: { ...s.card, fields, aggregate, filters, source, highlight: null } };
     }
     case 'toggleHighlight': {
       const highlight = s.card.highlight === action.key ? null : action.key;

@@ -77,29 +77,29 @@ describe('findStandout', () => {
 });
 
 describe('go-deeper fallback', () => {
-  const [comparison] = fallback(PRESETS[0]); // "Which region has the most units?"
+  const [comparison] = fallback(PRESETS[0]); // "Which region has the most revenue?"
 
-  it('filters the parent to its top category value', () => {
-    const top = topValue(rows, 'region', 'units')!;
+  it('narrows the parent to its top category value', () => {
+    const top = topValue(rows, 'region', 'revenue')!;
     const kids = fallback(PRESETS[0], comparison);
     expect(kids).toHaveLength(3);
-    expect(kids.every((k) => k.filter?.field === 'region' && k.filter.value === top)).toBe(true);
+    expect(kids.every((k) => k.filters.length === 1 && k.filters[0].field === 'region' && k.filters[0].value === top)).toBe(true);
     expect(new Set(kids.map((k) => k.kind)).size).toBe(3);
     expect(kids.map((k) => k.id)).toEqual(['p1.1', 'p1.2', 'p1.3']);
   });
 
-  it('works two levels down without repeating the parent', () => {
+  it('stops when every category is already filtered (the sample has two)', () => {
     const child = fallback(PRESETS[0], comparison)[0];
     const grandkids = fallback(PRESETS[0], child);
     expect(grandkids.length).toBeGreaterThan(0);
-    expect(grandkids.every((g) => g.parent === child.id && g.filter?.value === child.filter?.value)).toBe(true);
-    expect(grandkids.some((g) => g.fields.join() === child.fields.join() && g.aggregate === child.aggregate)).toBe(false);
+    expect(grandkids.every((g) => g.filters.length === 2)).toBe(true);
+    expect(fallback(PRESETS[0], grandkids[0])).toEqual([]);
   });
 
   it('splits a parent with no category field by the first category column', () => {
     const trend = fallback(PRESETS[1])[0];
     expect(trend.kind).toBe('trend');
-    expect(fallback(PRESETS[1], trend).every((k) => k.filter?.field === 'region')).toBe(true);
+    expect(fallback(PRESETS[1], trend).every((k) => k.filters[0].field === 'region')).toBe(true);
   });
 });
 
@@ -139,3 +139,34 @@ describe('fallback on the Bookshop data', () => {
     expect(first.fields).toContain('revenue');
   });
 });
+
+describe('go-deeper fallback on the Bookshop data', () => {
+  const text = readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8');
+  const r = parseCsv(text, 'bookshop', true);
+  if (!r.ok) throw new Error('bookshop failed to parse');
+  const books = r.dataset.rows;
+  const bp = profileDataset(r.dataset.columns, books);
+  const deeper = (parent: Path | null) => {
+    const { paths } = validatePaths(ruleCandidates(bp, books, PRESETS[0], parent), { profile: bp, rows: books, parent });
+    return finishPaths(paths, paths.map(() => 'rules'), parent);
+  };
+
+  it('goes three levels down, each level inside its parent’s slice, without repeats', () => {
+    let parent = deeper(null)[0];
+    const seen = new Set<string>([JSON.stringify([parent.fields, parent.filters])]);
+    for (let depth = 1; depth <= 3; depth++) {
+      const kids = deeper(parent);
+      expect(kids.length).toBeGreaterThan(0);
+      for (const k of kids) {
+        expect(k.filters).toHaveLength(depth);
+        expect(k.filters.slice(0, depth - 1)).toEqual(parent.filters); // inherited, plus one new
+        const key = JSON.stringify([[...k.fields].sort(), k.filters]);
+        expect(seen.has(key)).toBe(false); // never repeats anything shown higher up
+        seen.add(key);
+      }
+      parent = kids[0];
+    }
+    expect(deeper(parent)).toEqual([]); // three filters: as deep as a path goes
+  });
+});
+

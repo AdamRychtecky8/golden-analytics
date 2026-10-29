@@ -81,13 +81,13 @@ describe('Level 2 history', () => {
     kind: 'comparison',
     fields: ['region', 'revenue'],
     aggregate: 'sum',
-    filter: null,
+    filters: [],
     parent: id.includes('.') ? id.slice(0, id.lastIndexOf('.')) : null,
     source: 'ai',
     ...over,
   });
   const p1 = path('p1');
-  const p11 = path('p1.1', { kind: 'trend', fields: ['date', 'revenue'], filter: { field: 'region', value: 'West' } });
+  const p11 = path('p1.1', { kind: 'trend', fields: ['date', 'revenue'], filters: [{ field: 'region', value: 'West' }] });
 
   it('goes deeper, jumps back by breadcrumb, and undoes both', () => {
     const deep = run([
@@ -108,7 +108,7 @@ describe('Level 2 history', () => {
     ]);
     expect(h.present.card).toMatchObject({
       fields: ['date', 'revenue'],
-      filter: { field: 'region', value: 'West' },
+      filters: [{ field: 'region', value: 'West' }],
       source: 'ai',
       title: 'Mine',
       takeaway: 'Also mine',
@@ -118,7 +118,7 @@ describe('Level 2 history', () => {
 
   it('clears the source and filter when the user sends their own chart', () => {
     const h = run([{ type: 'usePath', path: p11 }, { type: 'toggleField', field: 'units' }, { type: 'useChart' }]);
-    expect(h.present.card).toMatchObject({ fields: ['units'], filter: null, source: null });
+    expect(h.present.card).toMatchObject({ fields: ['units'], filters: [], source: null });
   });
 
   it('never changes the Level 0/1 selection', () => {

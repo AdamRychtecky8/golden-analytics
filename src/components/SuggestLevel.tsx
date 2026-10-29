@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Row } from '../aggregate';
-import { chartForView, sameView, type Path } from '../paths';
+import { MAX_FILTERS, chartForView, sameView, type Path } from '../paths';
 import { describePersona, type Persona } from '../personas';
 import type { DataProfile } from '../profile';
 import type { StoryCard } from '../state';
@@ -45,7 +45,12 @@ export function SuggestLevel(props: SuggestLevelProps) {
         <>
           {suggestions.notice && (
             <p className="notice" role="status">
-              {suggestions.notice}
+              {suggestions.notice}{' '}
+              {suggestions.aiFailed && (
+                <button type="button" className="link-btn" onClick={suggestions.retry}>
+                  Try again
+                </button>
+              )}
             </p>
           )}
           {suggestions.paths.length === 0 ? (
@@ -147,7 +152,14 @@ function PathCard({ path, profile, rows, onCard, onGoDeeper, onUse }: PathCardPr
         <p className="empty-note">This path’s chart couldn’t be drawn.</p>
       )}
       <div className="path-actions">
-        <button type="button" className="btn" onClick={onGoDeeper}>
+        <button
+          type="button"
+          className="btn"
+          onClick={onGoDeeper}
+          // Each level down adds a filter; a path holds at most MAX_FILTERS (D-051).
+          disabled={path.filters.length >= MAX_FILTERS}
+          title={path.filters.length >= MAX_FILTERS ? `This path already narrows the data ${MAX_FILTERS} ways` : undefined}
+        >
           Go deeper
         </button>
         <button type="button" className="btn btn-primary" onClick={onUse} disabled={onCard || !chart}>

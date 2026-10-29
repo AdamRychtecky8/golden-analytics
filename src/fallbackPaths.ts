@@ -1,7 +1,7 @@
 import { aggregateValues, isMissing, parseNumber, type Aggregate, type Row } from './aggregate';
 import type { ColumnProfile, DataProfile } from './profile';
 import type { Persona, Purpose } from './personas';
-import { filterRows, type Path, type PathDraft, type PathFilter, type PathKind } from './paths';
+import { MAX_FILTERS, filterRows, type Path, type PathDraft, type PathFilter, type PathKind } from './paths';
 
 // The rule-based fallback for Level 2: used when there's no API key, the AI call fails,
 // or the AI's answer doesn't pass validation. It is deterministic (same data and persona,
@@ -25,29 +25,33 @@ export const KIND_ORDER: Record<Purpose, PathKind[]> = {
  * of the parent and keeps one path per kind.
  */
 export function ruleCandidates(profile: DataProfile, rows: Row[], persona: Persona, parent: Path | null): PathDraft[] {
-  const byKind = parent ? followUps(profile, rows, parent) : candidatesInScope(profile, rows, null, undefined);
+  const byKind = parent ? followUps(profile, rows, parent) : candidatesInScope(profile, rows, [], undefined);
   return KIND_ORDER[persona.purpose].flatMap((kind) => byKind.get(kind) ?? []);
 }
 
 /**
- * Go-deeper fallback: narrow the parent to its top category value (e.g. Region = West,
- * the region with the most revenue), then look at that slice in other ways. A parent that
- * already has a filter keeps it, since a path holds one filter.
+ * Go-deeper fallback: stay inside the parent's slice and narrow it by one more filter
+ * (D-051). The new filter is the parent's top value in a category it doesn't filter yet,
+ * preferring the category it charts: "Which genre has the most revenue?" goes deeper into
+ * genre = Fiction (the top genre), then looks at Fiction in other ways. A parent with
+ * MAX_FILTERS filters has no follow-ups.
  */
 function followUps(profile: DataProfile, rows: Row[], parent: Path): Map<PathKind, PathDraft> {
-  const colsOf = (names: string[]) =>
-    names.map((n) => profile.columns.find((c) => c.name === n)).filter((c): c is ColumnProfile => c !== undefined);
-  const parentCols = colsOf(parent.fields);
+  if (parent.filters.length >= MAX_FILTERS) return new Map();
+  const parentCols = parent.fields
+    .map((n) => profile.columns.find((c) => c.name === n))
+    .filter((c): c is ColumnProfile => c !== undefined);
   const measure = parentCols.find((c) => c.type === 'quantitative');
+  const free = (c: ColumnProfile) => c.type === 'nominal' && c.count > 0 && !parent.filters.some((f) => f.field === c.name);
+  const split = parentCols.find(free) ?? profile.columns.find(free);
+  if (!split) return new Map(); // every category is already filtered: nothing left to narrow by
 
-  let filter = parent.filter;
-  if (!filter) {
-    const split =
-      parentCols.find((c) => c.type === 'nominal') ?? profile.columns.find((c) => c.type === 'nominal' && c.count > 0);
-    const top = split ? topValue(rows, split.name, measure?.name) : null;
-    filter = split && top !== null ? { field: split.name, value: top } : null;
-  }
-  return candidatesInScope(profile, rows, filter, measure?.name);
+  const slice = filterRows(rows, parent.filters);
+  // Rank by the parent's measure only if a sum of it means something; otherwise by count.
+  const rankBy = measure?.measure === 'additive' ? measure.name : undefined;
+  const top = topValue(slice, split.name, rankBy);
+  if (top === null) return new Map();
+  return candidatesInScope(profile, rows, [...parent.filters, { field: split.name, value: top }], measure?.name);
 }
 
 /**
@@ -68,14 +72,14 @@ export function topValue(rows: Row[], field: string, measure: string | undefined
   return ranked[0]?.[0] ?? null;
 }
 
-/** One candidate per kind, for the rows a filter keeps (or all rows, with no filter). */
+/** One candidate per kind, for the rows the filters keep (or all rows, with none). */
 function candidatesInScope(
   profile: DataProfile,
   rows: Row[],
-  filter: PathFilter | null,
+  filters: PathFilter[],
   measureHint: string | undefined,
 ): Map<PathKind, PathDraft> {
-  const usable = profile.columns.filter((c) => c.count > 0 && c.name !== filter?.field);
+  const usable = profile.columns.filter((c) => c.count > 0 && !filters.some((f) => f.field === c.name));
   const dates = usable.filter((c) => c.type === 'temporal');
   const categories = usable.filter((c) => c.type === 'nominal');
   const numbers = usable.filter((c) => c.type === 'quantitative');
@@ -87,10 +91,10 @@ function candidatesInScope(
   const of = measure ? (additive ? measure.name : `average ${measure.name}`) : '';
   const date = dates[0];
   const category = categories[0];
-  const scope = filter ? ` for ${filter.value}` : '';
+  const scope = filters.length > 0 ? ` for ${filters.map((f) => f.value).join(', ')}` : '';
   const out = new Map<PathKind, PathDraft>();
   const add = (kind: PathKind, question: string, fields: string[], aggregate: Aggregate = how) =>
-    out.set(kind, { kind, question, fields, aggregate, filter });
+    out.set(kind, { kind, question, fields, aggregate, filters });
 
   if (date && measure) add('trend', `How has ${of} changed over time${scope}?`, [date.name, measure.name]);
   else if (date) add('trend', `How has the number of records changed${scope}?`, [date.name]);
@@ -105,7 +109,7 @@ function candidatesInScope(
   const other = numbers.find((c) => c !== spread);
   if (spread && other) add('driver', `Does ${other.name} rise with ${spread.name}${scope}?`, [spread.name, other.name]);
 
-  const standout = findStandout(filterRows(rows, filter), categories, numbers);
+  const standout = findStandout(filterRows(rows, filters), categories, numbers);
   if (standout) {
     const direction = standout.ratio > 0 ? 'high' : 'low';
     add('outlier', `Is ${standout.value} unusually ${direction} on ${standout.measure}${scope}?`, [standout.field, standout.measure], 'mean');

@@ -14,7 +14,7 @@ const rows = [
   { date: '2025-03-10', region: 'East', units: '900' },
 ];
 const body = buildRequest(profileDataset(['date', 'region', 'units'], rows), PRESETS[0], null);
-const aiPaths = [{ question: 'Which region sells most?', kind: 'comparison', fields: ['region', 'units'], aggregate: 'sum', filter: null }];
+const aiPaths = [{ question: 'Which region sells most?', kind: 'comparison', fields: ['region', 'units'], aggregate: 'sum', filters: [] }];
 
 function reply(text: string, stop_reason: Anthropic.Message['stop_reason'] = 'end_turn'): Anthropic.Message {
   return { content: [{ type: 'text', text }], stop_reason } as unknown as Anthropic.Message;

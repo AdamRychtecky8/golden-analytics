@@ -154,15 +154,17 @@ function readParent(raw: unknown): PathDraft | null {
   const question = str(p.question, 200);
   const fields = Array.isArray(p.fields) ? p.fields.filter((f): f is string => typeof f === 'string').slice(0, 2) : [];
   if (!question || fields.length === 0) return null;
-  const f = p.filter as Record<string, unknown> | null | undefined;
-  const filterField = str(f?.field, 100);
-  const filterValue = str(f?.value, 100);
+  const filters = (Array.isArray(p.filters) ? (p.filters as Record<string, unknown>[]) : []).slice(0, 3).flatMap((f) => {
+    const field = str(f?.field, 100);
+    const value = str(f?.value, 100);
+    return field && value ? [{ field, value }] : [];
+  });
   return {
     question,
     kind: KINDS.find((k) => k === p.kind) ?? 'comparison',
     fields,
     aggregate: p.aggregate === 'mean' ? 'mean' : 'sum',
-    filter: filterField && filterValue ? { field: filterField, value: filterValue } : null,
+    filters,
   };
 }
 
@@ -185,11 +187,11 @@ Return exactly 3 paths, each a different kind:
 - kind: trend (change over time, needs a date), comparison (ranking groups), outlier (a group that stands out), distribution (spread of one number), driver (whether one number moves with another)
 - fields: 1 or 2 column names, copied exactly from the profile
 - aggregate: "sum" or "mean" (how numbers are combined per group or period). Number columns marked "measure": "average" (prices, rates, discounts) must use "mean": their total means nothing. Prefer "additive" measures (revenue, units) for rankings and trends. A chart of one nominal or one date column counts records, which is always available.
-- filter: null, or {"field", "value"} to look at one slice: field must be a nominal column that is not in fields, and value must be copied exactly from that column's top values
+- filters: a list of {"field", "value"} slices that narrow the data (empty for the whole dataset). Each field must be a nominal column that is not in fields, and each value must be copied exactly from that column's top values. A top-level path has at most one filter.
 
 The chart comes from the field types: date + number = line over time; nominal + number = sorted bars; number + number = scatter; one number = histogram; one nominal = counts; one date = counts over time; date + nominal = count lines per group; nominal + nominal = count grid. Pick fields whose chart answers the question.
 
-If a parent path is given, return 3 follow-ups that dig into it: narrow it with a filter, break it down by another field, or look at it over time. Never repeat the parent.`;
+If a parent path is given, return 3 follow-ups about that parent only. Each follow-up must keep all of the parent's filters and add exactly one new filter, so it looks inside the parent's slice (usually its top group, e.g. a ranking by genre goes deeper into the top genre). Then look at that narrower slice in a different way: over time, broken down by another field, or its spread. Never repeat the parent, and never suggest anything outside its slice.`;
 
 function userMessage(r: SuggestRequest): string {
   const guidance = PURPOSE_GUIDANCE[r.persona.purpose] ?? PURPOSE_GUIDANCE['just exploring'];
@@ -212,19 +214,17 @@ const RESPONSE_SCHEMA = {
           kind: { type: 'string', enum: [...KINDS] },
           fields: { type: 'array', items: { type: 'string' } },
           aggregate: { type: 'string', enum: ['sum', 'mean'] },
-          filter: {
-            anyOf: [
-              { type: 'null' },
-              {
-                type: 'object',
-                properties: { field: { type: 'string' }, value: { type: 'string' } },
-                required: ['field', 'value'],
-                additionalProperties: false,
-              },
-            ],
+          filters: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { field: { type: 'string' }, value: { type: 'string' } },
+              required: ['field', 'value'],
+              additionalProperties: false,
+            },
           },
         },
-        required: ['question', 'kind', 'fields', 'aggregate', 'filter'],
+        required: ['question', 'kind', 'fields', 'aggregate', 'filters'],
         additionalProperties: false,
       },
     },
