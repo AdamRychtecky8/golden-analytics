@@ -1,32 +1,39 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { POST as storyHandler } from './api/story.ts';
 import { POST as suggestHandler } from './api/suggest.ts';
 
+// The same functions Vercel would run in production, one per file in api/.
+const ROUTES: Record<string, (request: Request) => Promise<Response>> = {
+  '/api/suggest': suggestHandler,
+  '/api/story': storyHandler,
+};
+
 /**
- * Serves api/suggest.ts at /api/suggest during `npm run dev`, the same function Vercel
- * would run in production. It converts Node's request into a standard Request, calls the
- * handler, and copies the Response back. Edits to api/suggest.ts need a dev-server restart.
+ * Serves the api/ handlers during `npm run dev`. It converts Node's request into a
+ * standard Request, calls the handler, and copies the Response back. Edits to files in
+ * api/ need a dev-server restart.
  */
-function suggestApi(): Plugin {
+function aiApi(): Plugin {
   return {
-    name: 'suggest-api',
+    name: 'ai-api',
     configureServer(server) {
-      server.middlewares.use('/api/suggest', async (req, res) => {
-        if (req.method !== 'POST') {
-          res.statusCode = 405;
-          res.end();
-          return;
-        }
-        const chunks: Buffer[] = [];
-        for await (const chunk of req) chunks.push(chunk as Buffer);
-        const response = await suggestHandler(
-          new Request('http://localhost/api/suggest', { method: 'POST', body: Buffer.concat(chunks) }),
-        );
-        res.statusCode = response.status;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(await response.text());
-      });
+      for (const [route, handler] of Object.entries(ROUTES)) {
+        server.middlewares.use(route, async (req, res) => {
+          if (req.method !== 'POST') {
+            res.statusCode = 405;
+            res.end();
+            return;
+          }
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk as Buffer);
+          const response = await handler(new Request(`http://localhost${route}`, { method: 'POST', body: Buffer.concat(chunks) }));
+          res.statusCode = response.status;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(await response.text());
+        });
+      }
     },
   };
 }
@@ -39,7 +46,7 @@ export default defineConfig(({ mode }) => {
   for (const [key, value] of Object.entries(env)) process.env[key] ??= value;
 
   return {
-    plugins: [react(), suggestApi()],
+    plugins: [react(), aiApi()],
     test: {
       // The logic modules are pure functions, so tests don't need a browser.
       environment: 'node',

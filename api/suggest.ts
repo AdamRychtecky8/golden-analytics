@@ -17,9 +17,8 @@ const MAX_BODY_CHARS = 50_000;
 // src/. `satisfies` makes the compiler check that every entry is a real PathKind.
 const KINDS = ['trend', 'comparison', 'outlier', 'distribution', 'driver'] as const satisfies readonly PathKind[];
 
-export type SuggestResponse =
-  | { ok: true; model: string; paths: unknown[] }
-  | { ok: false; reason: 'no-key' | 'bad-request' | 'ai-error'; message: string };
+export type ErrorBody = { ok: false; reason: 'no-key' | 'bad-request' | 'ai-error'; message: string };
+export type SuggestResponse = { ok: true; model: string; paths: unknown[] } | ErrorBody;
 
 export interface SuggestEnv {
   apiKey?: string;
@@ -31,22 +30,26 @@ export interface MessagesClient {
   messages: { create(params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> };
 }
 
-const realClient = (apiKey: string): MessagesClient => new Anthropic({ apiKey, timeout: TIMEOUT_MS, maxRetries: 1 });
+export const realClient = (apiKey: string): MessagesClient => new Anthropic({ apiKey, timeout: TIMEOUT_MS, maxRetries: 1 });
 
 /** Vercel calls this for POST /api/suggest. The local dev server calls it too. */
 export async function POST(request: Request): Promise<Response> {
-  const text = await request.text();
-  let body: unknown = null;
-  if (text.length <= MAX_BODY_CHARS) {
-    try {
-      body = JSON.parse(text);
-    } catch {
-      body = null;
-    }
-  }
-  const result = await suggest(body, { apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL });
+  const result = await suggest(await readBody(request), envFromProcess());
   return Response.json(result.body, { status: result.status });
 }
+
+/** The request body as JSON, or null if it's too big or not JSON. */
+export async function readBody(request: Request): Promise<unknown> {
+  const text = await request.text();
+  if (text.length > MAX_BODY_CHARS) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+export const envFromProcess = (): SuggestEnv => ({ apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL });
 
 /**
  * The handler itself, with no HTTP in it: a request body and settings in, a status and a
@@ -58,44 +61,67 @@ export async function suggest(
   env: SuggestEnv,
   makeClient: (apiKey: string) => MessagesClient = realClient,
 ): Promise<{ status: number; body: SuggestResponse }> {
-  if (!env.apiKey) {
-    return { status: 503, body: { ok: false, reason: 'no-key', message: 'No ANTHROPIC_API_KEY is set on the server.' } };
-  }
+  if (!env.apiKey) return noKey();
   const request = readRequest(body);
   if (!request) {
     return { status: 400, body: { ok: false, reason: 'bad-request', message: 'The request is not a data profile and persona.' } };
   }
 
+  const reply = await callModel(env, makeClient, {
+    tag: 'suggest',
+    system: SYSTEM_PROMPT,
+    user: userMessage(request),
+    schema: RESPONSE_SCHEMA,
+    maxTokens: MAX_TOKENS,
+  });
+  if (!reply.ok) return reply;
+  const paths = (reply.json as { paths?: unknown } | null)?.paths;
+  if (!Array.isArray(paths)) return aiError('The AI reply had no list of paths.');
+  return { status: 200, body: { ok: true, model: reply.model, paths } };
+}
+
+export const noKey = () => ({
+  status: 503,
+  body: { ok: false, reason: 'no-key', message: 'No ANTHROPIC_API_KEY is set on the server.' } as ErrorBody,
+});
+
+/**
+ * One model call shared by both handlers: send the prompt with a JSON schema, check how
+ * the model stopped, and parse the JSON. Every failure becomes an error response; this
+ * never throws.
+ */
+export async function callModel(
+  env: SuggestEnv,
+  makeClient: (apiKey: string) => MessagesClient,
+  req: { tag: string; system: string; user: string; schema: Record<string, unknown>; maxTokens: number },
+): Promise<{ ok: true; json: unknown; model: string } | { ok: false; status: number; body: ErrorBody }> {
   const model = env.model || DEFAULT_MODEL;
   try {
-    const response = await makeClient(env.apiKey).messages.create({
+    const response = await makeClient(env.apiKey!).messages.create({
       model,
-      max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userMessage(request) }],
-      // Low effort: choosing three questions is a quick task, and speed matters here.
-      // The JSON schema makes the reply parseable; the browser still checks every field.
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: RESPONSE_SCHEMA } },
+      max_tokens: req.maxTokens,
+      system: req.system,
+      messages: [{ role: 'user', content: req.user }],
+      // Low effort: these are quick choices, and speed matters here. The JSON schema
+      // makes the reply parseable; the browser still checks every field.
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: req.schema } },
     });
-    if (response.stop_reason !== 'end_turn') return aiError(`The AI stopped early (${response.stop_reason}).`);
+    if (response.stop_reason !== 'end_turn') return { ok: false, ...aiError(`The AI stopped early (${response.stop_reason}).`) };
     const textBlock = response.content.find((b) => b.type === 'text');
-    const parsed: unknown = textBlock ? JSON.parse(textBlock.text) : null;
-    const paths = (parsed as { paths?: unknown } | null)?.paths;
-    if (!Array.isArray(paths)) return aiError('The AI reply had no list of paths.');
-    return { status: 200, body: { ok: true, model, paths } };
+    return { ok: true, json: textBlock ? JSON.parse(textBlock.text) : null, model };
   } catch (error) {
     // Log the status for whoever runs the server; never echo the key or the full error.
     if (error instanceof Anthropic.APIError) {
-      console.error(`[suggest] Anthropic API error ${error.status ?? '(no status)'}`);
-      return aiError(`The AI request failed (${error.status ?? 'network'}).`);
+      console.error(`[${req.tag}] Anthropic API error ${error.status ?? '(no status)'}`);
+      return { ok: false, ...aiError(`The AI request failed (${error.status ?? 'network'}).`) };
     }
-    if (error instanceof SyntaxError) return aiError('The AI reply was not valid JSON.');
-    console.error('[suggest] unexpected error', error instanceof Error ? error.message : error);
-    return aiError('The AI request failed.');
+    if (error instanceof SyntaxError) return { ok: false, ...aiError('The AI reply was not valid JSON.') };
+    console.error(`[${req.tag}] unexpected error`, error instanceof Error ? error.message : error);
+    return { ok: false, ...aiError('The AI request failed.') };
   }
 }
 
-function aiError(message: string) {
+export function aiError(message: string) {
   return { status: 502, body: { ok: false as const, reason: 'ai-error' as const, message } };
 }
 
@@ -103,10 +129,16 @@ function aiError(message: string) {
 // What goes to the AI. Only fields named here are copied out of the request, so nothing
 // else the browser might send (rows included) can reach the prompt.
 
-const str = (v: unknown, max = 200) => (typeof v === 'string' && v.length <= max ? v : null);
-const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+export const str = (v: unknown, max = 200) => (typeof v === 'string' && v.length <= max ? v : null);
+export const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 function readRequest(body: unknown): SuggestRequest | null {
+  const base = readProfileAndPersona(body);
+  return base ? { ...base, parent: readDraft((body as Record<string, unknown>).parent) } : null;
+}
+
+/** The profile summary and persona, copied field by field. Both handlers start here. */
+export function readProfileAndPersona(body: unknown): Omit<SuggestRequest, 'parent'> | null {
   if (typeof body !== 'object' || body === null) return null;
   const b = body as Record<string, unknown>;
   const profile = b.profile as Record<string, unknown> | undefined;
@@ -144,11 +176,11 @@ function readRequest(body: unknown): SuggestRequest | null {
     // Checked as short strings, not against the persona lists: an unknown purpose only
     // means the prompt uses the general guidance. The cast records that choice.
     persona: { domain, role, purpose } as SuggestRequest['persona'],
-    parent: readParent(b.parent),
   };
 }
 
-function readParent(raw: unknown): PathDraft | null {
+/** A path's question and chart (a parent, or a story candidate), copied field by field. */
+export function readDraft(raw: unknown): PathDraft | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const p = raw as Record<string, unknown>;
   const question = str(p.question, 200);
