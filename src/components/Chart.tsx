@@ -10,22 +10,25 @@ const THEME: Config = {
   font: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
   view: { stroke: null },
   axis: {
-    domainColor: '#d9d3c5',
-    tickColor: '#d9d3c5',
-    gridColor: '#ece6d8',
-    labelColor: '#4a5470',
+    domainColor: '#d6d6de',
+    tickColor: '#d6d6de',
+    gridColor: '#ededf2',
+    labelColor: '#4a4a63',
     labelFontSize: 11,
-    // Hide labels that would touch or overlap their neighbor (e.g. "0.000 0.005" on a
-    // narrow axis), keeping every other one instead.
-    labelOverlap: 'greedy',
-    labelSeparation: 6,
     titleColor: NAVY,
     titleFont: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
     titleFontSize: 10,
     titleFontWeight: 'normal',
   },
+  // Number axes only: hide labels that would touch their neighbor (e.g. "0.000 0.005" on
+  // a narrow axis), keeping every other one. Category axes keep every label: each bar
+  // has room for its own (chartRules.ts), and dropping one would leave a bar unnamed.
+  axisQuantitative: {
+    labelOverlap: 'greedy',
+    labelSeparation: 6,
+  },
   legend: {
-    labelColor: '#4a5470',
+    labelColor: '#4a4a63',
     titleFont: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
     titleFontSize: 10,
     titleFontWeight: 'normal',

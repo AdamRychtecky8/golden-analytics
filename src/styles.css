@@ -1,18 +1,28 @@
 /*
-  Visual style (D-016): the UI follows the same rules as a good chart.
-  Grey/hairlines for structure, navy for content, ONE orange accent for what matters
-  (the current level, selected fields, the highlighted mark). Square corners, no
-  gradients, no shadows. Chart colors in chartRules.ts must match these values.
+  Visual style (D-016): Golden Analytics' palette, one meaning per color.
+  Navy: text (and the top bar). Off-white: the page; white: cards.
+  Blue: anything you can click or focus, plus the thin rules between sections.
+  Orange: data emphasis only (highlighted marks, selected fields, the path on the card).
+    It is never used for text: at about 2.5:1 on off-white it fails WCAG AA even for large text.
+  Amber: AI provenance only, as a light wash behind navy text.
+  Grey: structure (card and input outlines) and non-highlighted marks.
+  Square corners, no gradients, no shadows. Chart colors in chartRules.ts must match.
 */
 :root {
-  --cream: #f7f3ea;
-  --paper: #fbf9f4;
-  --navy: #14213d;
-  --navy-soft: #4a5470;
-  --rule: #d9d3c5;
-  --grey: #c4c0b6;
-  --accent: #e8590c;
-  --accent-wash: #fbe7dc;
+  --bg: #fafaf7;
+  --surface: #ffffff;
+  --navy: #181833;
+  --navy-soft: #4a4a63; /* secondary text: 8.6:1 on white */
+  --on-navy-soft: #c9c9d9; /* secondary text on the navy top bar: 10:1 */
+  --blue: #2c5aff; /* 5.0:1 on off-white, 5.2:1 on white: passes AA as text */
+  --blue-dark: #1f44d6; /* hover */
+  --orange: #ff7b2c;
+  --amber: #ffb30f;
+  --amber-wash: #fff1cc; /* navy text on it: 15:1 */
+  --rule: var(--blue); /* hairline dividers between sections */
+  --line: #e2e2e8; /* outlines of cards, inputs, and list rows */
+  --grey: #c4c0b6; /* non-highlighted marks */
+  --disabled: #8b8b9c;
 
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
@@ -34,7 +44,7 @@ body,
 }
 
 body {
-  background: var(--cream);
+  background: var(--bg);
   color: var(--navy);
   font: 15px/1.45 var(--sans);
 }
@@ -57,7 +67,8 @@ textarea {
 }
 
 .btn {
-  border: 1px solid var(--navy);
+  border: 1px solid var(--blue);
+  color: var(--blue);
   background: transparent;
   border-radius: 0;
   padding: 5px 12px;
@@ -68,30 +79,34 @@ textarea {
   cursor: pointer;
 }
 .btn:hover:not(:disabled) {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--blue);
+  color: var(--surface);
 }
 .btn:disabled {
-  border-color: var(--grey);
-  color: var(--grey);
+  border-color: var(--line);
+  color: var(--disabled);
   cursor: default;
 }
 .btn-primary {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--blue);
+  color: var(--surface);
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--blue-dark);
+  border-color: var(--blue-dark);
 }
 
 select,
 input[type='text'],
 textarea {
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: 0;
-  background: var(--paper);
+  background: var(--surface);
   padding: 5px 8px;
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--blue);
   outline-offset: 2px;
 }
 
@@ -116,8 +131,30 @@ textarea {
   align-items: center;
   gap: 24px;
   padding: 10px var(--gutter);
-  border-bottom: 1px solid var(--rule);
+  background: var(--navy);
+  color: var(--bg);
   flex-wrap: wrap;
+}
+/* On the navy bar: light secondary text, and buttons with light text (blue text on
+   navy would be only 3.3:1). They keep the blue outline that marks them as clickable. */
+.topbar .label,
+.topbar .field-card-stat {
+  color: var(--on-navy-soft);
+}
+.topbar .btn {
+  color: var(--bg);
+}
+/* Form controls keep their white background, so their text stays navy. */
+.topbar select,
+.topbar input {
+  color: var(--navy);
+}
+.topbar .btn:disabled {
+  color: var(--disabled);
+  border-color: var(--disabled);
+}
+.topbar :focus-visible {
+  outline-color: var(--bg);
 }
 .topbar-name {
   font-family: var(--mono);
@@ -148,7 +185,8 @@ textarea {
 }
 .load-errors {
   grid-column: 1 / -1;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--navy);
+  background: var(--surface);
   padding: 8px 12px;
   margin: 0;
   font-size: 13px;
@@ -175,8 +213,9 @@ textarea {
   left: 0;
   z-index: 10;
   width: 300px;
-  background: var(--paper);
-  border: 1px solid var(--navy);
+  background: var(--surface);
+  color: var(--navy);
+  border: 1px solid var(--line);
   padding: 14px;
   display: grid;
   gap: 10px;
@@ -216,7 +255,7 @@ textarea {
   height: 100%;
   width: 18px;
   margin: 0;
-  accent-color: var(--accent);
+  accent-color: var(--blue); /* the native thumb and track take this color */
   cursor: pointer;
 }
 .slider-labels {
@@ -247,7 +286,7 @@ textarea {
 }
 .slider-label.is-current .slider-label-num,
 .slider-label.is-current .label {
-  color: var(--accent);
+  color: var(--blue);
 }
 .slider-ai {
   font-family: var(--mono);
@@ -277,7 +316,7 @@ textarea {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  border-bottom: 1px solid var(--navy);
+  border-bottom: 1px solid var(--rule);
   padding-bottom: 8px;
   margin-bottom: 16px;
 }
@@ -312,8 +351,8 @@ textarea {
   margin: 0;
 }
 .field-chip {
-  border: 1px solid var(--rule);
-  background: var(--paper);
+  border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: 0;
   padding: 6px 12px;
   cursor: pointer;
@@ -321,10 +360,11 @@ textarea {
   gap: 8px;
   align-items: baseline;
 }
+/* Selected fields: an orange edge (data emphasis); the text stays navy. */
 .field-chip[aria-pressed='true'],
 .field-card[aria-pressed='true'] {
-  border-color: var(--accent);
-  box-shadow: inset 3px 0 0 var(--accent);
+  border-color: var(--orange);
+  box-shadow: inset 3px 0 0 var(--orange);
 }
 .field-type {
   font-family: var(--mono);
@@ -341,8 +381,8 @@ textarea {
   gap: 10px;
 }
 .field-card {
-  border: 1px solid var(--rule);
-  background: var(--paper);
+  border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: 0;
   padding: 10px 12px;
   text-align: left;
@@ -398,12 +438,12 @@ textarea {
   list-style: none;
   padding: 0;
   margin: 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 .idea {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   background: none;
   text-align: left;
   padding: 8px 4px;
@@ -412,16 +452,17 @@ textarea {
   justify-content: space-between;
 }
 .idea:hover {
-  background: var(--paper);
+  background: var(--surface);
 }
 .idea[aria-pressed='true'] {
-  color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--orange);
+  font-weight: 600;
 }
 
 /* Chart preview in the assist layer */
 .preview {
-  border: 1px solid var(--rule);
-  background: var(--paper);
+  border: 1px solid var(--line);
+  background: var(--surface);
   padding: 14px;
 }
 .preview-head {
@@ -441,8 +482,8 @@ textarea {
   border-left: 0;
 }
 .toggle .btn[aria-pressed='true'] {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--blue);
+  color: var(--surface);
 }
 .empty-note {
   color: var(--navy-soft);
@@ -474,12 +515,17 @@ textarea {
   border: 0;
   background: none;
   padding: 0;
+  color: var(--blue);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
 }
 .link-btn:hover {
-  color: var(--accent);
+  color: var(--blue-dark);
+}
+/* The current breadcrumb step isn't a link, so it's navy. */
+.crumbs [aria-current] {
+  color: var(--navy);
 }
 .crumbs ol {
   display: flex;
@@ -515,8 +561,8 @@ textarea {
   gap: 12px;
 }
 .path-card {
-  border: 1px solid var(--rule);
-  background: var(--paper);
+  border: 1px solid var(--line);
+  background: var(--surface);
   padding: 12px 14px;
   display: grid;
   gap: 6px;
@@ -546,8 +592,9 @@ textarea {
   border: 1px solid var(--navy);
 }
 .source-ai {
-  background: var(--navy);
-  color: var(--cream);
+  background: var(--amber-wash);
+  border-color: var(--amber);
+  color: var(--navy);
 }
 .source-rules {
   border-color: var(--grey);
@@ -585,7 +632,7 @@ textarea {
 .skeleton-line,
 .skeleton-block {
   display: block;
-  background: var(--rule);
+  background: var(--line);
   height: 12px;
 }
 .skeleton-line.short {
@@ -617,8 +664,8 @@ textarea {
   gap: 12px;
 }
 .story-card {
-  border: 1px solid var(--navy);
-  background: var(--paper);
+  border: 1px solid var(--line);
+  background: var(--surface);
   padding: 16px;
   display: grid;
   gap: 12px;
@@ -649,7 +696,12 @@ textarea {
   font-size: 13px;
 }
 .draft {
-  border-color: var(--navy);
+  border-color: var(--line);
+}
+/* The Level 2 path that's on the story card: an orange edge, like a selected field. */
+.path-card.is-selected {
+  border-color: var(--orange);
+  box-shadow: inset 3px 0 0 var(--orange);
 }
 .draft-takeaway {
   margin: 0;

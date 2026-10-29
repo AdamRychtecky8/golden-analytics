@@ -90,8 +90,8 @@ Why: TODO(adam)
 Status: decided
 
 ## D-016 — 2026-10-26 — Visual style
-Decision: Inspired by Golden Analytics' site, not copied (no logo, no brand assets): warm cream base, deep navy text, one orange accent reserved for what matters, monospace uppercase letter-spaced labels, hairline rules, square corners, no gradients, shadows, or emoji.
-Why: The UI follows the same rules as good charts: grey for structure, one accent for meaning, no decoration that doesn't carry information.
+Decision: Golden Analytics' color palette, colors only (no logo, no brand assets; the app stays "Autonomy Slider"). Each color has one meaning: navy #181833 for all text and the top bar background (with off-white text); off-white #FAFAF7 for the page and white for cards; electric blue #2C5AFF for everything interactive (buttons, slider thumb and track, links, focus rings) and the thin hairline rules between sections; orange #FF7B2C for data emphasis only (highlighted marks, selected field cards, the selected path); amber #FFB30F for AI provenance only ("AI" tags and "AI draft" markers, as a light amber wash with navy text); grey for structure and non-highlighted marks. All text meets WCAG AA contrast; orange is never used for text, since it reaches only about 2.5:1 on off-white. Monospace uppercase letter-spaced labels, square corners, no gradients, shadows, or emoji, as before. (Updated 2026-10-28; first version: warm cream base, deep navy text, one orange accent.)
+Why: The UI follows the same rules as good charts: grey for structure, one accent for meaning, no decoration that doesn't carry information. TODO(adam): why Golden's palette.
 Status: decided
 
 ## D-017 — 2026-10-26 — Course notes stay private
@@ -147,7 +147,7 @@ Decision: Nothing selected → one idea per field. One field selected → that f
 Status: tentative
 
 ## D-027 — 2026-10-26 — Chart colors (Claude Code choice, Adam to review)
-Decision: Marks are navy by default. With a highlight, the highlighted mark (or series) is orange and everything else is grey. Multi-series lines use a muted hue palette with orange left out, so orange always means "highlighted." Heatmaps use a cream-to-navy lightness ramp.
+Decision: Marks are navy (#181833) by default. With a highlight, the highlighted mark (or series) is orange (#FF7B2C) and everything else is grey. Multi-series lines use a muted hue palette with orange, amber, and the interface blue left out, so each keeps its one meaning (D-016). Heatmaps use a light-grey-to-navy lightness ramp, with white cell borders. (Updated 2026-10-28 for the new palette.)
 Why: One accent for meaning (D-016); lightness for ordered values, hue for categories (DATA511-viz-principles.md §4).
 Status: tentative
 

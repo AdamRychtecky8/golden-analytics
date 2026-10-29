@@ -142,7 +142,7 @@ function PathCard({ path, profile, rows, card, visible, onGoDeeper, onUse }: Pat
   const onCard = card.source === shown.source && sameView(card, shown, profile);
   const from = path.source === 'ai' ? 'AI' : 'Rules';
   return (
-    <li className="path-card">
+    <li className={onCard ? 'path-card is-selected' : 'path-card'}>
       <div className="path-tags">
         <span className="chip">{path.kind}</span>
         <span className={`source source-${path.source}`} title={`Suggested by ${path.source === 'ai' ? 'AI' : 'rules'}`}>

@@ -30,12 +30,13 @@ export type RuleId =
 
 // Colors are decided here because they carry meaning (which mark is highlighted).
 // Keep them in sync with the CSS variables in styles.css.
-export const NAVY = '#14213d';
+export const NAVY = '#181833';
 export const GREY = '#c4c0b6';
-export const ACCENT = '#e8590c';
+export const ACCENT = '#ff7b2c'; // orange: data emphasis only
 // Hues for nominal series (§4: hue is perceived as unordered, so it suits categories).
-// Orange is left out on purpose: it is reserved for the highlight.
-export const SERIES_COLORS = ['#14213d', '#5b7aa8', '#7f9a65', '#9a6a8f', '#a08a5c', '#4f8f8f', '#7a7a7a', '#b07a6e', '#3c5a3c'];
+// Orange (the highlight), amber (AI), and the bright interface blue are left out on
+// purpose, so each keeps its one meaning.
+export const SERIES_COLORS = ['#181833', '#5b7aa8', '#7f9a65', '#9a6a8f', '#a08a5c', '#4f8f8f', '#7a7a7a', '#b07a6e', '#3c5a3c'];
 
 // Beyond this many categories a chart stops being readable; the rest are combined into
 // one "Other" bar so nothing is dropped and the note says how many were combined.
@@ -519,14 +520,14 @@ const BUILDERS: Record<RuleId, Builder> = {
 
     return {
       data: { values },
-      mark: { type: 'rect', stroke: '#f7f3ea', strokeWidth: 1 },
+      mark: { type: 'rect', stroke: '#ffffff', strokeWidth: 1 },
       encoding: {
         x: { field: 'x', type: 'nominal', sort: xs.order, title: xField.name },
         y: { field: 'y', type: 'nominal', sort: ys.order, title: yField.name },
         // A light-to-navy lightness ramp: more records → darker. Zero is the palest cell.
         color:
           highlight === null
-            ? { field: 'count', type: 'quantitative', title: 'Records', scale: { range: ['#efe9dc', NAVY], zero: true } }
+            ? { field: 'count', type: 'quantitative', title: 'Records', scale: { range: ['#ececf1', NAVY], zero: true } }
             : markColor(highlight),
         tooltip: [
           { field: 'x', title: xField.name },
