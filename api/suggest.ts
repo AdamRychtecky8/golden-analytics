@@ -190,8 +190,10 @@ Return exactly 3 paths, each a different kind:
 - filters: a list of {"field", "value"} slices that narrow the data (empty for the whole dataset). Each field must be a nominal column that is not in fields, and each value must be copied exactly from that column's top values. A top-level path has at most one filter.
 
 The chart comes from the field types: date + number = line over time; nominal + number = sorted bars; number + number = scatter; one number = histogram; one nominal = counts; one date = counts over time; date + nominal = count lines per group; nominal + nominal = count grid. Pick fields whose chart answers the question.
+Prefer nominal columns with about 12 distinct values or fewer for bars and lines: past that the chart gets crowded and the rest are combined into "Other". Use a column with many values (like titles or names) only inside a filtered slice.
+Take the dates as they are, even if they look unusual (the demo data is fictional and set in the future): never mention the year as odd.
 
-If a parent path is given, return 3 follow-ups about that parent only. Each follow-up must keep all of the parent's filters and add exactly one new filter, so it looks inside the parent's slice (usually its top group, e.g. a ranking by genre goes deeper into the top genre). Then look at that narrower slice in a different way: over time, broken down by another field, or its spread. Never repeat the parent, and never suggest anything outside its slice.`;
+If a parent path is given, return 3 follow-ups about that parent only: each one should help answer the parent's question, not open a new topic. Each follow-up must keep all of the parent's filters and add exactly one new filter, so it looks inside the parent's slice (usually its top group, e.g. a ranking by genre goes deeper into the top genre). Keep the parent's measure when it has one (if the parent ranks revenue, the follow-ups are about revenue). Then look at that narrower slice in a different way: over time, broken down by another field, or its spread. Never repeat the parent or one of the top-level questions, and never suggest anything outside its slice.`;
 
 function userMessage(r: SuggestRequest): string {
   const guidance = PURPOSE_GUIDANCE[r.persona.purpose] ?? PURPOSE_GUIDANCE['just exploring'];
