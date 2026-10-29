@@ -15,6 +15,10 @@ const THEME: Config = {
     gridColor: '#ece6d8',
     labelColor: '#4a5470',
     labelFontSize: 11,
+    // Hide labels that would touch or overlap their neighbor (e.g. "0.000 0.005" on a
+    // narrow axis), keeping every other one instead.
+    labelOverlap: 'greedy',
+    labelSeparation: 6,
     titleColor: NAVY,
     titleFont: 'ui-monospace, "SF Mono", Menlo, Consolas, monospace',
     titleFontSize: 10,

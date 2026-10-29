@@ -209,8 +209,19 @@ export function buildChart(fields: ColumnProfile[], rows: Row[], options: ChartO
   // The builders return plain objects rather than Vega-Lite's own (very large) types, to
   // keep them readable. The tests check the specs' contents; `as unknown as` tells
   // TypeScript we've taken on that responsibility.
-  const spec = { ...built, usermeta, height: options.height ?? HEIGHT, width: 'container' } as unknown as TopLevelSpec;
+  const spec = { ...built, usermeta, height: chartHeight(rule, built, options.height ?? HEIGHT), width: 'container' } as unknown as TopLevelSpec;
   return { rule, title, notes, spec };
+}
+
+// Each category on a bar or heatmap axis gets at least this many pixels, so its label
+// never overlaps the next one (20 titles squeezed into 150 px did).
+const MIN_ROW_PX = 17;
+
+function chartHeight(rule: RuleId, built: object, requested: number): number {
+  const values = (built as { data: { values: Record<string, unknown>[] } }).data.values;
+  if (rule === 'sorted-bars' || rule === 'count-bars') return Math.max(requested, values.length * MIN_ROW_PX);
+  if (rule === 'count-heatmap') return Math.max(requested, new Set(values.map((v) => v.y)).size * MIN_ROW_PX);
+  return requested;
 }
 
 type Builder = (fields: ColumnProfile[], rows: Row[], options: ChartOptions, notes: string[]) => object;
@@ -343,24 +354,38 @@ const BUILDERS: Record<RuleId, Builder> = {
     };
   },
 
-  scatter([xField, yField], rows, { highlight }) {
-    // No aggregation: each point is one record, so the key is the row's position.
-    const values = rows.map((r, i) => ({
-      x: parseNumber(r[xField.name])!,
-      y: parseNumber(r[yField.name])!,
-      key: String(i),
-    }));
+  scatter([xField, yField], rows, { highlight }, notes) {
+    // Identical (x, y) pairs are drawn once, sized by how many records share them. With
+    // 56,350 sales at a few dozen price/revenue pairs, one dot per record would stack
+    // thousands of dots on each spot and hide how many there are (overplotting).
+    const points = new Map<string, { x: number; y: number; count: number; key: string }>();
+    for (const r of rows) {
+      const x = parseNumber(r[xField.name])!;
+      const y = parseNumber(r[yField.name])!;
+      const key = `${x}|${y}`;
+      const point = points.get(key);
+      if (point) point.count++;
+      else points.set(key, { x, y, count: 1, key });
+    }
+    const values = [...points.values()];
+    if (values.length < rows.length) {
+      notes.push(`${rows.length} records are shown as ${values.length} points; a bigger point stands for more records.`);
+    }
     return {
       data: { values },
-      mark: { type: 'point', filled: true, size: 40, opacity: 0.75 },
+      mark: { type: 'circle', opacity: 0.75 },
       encoding: {
         // Scatter axes don't need to start at zero: position, not length, carries the value.
         x: { field: 'x', type: 'quantitative', title: xField.name, scale: { zero: false } },
         y: { field: 'y', type: 'quantitative', title: yField.name, scale: { zero: false } },
+        // Area grows with the count (Vega-Lite's size channel is area, not radius, so a
+        // point with 4× the records looks 4× as big, not 16×).
+        size: { field: 'count', type: 'quantitative', title: 'Records', scale: { range: [30, 900], zero: false } },
         color: markColor(highlight),
         tooltip: [
           { field: 'x', type: 'quantitative', title: xField.name, format: NUMBER_FORMAT },
           { field: 'y', type: 'quantitative', title: yField.name, format: NUMBER_FORMAT },
+          { field: 'count', type: 'quantitative', title: 'Records' },
         ],
       },
     };

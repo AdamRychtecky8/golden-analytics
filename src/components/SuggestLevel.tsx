@@ -9,6 +9,7 @@ import { runChecks } from '../checks';
 import { Chart } from './Chart';
 
 interface SuggestLevelProps {
+  visible: boolean; // only the level the slider is on builds and draws its charts
   persona: Persona;
   branch: Path[]; // from the top level down to the path being explored; empty = top level
   suggestions: SuggestionState;
@@ -65,6 +66,7 @@ export function SuggestLevel(props: SuggestLevelProps) {
                   profile={props.profile}
                   rows={props.rows}
                   card={props.card}
+                  visible={props.visible}
                   onGoDeeper={() => props.onGoDeeper(path)}
                   onUse={(shown) => props.onUsePath(shown)}
                 />
@@ -117,14 +119,15 @@ interface PathCardProps {
   profile: DataProfile;
   rows: Row[];
   card: StoryCard;
+  visible: boolean;
   onGoDeeper: () => void;
   onUse: (shown: Path) => void; // the path as shown: itself, or its by-count version
 }
 
-function PathCard({ path, profile, rows, card, onGoDeeper, onUse }: PathCardProps) {
+function PathCard({ path, profile, rows, card, visible, onGoDeeper, onUse }: PathCardProps) {
   // "View by count" is a look at this card only, so it's local state, not history.
   const [byCount, setByCount] = useState(false);
-  const checks = useMemo(() => runChecks(path, profile, rows), [path, profile, rows]);
+  const checks = useMemo(() => (visible ? runChecks(path, profile, rows) : []), [visible, path, profile, rows]);
   const countView = checks.find((c) => c.countView)?.countView;
   // The path as shown: the same question and source, charted by count instead of money.
   const shown = useMemo<Path>(
@@ -133,8 +136,8 @@ function PathCard({ path, profile, rows, card, onGoDeeper, onUse }: PathCardProp
   );
   // Cached paths are the same objects every render, so the chart is built once per path.
   const chart = useMemo(
-    () => chartForView(shown, profile, rows, { highlight: null, height: PREVIEW_HEIGHT }),
-    [shown, profile, rows],
+    () => (visible ? chartForView(shown, profile, rows, { highlight: null, height: PREVIEW_HEIGHT }) : null),
+    [visible, shown, profile, rows],
   );
   const onCard = card.source === shown.source && sameView(card, shown, profile);
   const from = path.source === 'ai' ? 'AI' : 'Rules';
@@ -159,8 +162,10 @@ function PathCard({ path, profile, rows, card, onGoDeeper, onUse }: PathCardProp
             </ul>
           )}
         </>
-      ) : (
+      ) : visible ? (
         <p className="empty-note">This path’s chart couldn’t be drawn.</p>
+      ) : (
+        <div className="chart-placeholder" aria-hidden="true" />
       )}
       {checks.length > 0 && (
         // Computed in code (checks.ts) and labeled as a check, never as AI.

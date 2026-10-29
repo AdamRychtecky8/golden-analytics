@@ -16,6 +16,8 @@ interface LevelProps {
   onSelectFields: (fields: string[]) => void;
   onAggregate: (aggregate: Aggregate) => void;
   onUseChart: () => void;
+  // Only the level the slider is on builds and draws its chart; hidden levels stay light.
+  visible: boolean;
 }
 
 const TYPE_LABEL: Record<ColumnProfile['type'], string> = {
@@ -159,10 +161,14 @@ function MiniDistribution({ column: c }: { column: ColumnProfile }) {
 
 /** The chart for the current selection, with the sum/mean toggle and "Use this". */
 function ChartPreview(props: LevelProps) {
-  const { profile, rows, selected, aggregate } = props;
+  const { profile, rows, selected, aggregate, visible } = props;
   const cols = useMemo(() => selected.map((n) => profile.columns.find((c) => c.name === n)!), [profile, selected]);
   // Rebuild the chart only when its inputs change; a new spec object makes Vega redraw.
-  const chart = useMemo(() => buildChart(cols, rows, { aggregate, highlight: null }), [cols, rows, aggregate]);
+  // Levels 0 and 1 share this preview, so without `visible` it was built and drawn twice.
+  const chart = useMemo(
+    () => (visible ? buildChart(cols, rows, { aggregate, highlight: null }) : null),
+    [visible, cols, rows, aggregate],
+  );
   // What the chart really shows: a sum of an average-only number is drawn as a mean.
   const shown = effectiveAggregate(cols, aggregate);
   const summable = canSum(cols);
@@ -174,6 +180,7 @@ function ChartPreview(props: LevelProps) {
       </div>
     );
   }
+  if (!visible) return <div className="preview preview-hidden" aria-hidden="true" />;
   if (!chart) {
     return (
       <div className="preview">

@@ -458,6 +458,11 @@ textarea {
 .chart {
   width: 100%;
 }
+/* Stand-ins while a level is off screen, so the panel keeps its rough size. */
+.preview-hidden,
+.chart-placeholder {
+  min-height: 150px;
+}
 
 /* ---------- Level 2: analytical paths ---------- */
 

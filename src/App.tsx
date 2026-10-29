@@ -96,10 +96,11 @@ export default function App() {
         <AssistLayer
           level={state.level}
           persona={state.persona}
-          explore={<ExploreLevel {...levelProps} />}
-          map={<MapLevel {...levelProps} />}
+          explore={<ExploreLevel {...levelProps} visible={state.level === 0} />}
+          map={<MapLevel {...levelProps} visible={state.level === 1} />}
           suggest={
             <SuggestLevel
+              visible={state.level === 2}
               persona={state.persona}
               branch={state.branch}
               suggestions={suggestions}

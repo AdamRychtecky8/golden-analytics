@@ -133,12 +133,39 @@ describe('counts', () => {
 });
 
 describe('scatter', () => {
-  it('plots one point per complete row, no aggregation', () => {
-    expect(valuesOf(['units', 'revenue']).map((v) => [v.x, v.y])).toEqual([
-      [4, 100],
-      [6, 50],
-      [2, 300],
+  it('plots one point per distinct pair of complete values, no aggregation', () => {
+    expect(valuesOf(['units', 'revenue']).map((v) => [v.x, v.y, v.count])).toEqual([
+      [4, 100, 1],
+      [6, 50, 1],
+      [2, 300, 1],
     ]);
+  });
+
+  it('combines identical points and sizes them by their record count', () => {
+    const same: Row[] = [
+      { a: '1', b: '2' },
+      { a: '1', b: '2' },
+      { a: '1', b: '2' },
+      { a: '5', b: '9' },
+    ];
+    const p = profileDataset(['a', 'b'], same);
+    const chart = buildChart(p.columns, same, sum)!;
+    const spec = chart.spec as any;
+    expect(spec.data.values.map((v: any) => [v.x, v.y, v.count])).toEqual([
+      [1, 2, 3],
+      [5, 9, 1],
+    ]);
+    expect(spec.encoding.size.field).toBe('count');
+    expect(chart.notes).toContain('4 records are shown as 2 points; a bigger point stands for more records.');
+  });
+});
+
+describe('chart height', () => {
+  it('gives each bar enough room for its label', () => {
+    const many: Row[] = Array.from({ length: 20 }, (_, i) => ({ name: `n${i}` }));
+    const p = profileDataset(['name'], many);
+    expect((buildChart(p.columns, many, { ...sum, height: 150 })!.spec as any).height).toBe(20 * 17);
+    expect((buildChart([col('region')], rows, { ...sum, height: 150 })!.spec as any).height).toBe(150);
   });
 });
 
