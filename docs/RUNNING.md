@@ -17,7 +17,7 @@ Stop the server with `Ctrl+C` in the terminal.
 
 Level 2 works either way.
 
-**Without a key** (the default): Level 2 shows three paths suggested by rules, each tagged **Rules**, with one quiet line saying "AI suggestions are off (no API key)". Everything else, including go deeper, the breadcrumb, "Use this", and back/forward, works the same.
+**Without a key** (the default): Level 2 shows three paths suggested by rules, each tagged **Rules**, with one quiet line saying "AI suggestions are off (no API key)". Level 3 drafts its story card with rule templates, marked **Rules draft**. Everything else, including go deeper, the breadcrumb, the checks, "Use this", "Try another angle", and back/forward, works the same.
 
 **With a key:**
 
@@ -29,11 +29,11 @@ Level 2 works either way.
 3. Open `.env` and replace `your-anthropic-api-key-here` with your key. Optionally set `ANTHROPIC_MODEL` (default: `claude-haiku-5-5`).
 4. Restart `npm run dev`. The dev server reads `.env` only when it starts.
 
-Level 2 then opens with paths tagged **AI**. If some AI paths fail the checks, rules fill the gaps and a notice says so. If the call fails (bad key, no network, timeout), the paths come from rules and the notice says the AI couldn't be reached.
+Level 2 then opens with paths tagged **AI**, and Level 3 drafts story cards marked **AI draft**. If some AI paths fail the checks, rules fill the gaps and a notice says so. If the call fails (bad key, no network, timeout), the paths come from rules and the notice says the AI couldn't be reached.
 
-**Where the key lives:** only in `.env` (gitignored, never committed) and in the server-side handler `api/suggest.ts`. The browser never sees it: it calls `/api/suggest` on the dev server, which calls Anthropic. Each AI request sends only the data profile (column names, types, ranges, top values, missing counts), the persona, and the parent path. It never sends rows.
+**Where the key lives:** only in `.env` (gitignored, never committed) and in the server-side handlers in `api/`. The browser never sees it: it calls `/api/suggest` (Level 2) and `/api/story` (Level 3) on the dev server, which call Anthropic. Each AI request sends only the data profile (column names, types, ranges, top values, missing counts, whether a number can be summed), the persona, and the path(s) involved; Level 3 also sends the facts code computed for each path. It never sends rows.
 
-**Cost:** one request each time the app opens, when you switch persona, and when you go deeper on a new path. Revisiting a branch, back/forward, and moving the slider reuse cached answers.
+**Cost:** one request each time the app opens, when you switch persona, when you go deeper on a new path, and when Level 3 drafts for a new path or angle. Revisiting a branch, back/forward, and moving the slider reuse cached answers. If the AI can't be reached, the app retries once by itself; after that a "Try again" link appears next to the notice.
 
 `npm run preview` and the plain `dist/` build have no server behind `/api`, so they always show rule-based paths. The handler is written as a Vercel serverless function (`api/`), but nothing is deployed yet.
 
@@ -51,7 +51,10 @@ This runs every `*.test.ts` file once with Vitest:
 - `src/paths.test.ts`: the path validator (bad fields, bad filters, duplicate kinds, repeats of the parent), row filtering, filtered charts, and what is sent to the AI.
 - `src/fallbackPaths.test.ts`: the rule-based paths for every persona, the outlier finder, and go deeper two levels down.
 - `src/suggest.test.ts`: how the browser combines AI and rule paths, with the network faked (no key, errors, invalid answers).
-- `api/suggest.test.ts`: the server handler, with the Anthropic API faked.
+- `src/checks.test.ts`: the insight checks (price/mix catches hardcover vs mass-market paperback, small groups, concentration) and the groups they read.
+- `src/facts.test.ts`: the story facts, the template filler (unknown slots, digits in AI text), and the rule-based stories.
+- `src/story.test.ts`: Level 3 in the browser with the network faked: filling AI templates, every fallback, who picks the path.
+- `api/suggest.test.ts`, `api/story.test.ts`: the two server handlers, with the Anthropic API faked.
 
 No test calls the real API.
 

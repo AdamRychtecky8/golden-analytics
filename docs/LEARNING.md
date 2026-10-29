@@ -1,6 +1,6 @@
 # LEARNING.md: reading the code
 
-A study guide for the code Claude Code wrote in Phases 1 and 2. The goal is reading literacy: enough to explain and defend every file. Read top to bottom the first time; after that, use it as a map. Phase 2 (Level 2, the AI) has its own architecture section (§2) and its own pattern list (§4, "Phase 2 patterns").
+A study guide for the code Claude Code wrote in Phases 1–3. The goal is reading literacy: enough to explain and defend every file. Read top to bottom the first time; after that, use it as a map. Phase 2 (Level 2, the AI) has its own architecture section (§2); Phase 3 (measures, checks, Level 3) has §3. Each phase has its own pattern list in §5.
 
 Links point to the first place each idea appears. Line numbers are as of the commit that added them and may drift.
 
@@ -36,7 +36,7 @@ App                       owns: history (useReducer), dataset (useState), profil
 ├── TopBar                Load CSV · Use demo data · PersonaPicker · Back/Forward
 ├── Slider                level 0–3 → dispatch setLevel
 ├── AssistLayer           scrolls to the current level's panel
-│   ├── Level 3           placeholder that shows the persona
+│   ├── StoryLevel (3)    the drafted story, facts used, Try another angle · Use draft (Phase 3, see §3)
 │   ├── SuggestLevel (2)  persona · breadcrumb · 3 path cards (Phase 2, see §2)
 │   ├── MapLevel (1)      FieldCards · chart ideas · ChartPreview
 │   └── ExploreLevel (0)  field chips · ChartPreview
@@ -87,7 +87,53 @@ Four things make this trustworthy:
 
 ---
 
-## 3. File by file
+## 3. Measures, checks, and stories (Phase 3)
+
+### Measure semantics: some numbers can't be added up
+
+A sum is only meaningful for quantities that pile up: revenue, units, hours. Adding up the price of every sale gives a big, confident number that describes nothing; so does adding up discount rates or ages. The profiler now classifies every number column as **additive** or **average only**, from its name ([profile.ts:71](../src/profile.ts#L71); the word lists and their order of precedence are in the comments above it). An unknown name is average only, because a mean is always a true statement and a wrong sum isn't.
+
+One function enforces it everywhere: `effectiveAggregate` ([chartRules.ts:105](../src/chartRules.ts#L105)) turns a requested sum of an average-only number into a mean. `buildChart` and `chartTitle` call it, so no chart or title can say "Sum of price". On top of that, the sum button is disabled, the validator rejects AI paths that sum one, the rules prefer additive measures, and the AI is told each column's kind.
+
+### "Is this really an insight?" checks
+
+A ranking can be true and still mislead. [checks.ts](../src/checks.ts) runs three checks on every path's chart and shows them as notes labeled **Check**, never as AI:
+
+| Check | Fires when | Why it matters |
+|---|---|---|
+| Price/mix | categories are ranked by a sum of money, and the #1 by money isn't the #1 by records (or a top group moves 2+ places) | Hardcover tops revenue with 11,720 sales; mass-market paperback sells 26,881. Price, not volume, made the ranking. "View by count" shows the other view. |
+| Small group | a shown group has fewer than 30 records | A mean or share of a handful of records swings with each new one. |
+| Concentration | the top group holds 40% or more of the total | The chart is mostly about one group; "the rest" may deserve its own look. |
+
+The thresholds are named constants with their reasoning ([checks.ts:14](../src/checks.ts#L14)). The numbers behind both the checks and Level 3's facts come from one place, `groupView` ([groups.ts:32](../src/groups.ts#L32)), which groups rows exactly the way the chart does.
+
+### Facts and slots: why the AI may not write digits
+
+Level 3 drafts a story card's title and takeaway. The risk with any AI-written summary is a number that sounds right but was never computed: a rounded share, a remembered figure, a "nearly double". So the AI doesn't write numbers at all.
+
+```
+ rows ──► computeFacts()  ──►  facts: [{ id: "top_share", label: "Hardcover's share of all revenue", display: "38%" }, …]
+                                  │
+                                  ├──► sent to /api/story (with the profile; never rows)
+                                  │       AI returns: title    "{top_item} leads {measure} by {group_field}"
+                                  │                   takeaway "{top_item} brings in {top_share} of {measure}."
+                                  ▼
+ fillTemplate():  every {slot} must be a fact id · no digit anywhere outside a slot · word limits
+                  pass → slots replaced by the facts' display values
+                  fail → ruleStory(): rule templates over the same facts, labeled "Rules"
+```
+
+The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this trustworthy: once the slots are taken out, whatever is left is the AI's own wording, and if it contains a single digit the whole draft is rejected. Every number a reader sees is therefore a fact's display value, and each fact traces back to rows ([facts.ts:28](../src/facts.ts#L28)). The "Facts used" list under each draft shows which ones. Rule templates go through the same filler, so they meet the same bar.
+
+### Level 3: who wrote what
+
+- **Which path:** the one you chose in Level 2 (with "Use this", or by going deeper), else the AI picks the strongest of the paths Level 2 shows (rules: the strongest check, then the largest change). "Try another angle" moves to a path not drafted yet ([useStory.ts:15](../src/useStory.ts#L15)).
+- **Provenance:** the card records who wrote each text, `titleFrom` and `takeawayFrom`: `'ai'`, `'rules'`, or `'user'`. A drafted text shows an "AI draft" / "Rules draft" marker; editing it makes it `'user'` ([state.ts:179](../src/state.ts#L179)).
+- **Never overwrite:** a draft fills the card only if `canFill` ([state.ts:49](../src/state.ts#L49)): no user-written text and no chart you built yourself. Otherwise it waits beside the card with "Use draft". Text you're still typing is never replaced ([StoryCard.tsx:28](../src/components/StoryCard.tsx#L28)).
+
+---
+
+## 4. File by file
 
 ### Setup
 | File | What it does | Why it exists / how it connects |
@@ -116,12 +162,21 @@ Four things make this trustworthy:
 | [src/paths.ts](../src/paths.ts) | The path model, what the AI is sent (`buildRequest`), row filtering, `chartForView`, and the validator. | The shared core of Level 2: AI paths and rule paths pass through the same checks. |
 | [src/fallbackPaths.ts](../src/fallbackPaths.ts) | The rule-based path generator: kind order per purpose, the outlier finder, go-deeper follow-ups. | Makes the app fully usable with no key (D-036). Deterministic, so it's testable. |
 | [src/suggest.ts](../src/suggest.ts) | `loadSuggestions`: calls `/api/suggest`, validates, tops up with rules, picks the notice. Never throws. | The one browser function that talks to the server. |
-| [src/useSuggestions.ts](../src/useSuggestions.ts) | A custom hook: the cache, keyed by dataset + persona + parent, and the effect that fills it. | Why back/forward never re-calls the AI (D-037). |
+| [src/useSuggestions.ts](../src/useSuggestions.ts) | A custom hook: Level 2's paths, cached by dataset + persona + parent (via useAsyncCache). | Why back/forward never re-calls the AI (D-037). |
+| [src/aiRequest.ts](../src/aiRequest.ts) | `askAi`: post to an AI handler, with a timeout and one automatic retry. Never throws. | Shared by Levels 2 and 3 (D-051). |
+| [src/useAsyncCache.ts](../src/useAsyncCache.ts) | A generic hook: load a value once per key, remember it, `retry()` on demand. | The cache behind both Level 2 and Level 3. |
+| [src/groups.ts](../src/groups.ts) | `groupView`: a chart's groups (bars or periods) with record counts and values. | One source of the numbers checks and facts use. |
+| [src/checks.ts](../src/checks.ts) | The three insight checks and their thresholds. | Quiet notes on path cards; facts for Level 3 (D-051, D-055). |
+| [src/facts.ts](../src/facts.ts) | `computeFacts`: every fact a story may use, with ids and display values; `strength` for the rules' pick. | The only source of numbers in a story (D-052). |
+| [src/templates.ts](../src/templates.ts) | `fillTemplate` (slots must exist, no digits outside them), `ruleStory` (the no-AI templates). | Where an AI draft is accepted or rejected. |
+| [src/story.ts](../src/story.ts) | `loadStory`: facts per candidate, ask `/api/story`, check the pick and the templates, fall back to rules. | The browser half of Level 3. |
+| [src/useStory.ts](../src/useStory.ts) | `storyCandidates` (which path, in which order) and the `useStory` hook. | Keeps App readable (D-056). |
 
 ### Server
 | File | What it does | Why it exists / how it connects |
 |---|---|---|
-| [api/suggest.ts](../api/suggest.ts) | The serverless handler: checks the request, builds the prompt, calls Claude via the Anthropic SDK, returns `{ ok, paths }` or `{ ok: false, reason }`. | The only file that holds the key or knows the AI exists. `POST` is the Vercel entry point; `suggest()` is the testable core. |
+| [api/suggest.ts](../api/suggest.ts) | The Level 2 handler: checks the request, builds the prompt, calls Claude via the Anthropic SDK, returns `{ ok, paths }` or `{ ok: false, reason }`. Also exports the shared pieces (`callModel`, the request readers). | `POST` is the Vercel entry point; `suggest()` is the testable core. |
+| [api/story.ts](../api/story.ts) | The Level 3 handler: profile, persona, and candidates with their facts in; a pick and two templates out. | Same pattern; never sees rows. |
 
 ### UI (React components)
 | File | What it does | Why it exists / how it connects |
@@ -132,7 +187,8 @@ Four things make this trustworthy:
 | [src/components/Slider.tsx](../src/components/Slider.tsx) | The vertical 0–3 range input and its clickable labels. | Calls `onChange(level)`; knows nothing about scrolling. |
 | [src/components/AssistLayer.tsx](../src/components/AssistLayer.tsx) | Stacks the four panels and scrolls to the current one. Holds the Level 2/3 placeholders. | Receives Level 0/1 content as props, so it only handles layout and motion. |
 | [src/components/Levels.tsx](../src/components/Levels.tsx) | `ExploreLevel`, `MapLevel`, `FieldCard`, `MiniDistribution`, `ChartPreview`. | Both levels share one props shape and one preview, so selection carries across (D-008). |
-| [src/components/SuggestLevel.tsx](../src/components/SuggestLevel.tsx) | Level 2: persona line, `Breadcrumb`, `PathCard`s, `Skeleton`. | Receives the cached suggestions and the branch as props; reports clicks up as `goDeeper` / `jumpTo` / `usePath`. |
+| [src/components/SuggestLevel.tsx](../src/components/SuggestLevel.tsx) | Level 2: persona line, `Breadcrumb`, `PathCard`s (with check notes and "View by count"), `Skeleton`. | Receives the cached suggestions and the branch as props; reports clicks up as `goDeeper` / `jumpTo` / `usePath`. |
+| [src/components/StoryLevel.tsx](../src/components/StoryLevel.tsx) | Level 3: who the path came from, the draft, facts used, "Try another angle", "Use draft". | Shows the draft; App decides whether it fills the card. |
 | [src/components/Chart.tsx](../src/components/Chart.tsx) | Embeds a Vega-Lite spec; turns mark clicks into `onMarkClick(key)`. | The only file that talks to Vega. Also holds the chart theme. |
 | [src/components/StoryCard.tsx](../src/components/StoryCard.tsx) | Editable title and takeaway, and the card's clickable chart. | Saves text on blur (one history step), highlights on click. |
 | [src/styles.css](../src/styles.css) | All styling. Colors are CSS variables at the top. | Plain CSS, grouped by area of the page. |
@@ -147,10 +203,14 @@ Four things make this trustworthy:
 | [src/fallbackPaths.test.ts](../src/fallbackPaths.test.ts) | Rule paths for every persona, the order by purpose, the outlier finder, go deeper two levels down. |
 | [src/suggest.test.ts](../src/suggest.test.ts) | AI + rules mixing and the notices, with a fake network. |
 | [api/suggest.test.ts](../api/suggest.test.ts) | The handler with a fake Anthropic client: no key, bad requests, success, errors, what is sent. |
+| [src/checks.test.ts](../src/checks.test.ts) | Each check, including hardcover vs mass-market paperback; groups match the chart. |
+| [src/facts.test.ts](../src/facts.test.ts) | Facts computed from rows, the template filler (unknown slots, digits), rule stories. |
+| [src/story.test.ts](../src/story.test.ts) | Level 3 with a fake network: AI templates filled, every fallback, the candidate order. |
+| [api/story.test.ts](../api/story.test.ts) | The story handler with a fake client. |
 
 ---
 
-## 4. Patterns, in the order you'll meet them
+## 5. Patterns, in the order you'll meet them
 
 Each entry: what it is, why it's used here, and where to see it first.
 
@@ -282,6 +342,28 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **Breadcrumb semantics.** The breadcrumb is a `<nav>` with an ordered list; earlier steps are buttons, and the current step is plain text marked `aria-current="location"`, so screen readers announce "current." *First seen:* [SuggestLevel.tsx:88](../src/components/SuggestLevel.tsx#L88).
 
+### Phase 3 patterns
+
+**Generics in a hook (`useAsyncCache<T>`).** The `<T>` says "this works for any type of value": Level 2 gets back `Suggestions`, Level 3 gets back a `Draft`, and TypeScript knows which. One cache, two uses, no copy-paste. *First seen:* [useAsyncCache.ts:12](../src/useAsyncCache.ts#L12).
+
+**`useCallback`.** Keeps the same function object between renders until its inputs change. `retry` is passed down to the "Try again" link; a stable function means the child isn't handed a "new" prop every render. *First seen:* [useAsyncCache.ts:37](../src/useAsyncCache.ts#L37).
+
+**Effects run in order.** `useAsyncCache` has two effects: the first stores the newest `load` function in a ref, the second uses it. React runs effects in the order they're declared, so the second always sees the newest one. *First seen:* [useAsyncCache.ts:25](../src/useAsyncCache.ts#L25).
+
+**An effect that dispatches.** App watches for a finished draft on Level 3 and dispatches `fillDraft`. Effects that change state can loop, so this one stops itself: it returns early if the card already shows the draft or `canFill` says no. *First seen:* [App.tsx:60](../src/App.tsx#L60).
+
+**Updating history in place.** Almost every action pushes the old snapshot onto `past`. `fillDraft` doesn't: it replaces `present` and keeps `past` and `future`. Filling the card is a consequence of arriving at Level 3, not a separate step; if it were a step, "back" would land on an unfilled Level 3 that fills itself again and wipes "forward". *First seen:* [state.ts:213](../src/state.ts#L213).
+
+**Refs as "is the user typing?" flags.** `typedTitle` is set on every keystroke and cleared on commit. The effect that copies the card's title into the input checks it first, so an arriving draft can't replace half-typed text. A ref, not state, because the flag never changes what's drawn. *First seen:* [StoryCard.tsx:28](../src/components/StoryCard.tsx#L28).
+
+**Regular expressions with a replace callback.** `SLOT = /\{([a-z][a-z0-9_]*)\}/g` finds every `{fact_id}`. `template.replace(SLOT, (_, id) => known.get(id))` swaps each match for the fact's value, and `template.replace(SLOT, ' ')` removes them all to inspect the AI's own words. *First seen:* [templates.ts:10](../src/templates.ts#L10), [templates.ts:29](../src/templates.ts#L29).
+
+**Lists as sets with `every` / `some`.** A follow-up "keeps its parent's filters" when every parent filter has a matching child filter: `parent.every((p) => child.some((c) => …))`. Order doesn't matter, which is the point. *First seen:* [paths.ts:152](../src/paths.ts#L152).
+
+**A lookup object instead of if/else.** `{ active: '…', ai: '…', rules: '…' }[draft.pickedBy]` picks a sentence by key; TypeScript checks that every key exists. *First seen:* [StoryLevel.tsx:62](../src/components/StoryLevel.tsx#L62).
+
+**`Intl.NumberFormat`.** The browser's built-in number formatter: `new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(261964)` → "261,964". Facts use it so the same number always looks the same. *First seen:* [facts.ts](../src/facts.ts).
+
 ### The prep script (Python)
 
 **Reading .xlsx without a library.** An .xlsx file is a zip archive of XML files: `xl/workbook.xml` lists the sheets, each sheet is `xl/worksheets/sheetN.xml`, and text cells hold an index into `xl/sharedStrings.xml`. The script opens the zip with `zipfile` and walks the rows with `xml.etree.ElementTree.iterparse`, which reads one row at a time instead of the whole 9 MB sheet. *See:* `Workbook` in [prepare-bookshop.py](../scripts/prepare-bookshop.py).
@@ -294,7 +376,7 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 ---
 
-## 5. Commit message conventions
+## 6. Commit message conventions
 
 Phase 1 commits follow **Conventional Commits**:
 
@@ -315,7 +397,7 @@ feat: add rule-based chart builder with tests
 
 ---
 
-## 6. "How would you defend this?"
+## 7. "How would you defend this?"
 
 Questions a reviewer might ask. Try answering each one aloud, then check the pointer.
 
@@ -350,3 +432,17 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 23. **Two ItemIDs appear twice. Why keep them?** → D-048. How would you check whether they are two sales or one sale copied, and what would change your decision?
 24. **"Which title has the most price?" What went wrong, and whose call is the fix?** → `candidatesInScope` in [fallbackPaths.ts](../src/fallbackPaths.ts) picks the first number column. Summing list prices isn't revenue. Should the rules prefer a column by name, ask the user, or leave measures to the AI?
 25. **The scatter shows 56,350 sales as about 70 dots. Is that honest?** → Overplotting: many identical (price, revenue) pairs sit on one spot. What would show how many are stacked there?
+
+**Phase 3**
+
+26. **Why is an unknown number column "average only" instead of "additive"?** → `classifyMeasure` in [profile.ts](../src/profile.ts), D-054. Which mistake is worse: a missing sum or a false one?
+27. **Name three places that stop a price from being summed, and why one isn't enough.** → `effectiveAggregate`, the disabled toggle, the validator, the rules, the prompt. Which one is the real guarantee, and which are courtesy?
+28. **Hardcover leads revenue. Is that an insight?** → the price/mix check in [checks.ts](../src/checks.ts). What does "View by count" show, and which chart would you put in front of a store owner deciding what to stock?
+29. **Why 30 records and 40%? Defend or change the thresholds.** → the constants and comments at the top of [checks.ts](../src/checks.ts), D-055.
+30. **Why may the AI not write a single digit, even a correct one?** → `fillTemplate` in [templates.ts](../src/templates.ts), D-052. How would you prove every number on a story card was computed?
+31. **What stops a slot from being made up?** → the unknown-slot check, and what the fallback does with the AI's pick (D-056).
+32. **When does Level 3 replace text, and when does it wait?** → `canFill` in [state.ts](../src/state.ts), the typing guard in [StoryCard.tsx](../src/components/StoryCard.tsx). Walk through: you edit the title, then click "Try another angle".
+33. **Why doesn't filling the card add a history step?** → the `fillDraft` branch of `historyReducer`. What would "back" do if it did?
+34. **How does go deeper avoid repeating the top-level paths now?** → the inherit-plus-one filter rule in `checkOne` ([paths.ts](../src/paths.ts)), D-051, and the prompt. Why enforce it in code when the prompt already asks?
+35. **What's the weakest part of Phase 3?** Honest candidates: name-based measure classification (a column called "x" can't be summed, a column called "count_rate" is a guess); checks only look at one chart at a time; the money-word list is English; Level 3 was tested against a local mock of the API, not the real model.
+

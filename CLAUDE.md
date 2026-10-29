@@ -15,7 +15,7 @@ The brief says the reviewers want proof that Adam guided the AI to build what *h
 ## How to work with Adam
 - **Product or design question?** Offer 2–3 options with tradeoffs, give a recommendation only if asked, then wait for his choice. Never silently pick a product direction, add features he didn't ask for, or swap libraries.
 - **Non-trivial change?** Post a short plan first and wait for his OK.
-- **Stack (decided, D-004, D-035):** Vite + React + TypeScript, Papa Parse for CSV, Vega-Lite via vega-embed for charts, plain CSS, Vitest for tests. The AI call uses the Anthropic TypeScript SDK in a server-side handler (`api/suggest.ts`, Vercel-style), served locally by the Vite dev server. Don't add or swap libraries without asking.
+- **Stack (decided, D-004, D-035):** Vite + React + TypeScript, Papa Parse for CSV, Vega-Lite via vega-embed for charts, plain CSS, Vitest for tests. The AI calls use the Anthropic TypeScript SDK in server-side handlers (`api/suggest.ts` for Level 2, `api/story.ts` for Level 3, Vercel-style), served locally by the Vite dev server. Don't add or swap libraries without asking.
 - **Commits:** small and frequent, with plain messages that say what changed and why.
 - **When you finish a task,** tell him exactly what to look at or click to verify it.
 
