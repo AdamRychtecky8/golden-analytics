@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Path } from './paths';
 import { PRESETS } from './personas';
-import { historyReducer, initialHistory, type Action, type History } from './state';
+import { canFill, historyReducer, initialHistory, type Action, type History } from './state';
 
 const run = (actions: Action[], start: History = initialHistory()) => actions.reduce(historyReducer, start);
 
@@ -148,5 +148,79 @@ describe('Level 2 history', () => {
   it('keeps the branch when the slider moves away and back', () => {
     const h = run([{ type: 'goDeeper', path: p1 }, { type: 'setLevel', level: 0 }, { type: 'setLevel', level: 2 }]);
     expect(h.present.branch).toEqual([p1]);
+  });
+});
+
+describe('Level 3 drafts and provenance', () => {
+  const path = (id: string): Path => ({
+    id,
+    question: `Question ${id}?`,
+    kind: 'comparison',
+    fields: ['format', 'revenue'],
+    aggregate: 'sum',
+    filters: [],
+    parent: null,
+    source: 'ai',
+  });
+  const draft = (id = 'p1', title = 'Hardcover leads revenue', source: 'ai' | 'rules' = 'ai') => ({
+    path: path(id),
+    title,
+    takeaway: 'Hardcover brings in 38% of revenue.',
+    source,
+  });
+
+  it('fills an untouched card in place, marked as an AI draft, without a history step', () => {
+    const atStory = run([{ type: 'setLevel', level: 3 }]);
+    const filled = run([{ type: 'fillDraft', draft: draft() }], atStory);
+    expect(filled.past).toHaveLength(atStory.past.length); // no new step
+    expect(filled.present.card).toMatchObject({ title: 'Hardcover leads revenue', titleFrom: 'ai', takeawayFrom: 'ai', fields: ['format', 'revenue'], pathVia: 'story' });
+    // Back goes to before Level 3, with the card empty; forward returns to the filled card.
+    const back = run([{ type: 'back' }], filled);
+    expect(back.present.card.title).toBe('');
+    expect(run([{ type: 'forward' }], back).present.card.titleFrom).toBe('ai');
+  });
+
+  it('marks edited text as the user’s and keeps the other text’s marker', () => {
+    const filled = run([{ type: 'fillDraft', draft: draft() }]);
+    const edited = run([{ type: 'setCardText', title: 'My own title', takeaway: filled.present.card.takeaway }], filled);
+    expect(edited.present.card).toMatchObject({ titleFrom: 'user', takeawayFrom: 'ai' });
+  });
+
+  it('never fills over text the user wrote', () => {
+    const mine = run([{ type: 'setCardText', title: 'Mine', takeaway: '' }]);
+    expect(run([{ type: 'fillDraft', draft: draft() }], mine)).toBe(mine);
+    // Once an AI title is edited, a new draft no longer fills either.
+    const edited = run([{ type: 'fillDraft', draft: draft() }, { type: 'setCardText', title: 'Edited', takeaway: 'x' }]);
+    expect(run([{ type: 'fillDraft', draft: draft('p2', 'Another title') }], edited).present.card.title).toBe('Edited');
+  });
+
+  it('never fills over a chart the user built in Level 0/1', () => {
+    const own = run([{ type: 'toggleField', field: 'genre' }, { type: 'useChart' }]);
+    expect(canFill(own.present.card)).toBe(false);
+    expect(run([{ type: 'fillDraft', draft: draft() }], own)).toBe(own);
+  });
+
+  it('"Use draft" replaces the card as one undoable step', () => {
+    const mine = run([{ type: 'setCardText', title: 'Mine', takeaway: 'My point' }]);
+    const used = run([{ type: 'useDraft', draft: draft('p1', 'Drafted', 'rules') }], mine);
+    expect(used.present.card).toMatchObject({ title: 'Drafted', titleFrom: 'rules' });
+    expect(run([{ type: 'back' }], used).present.card).toMatchObject({ title: 'Mine', titleFrom: 'user' });
+  });
+
+  it('records angles already tried, and starts over when the branch or persona changes', () => {
+    const h = run([
+      { type: 'anotherAngle', pathId: 'p1' },
+      { type: 'anotherAngle', pathId: 'p2' },
+    ]);
+    expect(h.present.story.used).toEqual(['p1', 'p2']);
+    expect(run([{ type: 'back' }], h).present.story.used).toEqual(['p1']);
+    expect(run([{ type: 'goDeeper', path: path('p3') }], h).present.story.used).toEqual([]);
+    expect(run([{ type: 'setPersona', persona: PRESETS[2] }], h).present.story.used).toEqual([]);
+  });
+
+  it('remembers which path a Level 2 "Use this" put on the card', () => {
+    const h = run([{ type: 'usePath', path: path('p2') }]);
+    expect(h.present.card).toMatchObject({ pathVia: 'suggest', path: { id: 'p2' } });
+    expect(run([{ type: 'toggleField', field: 'genre' }, { type: 'useChart' }], h).present.card.path).toBeNull();
   });
 });

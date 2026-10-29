@@ -640,7 +640,36 @@ textarea {
   width: 100%;
   resize: vertical;
   min-height: 60px;
+  /* Grow with the text, so a drafted two-sentence takeaway is fully visible. */
+  field-sizing: content;
 }
+/* Level 3 */
+.story-from {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.draft {
+  border-color: var(--navy);
+}
+.draft-takeaway {
+  margin: 0;
+}
+.facts-used {
+  font-size: 12px;
+  color: var(--navy-soft);
+}
+.facts-used summary {
+  cursor: pointer;
+}
+.facts-used ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+}
+.text-marker {
+  justify-self: start;
+  margin-bottom: -6px;
+}
+
 .story-chart-head {
   display: flex;
   justify-content: space-between;

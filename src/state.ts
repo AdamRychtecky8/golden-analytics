@@ -19,8 +19,36 @@ export interface StoryCard {
   filters: PathFilter[]; // set when the chart came from a Level 2 path that narrows the data
   source: PathSource | null; // 'ai' or 'rules' for a Level 2 path; null for the user's own chart
   highlight: string | null; // key of the highlighted mark (see chartRules.ts)
-  title: string; // always written by the user, whatever the chart's source
+  // The path the chart came from, and how it got there: "Use this" in Level 2, or a
+  // Level 3 draft. Level 3 drafts from a path the user chose in Level 2.
+  path: Path | null;
+  pathVia: 'suggest' | 'story' | null;
+  title: string;
   takeaway: string;
+  // Who wrote each text (D-053). 'ai'/'rules': a Level 3 draft, shown with a marker. Once
+  // the user edits a text it becomes 'user', the marker goes, and nothing replaces it.
+  titleFrom: TextSource;
+  takeawayFrom: TextSource;
+}
+
+export type TextSource = 'user' | 'ai' | 'rules' | null;
+
+/** A Level 3 draft as it goes onto the card. */
+export interface CardDraft {
+  path: Path;
+  title: string;
+  takeaway: string;
+  source: 'ai' | 'rules';
+}
+
+/**
+ * Whether a draft may fill the card by itself. Never if the user has written either text,
+ * or built the card's chart themselves in Level 0/1: that's their work, so Level 3 shows
+ * its draft beside the card with "Use draft" instead (D-008, D-053).
+ */
+export function canFill(card: StoryCard): boolean {
+  const ownChart = card.fields.length > 0 && card.source === null;
+  return card.titleFrom !== 'user' && card.takeawayFrom !== 'user' && !ownChart;
 }
 
 /**
@@ -36,6 +64,9 @@ export interface Snapshot {
   // Empty means the top-level paths. Whole paths (not just ids) are stored, so the
   // breadcrumb can be drawn from the snapshot alone.
   branch: Path[];
+  // Level 3: paths already drafted in this run of "Try another angle", so the next angle
+  // uses a different one. Cleared when the Level 2 branch, the persona, or the card's path changes.
+  story: { used: string[] };
   card: StoryCard;
 }
 
@@ -57,6 +88,9 @@ export type Action =
   | { type: 'goDeeper'; path: Path }
   | { type: 'jumpTo'; depth: number }
   | { type: 'usePath'; path: Path }
+  | { type: 'useDraft'; draft: CardDraft }
+  | { type: 'fillDraft'; draft: CardDraft }
+  | { type: 'anotherAngle'; pathId: string }
   | { type: 'toggleHighlight'; key: string }
   | { type: 'setCardText'; title: string; takeaway: string }
   | { type: 'newDataset' }
@@ -69,14 +103,20 @@ export const EMPTY_CARD: StoryCard = {
   filters: [],
   source: null,
   highlight: null,
+  path: null,
+  pathVia: null,
   title: '',
   takeaway: '',
+  titleFrom: null,
+  takeawayFrom: null,
 };
+
+const NO_STORY = { used: [] as string[] };
 
 export function initialHistory(): History {
   return {
     past: [],
-    present: { level: 2, selected: [], aggregate: 'sum', persona: DEFAULT_PERSONA, branch: [], card: EMPTY_CARD },
+    present: { level: 2, selected: [], aggregate: 'sum', persona: DEFAULT_PERSONA, branch: [], story: NO_STORY, card: EMPTY_CARD },
     future: [],
   };
 }
@@ -104,29 +144,45 @@ function step(s: Snapshot, action: Action): Snapshot {
     case 'setPersona':
       // Changing the persona keeps the selection and the card (D-014). Level 2 returns to
       // the top, because the new persona gets its own top-level paths.
-      return { ...s, persona: action.persona, branch: [] };
+      return { ...s, persona: action.persona, branch: [], story: NO_STORY };
     case 'useChart':
       // Sends the previewed chart to the card. The user's title and takeaway stay as they are.
       return {
         ...s,
-        card: { ...s.card, fields: s.selected, aggregate: s.aggregate, filters: [], source: null, highlight: null },
+        card: { ...s.card, fields: s.selected, aggregate: s.aggregate, filters: [], source: null, path: null, pathVia: null, highlight: null },
       };
     case 'goDeeper':
       // Level 2 actions never touch the Level 0/1 selection.
-      return { ...s, branch: [...s.branch, action.path] };
+      return { ...s, branch: [...s.branch, action.path], story: NO_STORY };
     case 'jumpTo':
       // A breadcrumb click: keep the first `depth` steps (0 = back to the top-level paths).
-      return { ...s, branch: s.branch.slice(0, action.depth) };
+      return { ...s, branch: s.branch.slice(0, action.depth), story: NO_STORY };
     case 'usePath': {
       const { fields, aggregate, filters, source } = action.path;
-      return { ...s, card: { ...s.card, fields, aggregate, filters, source, highlight: null } };
+      const card = { ...s.card, fields, aggregate, filters, source, path: action.path, pathVia: 'suggest' as const, highlight: null };
+      return { ...s, card, story: NO_STORY };
     }
+    case 'useDraft':
+    case 'fillDraft': {
+      // The draft's chart, title, and takeaway, each marked as the draft's.
+      const { path, title, takeaway, source } = action.draft;
+      const { fields, aggregate, filters } = path;
+      const card = { ...s.card, fields, aggregate, filters, source: path.source, path, pathVia: 'story' as const, highlight: null };
+      return { ...s, card: { ...card, title, takeaway, titleFrom: source, takeawayFrom: source } };
+    }
+    case 'anotherAngle':
+      return { ...s, story: { used: [...s.story.used, action.pathId] } };
     case 'toggleHighlight': {
       const highlight = s.card.highlight === action.key ? null : action.key;
       return { ...s, card: { ...s.card, highlight } };
     }
-    case 'setCardText':
-      return { ...s, card: { ...s.card, title: action.title, takeaway: action.takeaway } };
+    case 'setCardText': {
+      // A text the user changed is theirs from now on; one they left alone keeps its source.
+      const { card } = s;
+      const titleFrom = action.title !== card.title ? 'user' : card.titleFrom;
+      const takeawayFrom = action.takeaway !== card.takeaway ? 'user' : card.takeawayFrom;
+      return { ...s, card: { ...card, title: action.title, takeaway: action.takeaway, titleFrom, takeawayFrom } };
+    }
     default:
       return s;
   }
@@ -152,6 +208,17 @@ export function historyReducer(h: History, action: Action): History {
     // The persona and slider level carry over: they describe the user, not the data.
     const { level, persona } = h.present;
     return { past: [], present: { ...initialHistory().present, level, persona }, future: [] };
+  }
+
+  if (action.type === 'fillDraft') {
+    // Level 3 filling an untouched card is a consequence of arriving there, not a step of
+    // its own: it updates the current snapshot in place and keeps forward history. "Back"
+    // from Level 3 returns to before the slider moved, card unfilled; "Use draft" and
+    // "Try another angle" are ordinary steps. If it were a step, going back would land on
+    // an unfilled Level 3, which would fill again and wipe "forward".
+    if (!canFill(h.present.card)) return h;
+    const filled = step(h.present, action);
+    return JSON.stringify(filled) === JSON.stringify(h.present) ? h : { ...h, present: filled };
   }
 
   const next = step(h.present, action);

@@ -7,6 +7,7 @@ import { finishPaths, type PathDraft } from './paths';
 import { PRESETS } from './personas';
 import { profileDataset } from './profile';
 import { STORY_NOTICES, loadStory } from './story';
+import { storyCandidates } from './useStory';
 
 // Level 3 in the browser, with the network faked: no real request is ever made.
 
@@ -53,6 +54,7 @@ describe('loadStory', () => {
     const d = (await loadStory(paths, false, bp, books, PRESETS[0], opts(fetcher)))!;
     expect(d.source).toBe('rules');
     expect(d.path.id).toBe('p2'); // the AI's pick is kept; only its words are replaced
+    expect(d.pickedBy).toBe('ai');
     expect(d.notice).toBe(STORY_NOTICES.invalid('takeaway: a digit outside a slot (numbers must come from facts)'));
   });
 
@@ -68,6 +70,7 @@ describe('loadStory', () => {
     const d = (await loadStory([paths[0], paths[1]], true, bp, books, PRESETS[0], opts(fetcher)))!;
     expect(d.path.id).toBe('p1');
     expect(d.source).toBe('rules');
+    expect(d.pickedBy).toBe('active');
   });
 
   it('without a key, rules pick the path with the strongest check and write the card', async () => {
@@ -90,5 +93,21 @@ describe('loadStory', () => {
 
   it('has nothing to draft from without candidates', async () => {
     expect(await loadStory([], false, bp, books, PRESETS[0], opts(answer({})))).toBeNull();
+  });
+});
+
+describe('storyCandidates (which path Level 3 drafts from)', () => {
+  const [p1, p2] = paths;
+  const p3 = { ...p1, id: 'p3', question: 'Third?' };
+
+  it('drafts the active path first, then the others, skipping ones already used', () => {
+    expect(storyCandidates(p2, [p1, p2, p3], [])).toEqual({ candidates: [p2], forced: true });
+    expect(storyCandidates(p2, [p1, p2, p3], ['p2'])).toEqual({ candidates: [p1, p3], forced: false });
+    expect(storyCandidates(p2, [p1, p2, p3], ['p2', 'p1'])).toEqual({ candidates: [p3], forced: false });
+  });
+
+  it('lets the AI pick among the shown paths when nothing is active, and starts over when all were used', () => {
+    expect(storyCandidates(null, [p1, p2], [])).toEqual({ candidates: [p1, p2], forced: false });
+    expect(storyCandidates(null, [p1, p2], ['p1', 'p2'])).toEqual({ candidates: [p1, p2], forced: false });
   });
 });

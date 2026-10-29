@@ -26,7 +26,8 @@ export interface Draft {
   path: Path; // the path the story is about; its chart goes on the card
   title: string;
   takeaway: string;
-  source: 'ai' | 'rules';
+  source: 'ai' | 'rules'; // who wrote the words
+  pickedBy: 'active' | 'ai' | 'rules'; // who chose the path: the user (in Level 2), the AI, or the rules
   facts: Fact[]; // that path's facts
   slots: string[]; // the fact ids the text uses ("facts used")
   notice: string | null;
@@ -77,7 +78,7 @@ export async function loadStory(
       pick = p as number;
       const filled = fillStory(reply.body.title, reply.body.takeaway, factsFor[pick]);
       if (!('error' in filled)) {
-        return { path: candidates[pick], ...filled, source: 'ai', facts: factsFor[pick], notice: null, aiFailed: false };
+        return { path: candidates[pick], ...filled, source: 'ai', pickedBy: forced ? 'active' : 'ai', facts: factsFor[pick], notice: null, aiFailed: false };
       }
       notice = STORY_NOTICES.invalid(filled.error);
       console.info('[story] AI draft rejected:', filled.error, reply.body);
@@ -92,6 +93,7 @@ export async function loadStory(
     path: candidates[index],
     ...text,
     source: 'rules',
+    pickedBy: forced ? 'active' : pick !== null ? 'ai' : 'rules',
     facts: factsFor[index],
     notice,
     aiFailed: !reply.ok && reply.reason === 'unavailable',

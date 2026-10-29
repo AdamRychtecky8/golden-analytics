@@ -1,13 +1,12 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { describePersona, type Persona } from '../personas';
 import { LEVELS, type Level } from '../state';
 
 interface AssistLayerProps {
   level: Level;
-  persona: Persona;
   explore: ReactNode; // Level 0 content
   map: ReactNode; // Level 1 content
   suggest: ReactNode; // Level 2 content
+  story: ReactNode; // Level 3 content
 }
 
 /**
@@ -15,7 +14,7 @@ interface AssistLayerProps {
  * (D-007): the column itself has overflow hidden, and an effect scrolls it to the
  * current level's panel whenever the level changes.
  */
-export function AssistLayer({ level, persona, explore, map, suggest }: AssistLayerProps) {
+export function AssistLayer({ level, explore, map, suggest, story }: AssistLayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRefs = useRef<Record<Level, HTMLElement | null>>({ 0: null, 1: null, 2: null, 3: null });
   // The level we last scrolled to. null until the first render.
@@ -40,12 +39,7 @@ export function AssistLayer({ level, persona, explore, map, suggest }: AssistLay
   }, [level]);
 
   const content: Record<Level, ReactNode> = {
-    3: (
-      <Placeholder persona={persona}>
-        The AI will draft a full story card (title, chart, one-line takeaway), clearly marked as AI-written and
-        editable.
-      </Placeholder>
-    ),
+    3: story,
     2: suggest,
     1: map,
     0: explore,
@@ -72,18 +66,6 @@ export function AssistLayer({ level, persona, explore, map, suggest }: AssistLay
           {content[l]}
         </section>
       ))}
-    </div>
-  );
-}
-
-function Placeholder({ persona, children }: { persona: Persona; children: ReactNode }) {
-  return (
-    <div className="placeholder">
-      <span className="label">Not built yet</span>
-      <p>{children}</p>
-      <p>
-        <span className="label">Tailored to</span> {describePersona(persona)}
-      </p>
     </div>
   );
 }

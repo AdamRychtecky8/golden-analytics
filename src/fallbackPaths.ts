@@ -11,6 +11,8 @@ import { MAX_FILTERS, filterRows, type Path, type PathDraft, type PathFilter, ty
  * Which kinds of path come first for each purpose. The AI gets the same guidance in
  * words (api/suggest.ts); this is the version code can follow exactly.
  */
+const READABLE_GROUPS = 12;
+
 export const KIND_ORDER: Record<Purpose, PathKind[]> = {
   'deciding where to invest': ['comparison', 'outlier', 'trend', 'driver', 'distribution'],
   'reporting results upward': ['trend', 'comparison', 'outlier', 'distribution', 'driver'],
@@ -43,7 +45,8 @@ function followUps(profile: DataProfile, rows: Row[], parent: Path): Map<PathKin
     .filter((c): c is ColumnProfile => c !== undefined);
   const measure = parentCols.find((c) => c.type === 'quantitative');
   const free = (c: ColumnProfile) => c.type === 'nominal' && c.count > 0 && !parent.filters.some((f) => f.field === c.name);
-  const split = parentCols.find(free) ?? profile.columns.find(free);
+  const others = profile.columns.filter(free);
+  const split = parentCols.find(free) ?? others.find((c) => c.distinct <= READABLE_GROUPS) ?? others[0];
   if (!split) return new Map(); // every category is already filtered: nothing left to narrow by
 
   const slice = filterRows(rows, parent.filters);
@@ -81,7 +84,11 @@ function candidatesInScope(
 ): Map<PathKind, PathDraft> {
   const usable = profile.columns.filter((c) => c.count > 0 && !filters.some((f) => f.field === c.name));
   const dates = usable.filter((c) => c.type === 'temporal');
-  const categories = usable.filter((c) => c.type === 'nominal');
+  // Categories with a readable number of groups come first (the AI gets the same advice):
+  // 56 titles make a crowded chart, 6 formats don't. Column order breaks ties.
+  const readable = (c: ColumnProfile) => c.distinct >= 2 && c.distinct <= READABLE_GROUPS;
+  const nominals = usable.filter((c) => c.type === 'nominal');
+  const categories = [...nominals.filter(readable), ...nominals.filter((c) => !readable(c))];
   const numbers = usable.filter((c) => c.type === 'quantitative');
   // Prefer the parent's number, then the first additive one (revenue over price, D-050).
   // With no additive number, totals come from counting records instead.

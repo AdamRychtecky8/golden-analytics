@@ -1,15 +1,17 @@
-import { useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import demoText from './data/bookshop-sales.csv?raw';
 import { AssistLayer } from './components/AssistLayer';
 import { ExploreLevel, MapLevel } from './components/Levels';
 import { Slider } from './components/Slider';
+import { StoryLevel } from './components/StoryLevel';
 import { SuggestLevel } from './components/SuggestLevel';
 import { StoryCard } from './components/StoryCard';
 import { TopBar } from './components/TopBar';
 import type { Aggregate } from './aggregate';
 import { parseCsv, type Dataset } from './loadCsv';
 import { profileDataset } from './profile';
-import { historyReducer, initialHistory } from './state';
+import { canFill, historyReducer, initialHistory } from './state';
+import { useStory } from './useStory';
 import { useSuggestions } from './useSuggestions';
 
 // The bundled demo data (fictional Bookshop sales, made by scripts/prepare-bookshop.py)
@@ -36,6 +38,31 @@ export default function App() {
   // The request starts as soon as the app opens, whatever the slider level.
   const parent = state.branch.at(-1) ?? null;
   const suggestions = useSuggestions(datasetId, profile, dataset.rows, state.persona, parent);
+
+  // Level 3 drafts from the path the user chose in Level 2 (put on the card with "Use
+  // this", or the one they went deeper on), else from the paths Level 2 is showing.
+  const active = (state.card.pathVia === 'suggest' ? state.card.path : null) ?? parent;
+  const story = useStory(
+    state.level === 3,
+    datasetId,
+    profile,
+    dataset.rows,
+    state.persona,
+    active,
+    suggestions.status === 'ready' ? suggestions.paths : null,
+    state.story.used,
+  );
+  const draft = story.state.status === 'ready' ? story.state.draft : null;
+
+  // On Level 3, a finished draft fills the card if the card is still untouched. This runs
+  // after render because the draft arrives asynchronously; `fillDraft` is refused by the
+  // reducer if the user has written anything (canFill), and it adds no history step.
+  useEffect(() => {
+    if (state.level !== 3 || !draft || !canFill(state.card)) return;
+    const card = state.card;
+    if (card.path?.id === draft.path.id && card.title === draft.title && card.takeaway === draft.takeaway) return;
+    dispatch({ type: 'fillDraft', draft: { path: draft.path, title: draft.title, takeaway: draft.takeaway, source: draft.source } });
+  }, [state.level, state.card, draft]);
 
   // Both non-AI levels get the same props, so they share one selection (D-008).
   const levelProps = {
@@ -95,9 +122,21 @@ export default function App() {
         <Slider level={state.level} onChange={(level) => dispatch({ type: 'setLevel', level })} />
         <AssistLayer
           level={state.level}
-          persona={state.persona}
           explore={<ExploreLevel {...levelProps} visible={state.level === 0} />}
           map={<MapLevel {...levelProps} visible={state.level === 1} />}
+          story={
+            <StoryLevel
+              visible={state.level === 3}
+              persona={state.persona}
+              canTryAnother={story.canTryAnother}
+              draftState={story.state}
+              card={state.card}
+              profile={profile}
+              rows={dataset.rows}
+              onUseDraft={(d) => dispatch({ type: 'useDraft', draft: d })}
+              onAnotherAngle={(pathId) => dispatch({ type: 'anotherAngle', pathId })}
+            />
+          }
           suggest={
             <SuggestLevel
               visible={state.level === 2}
