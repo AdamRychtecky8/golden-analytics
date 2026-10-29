@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Aggregate, Row } from '../aggregate';
-import { buildChart, chartIdeas, usesAggregate } from '../chartRules';
+import { buildChart, canSum, chartIdeas, effectiveAggregate, usesAggregate } from '../chartRules';
 import type { ColumnProfile, DataProfile } from '../profile';
 import { Chart } from './Chart';
 
@@ -104,7 +104,10 @@ export function MapLevel(props: LevelProps) {
 function FieldCard({ column: c, selected, onClick }: { column: ColumnProfile; selected: boolean; onClick: () => void }) {
   return (
     <button type="button" className="field-card" aria-pressed={selected} onClick={onClick}>
-      <span className="field-type">{TYPE_LABEL[c.type]}</span>
+      <span className="field-type">
+        {TYPE_LABEL[c.type]}
+        {c.measure === 'average' && ' · average only'}
+      </span>
       <span className="field-card-name">{c.name}</span>
       <span className="field-card-stat">{rangeText(c)}</span>
       <span className="field-card-stat">
@@ -157,11 +160,12 @@ function MiniDistribution({ column: c }: { column: ColumnProfile }) {
 /** The chart for the current selection, with the sum/mean toggle and "Use this". */
 function ChartPreview(props: LevelProps) {
   const { profile, rows, selected, aggregate } = props;
+  const cols = useMemo(() => selected.map((n) => profile.columns.find((c) => c.name === n)!), [profile, selected]);
   // Rebuild the chart only when its inputs change; a new spec object makes Vega redraw.
-  const chart = useMemo(() => {
-    const cols = selected.map((n) => profile.columns.find((c) => c.name === n)!);
-    return buildChart(cols, rows, { aggregate, highlight: null });
-  }, [profile, rows, selected, aggregate]);
+  const chart = useMemo(() => buildChart(cols, rows, { aggregate, highlight: null }), [cols, rows, aggregate]);
+  // What the chart really shows: a sum of an average-only number is drawn as a mean.
+  const shown = effectiveAggregate(cols, aggregate);
+  const summable = canSum(cols);
 
   if (selected.length === 0) {
     return (
@@ -190,7 +194,9 @@ function ChartPreview(props: LevelProps) {
                 key={a}
                 type="button"
                 className="btn"
-                aria-pressed={aggregate === a}
+                aria-pressed={shown === a}
+                disabled={a === 'sum' && !summable}
+                title={a === 'sum' && !summable ? 'This number is average only: adding it up means nothing' : undefined}
                 onClick={() => props.onAggregate(a)}
               >
                 {a}

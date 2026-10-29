@@ -119,6 +119,7 @@ function readRequest(body: unknown): SuggestRequest | null {
     const type = raw?.type;
     if (!name || (type !== 'nominal' && type !== 'quantitative' && type !== 'temporal')) return null;
     const col: ColumnSummary = { name, type, missing: num(raw.missing) ?? 0, distinct: num(raw.distinct) ?? 0 };
+    if (raw.measure === 'additive' || raw.measure === 'average') col.measure = raw.measure;
     const min = num(raw.min) ?? str(raw.min, 40);
     const max = num(raw.max) ?? str(raw.max, 40);
     if (min !== null) col.min = min;
@@ -183,7 +184,7 @@ Return exactly 3 paths, each a different kind:
 - question: plain language, under 12 words, phrased as a question the chart answers
 - kind: trend (change over time, needs a date), comparison (ranking groups), outlier (a group that stands out), distribution (spread of one number), driver (whether one number moves with another)
 - fields: 1 or 2 column names, copied exactly from the profile
-- aggregate: "sum" or "mean" (how numbers are combined per group or period)
+- aggregate: "sum" or "mean" (how numbers are combined per group or period). Number columns marked "measure": "average" (prices, rates, discounts) must use "mean": their total means nothing. Prefer "additive" measures (revenue, units) for rankings and trends. A chart of one nominal or one date column counts records, which is always available.
 - filter: null, or {"field", "value"} to look at one slice: field must be a nominal column that is not in fields, and value must be copied exactly from that column's top values
 
 The chart comes from the field types: date + number = line over time; nominal + number = sorted bars; number + number = scatter; one number = histogram; one nominal = counts; one date = counts over time; date + nominal = count lines per group; nominal + nominal = count grid. Pick fields whose chart answers the question.

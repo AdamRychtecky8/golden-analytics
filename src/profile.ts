@@ -35,6 +35,54 @@ export interface ColumnProfile {
   // Quantitative: histogram bins. Temporal: counts per period. Used by the mini distribution.
   bins?: Bin[];
   timeUnit?: TimeUnit;
+  // Quantitative: whether adding values up means something (see classifyMeasure).
+  measure?: MeasureKind;
+}
+
+/**
+ * Additive: values can be summed and the total means something (revenue, units sold).
+ * Average: only a mean makes sense. The total of every sale's price, a discount rate, or
+ * an age describes nothing real, so these are never summed anywhere in the app.
+ */
+export type MeasureKind = 'additive' | 'average';
+
+// Words in a column name that decide its kind, in order of precedence:
+// 1. AVERAGE_FIRST: the name already says it's an average or a ratio ("avg_revenue",
+//    "conversion_rate"), whatever else it contains.
+// 2. ADDITIVE: amounts and counts. These win over the next list, because "total_price"
+//    and "discount_amount" are sums of money even though they mention price/discount.
+// 3. AVERAGE: quantities that describe one record, not a pile of them.
+const AVERAGE_FIRST = ['avg', 'average', 'mean', 'median', 'rate', 'ratio', 'percent', 'percentage', 'pct', 'share'];
+const ADDITIVE = [
+  'revenue', 'sales', 'sale', 'amount', 'units', 'unit', 'quantity', 'qty', 'total', 'sum', 'count', 'cost', 'costs',
+  'spend', 'spending', 'profit', 'income', 'volume', 'orders', 'visits', 'visitors', 'clicks', 'items', 'hours',
+];
+const AVERAGE = [
+  'price', 'rating', 'ratings', 'discount', 'age', 'score', 'year', 'temperature', 'temp', 'latitude', 'lat',
+  'longitude', 'lon', 'lng', 'margin', 'index', 'rank', 'grade', 'size', 'weight', 'height', 'duration', 'pages',
+];
+
+/**
+ * Decides a number column's kind from its name. A name that matches no list is treated
+ * as average only: a mean is always a true statement about the data, while the sum of a
+ * column that shouldn't be summed is a confident-looking number that means nothing.
+ * Being cautious costs a missing sum; being wrong would show a false one.
+ */
+export function classifyMeasure(name: string): MeasureKind {
+  // "unitPrice", "unit_price", "Unit Price" → ["unit", "price"]
+  const words = name
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter(Boolean);
+  const has = (list: string[]) => words.some((w) => list.includes(w));
+  if (has(AVERAGE_FIRST) || name.includes('%')) return 'average';
+  if (has(ADDITIVE)) {
+    // "unit price" names one unit's price, not a count of units.
+    if (words.includes('unit') && has(AVERAGE)) return 'average';
+    return 'additive';
+  }
+  return 'average';
 }
 
 export interface DataProfile {
@@ -72,7 +120,7 @@ export function profileColumn(name: string, values: string[]): ColumnProfile {
   if (type === 'quantitative') {
     const nums = present.map((v) => parseNumber(v)!);
     const [min, max] = minMax(nums);
-    return { ...base, min, max, bins: binNumbers(nums) };
+    return { ...base, min, max, bins: binNumbers(nums), measure: classifyMeasure(name) };
   }
 
   if (type === 'temporal') {

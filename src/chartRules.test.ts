@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Row } from './aggregate';
-import { ACCENT, GREY, buildChart, chartIdeas, chartTitle, chooseRule, usesAggregate } from './chartRules';
+import { ACCENT, GREY, buildChart, canSum, chartIdeas, chartTitle, chooseRule, effectiveAggregate, usesAggregate } from './chartRules';
 import { profileDataset, type ColumnProfile } from './profile';
 
 const rows: Row[] = [
@@ -72,13 +72,14 @@ describe('sorted bars', () => {
   });
 
   it('combines categories past the limit into a last "Other" bar', () => {
-    const many: Row[] = Array.from({ length: 25 }, (_, i) => ({ name: `n${i}`, x: String(i) }));
-    const p = profileDataset(['name', 'x'], many);
+    // "amount" is additive (profile.ts), so the bars are sums and the totals can be checked.
+    const many: Row[] = Array.from({ length: 25 }, (_, i) => ({ name: `n${i}`, amount: String(i) }));
+    const p = profileDataset(['name', 'amount'], many);
     const values = (buildChart(p.columns, many, sum)!.spec as any).data.values;
     expect(values).toHaveLength(20);
     expect(values[19].category).toBe('Other (6 values)');
     const total = values.reduce((s: number, v: { value: number }) => s + v.value, 0);
-    expect(total).toBe(many.reduce((s, r) => s + Number(r.x), 0)); // nothing lost
+    expect(total).toBe(many.reduce((s, r) => s + Number(r.amount), 0)); // nothing lost
   });
 });
 
@@ -208,3 +209,36 @@ describe('dates on time charts', () => {
     expect(vg).not.toMatch(/timeFormat|timeMultiFormat/);
   });
 });
+
+describe('average-only measures are never summed', () => {
+  const books: Row[] = [
+    { format: 'Hardcover', price: '30', revenue: '30' },
+    { format: 'Hardcover', price: '20', revenue: '20' },
+    { format: 'Paperback', price: '10', revenue: '9' },
+  ];
+  const p = profileDataset(['format', 'price', 'revenue'], books);
+  const [format, price, revenue] = p.columns;
+
+  it('turns a requested sum of price into a mean, in the numbers and the title', () => {
+    const chart = buildChart([format, price], books, sum)!;
+    expect(chart.title).toBe('Mean of price by format');
+    expect((chart.spec as any).data.values.map((v: any) => [v.category, v.value])).toEqual([
+      ['Hardcover', 25],
+      ['Paperback', 10],
+    ]);
+  });
+
+  it('still sums an additive measure', () => {
+    expect(buildChart([format, revenue], books, sum)!.title).toBe('Sum of revenue by format');
+    expect(canSum([format, revenue])).toBe(true);
+    expect(canSum([format, price])).toBe(false);
+    expect(effectiveAggregate([format, price], 'sum')).toBe('mean');
+  });
+
+  it('never offers a sum of price in Level 1 chart ideas', () => {
+    const titles = chartIdeas([], p.columns, 'sum').map((i) => i.title).concat(chartIdeas([format], p.columns, 'sum').map((i) => i.title));
+    expect(titles.some((t) => /sum of price/i.test(t))).toBe(false);
+    expect(titles).toContain('Mean of price by format');
+  });
+});
+

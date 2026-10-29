@@ -1,5 +1,5 @@
 import { isMissing, type Aggregate, type Row } from './aggregate';
-import { buildChart, chooseRule, usesAggregate, type ChartResult } from './chartRules';
+import { buildChart, canSum, chooseRule, usesAggregate, type ChartResult } from './chartRules';
 import type { ColumnProfile, DataProfile, FieldType } from './profile';
 import type { Persona } from './personas';
 
@@ -45,6 +45,7 @@ export interface ColumnSummary {
   type: FieldType;
   missing: number;
   distinct: number;
+  measure?: 'additive' | 'average'; // numbers only: whether a sum means anything (D-050)
   min?: number | string; // numbers as numbers, dates as ISO strings
   max?: number | string;
   topValues?: { value: string; count: number }[];
@@ -65,7 +66,7 @@ export function summarizeProfile(profile: DataProfile): SuggestRequest['profile'
     columns: profile.columns.map((c) => {
       const base: ColumnSummary = { name: c.name, type: c.type, missing: c.missing, distinct: c.distinct };
       if (c.count === 0) return base;
-      if (c.type === 'quantitative') return { ...base, min: c.min, max: c.max };
+      if (c.type === 'quantitative') return { ...base, measure: c.measure, min: c.min, max: c.max };
       if (c.type === 'temporal') return { ...base, min: isoDate(c.min!), max: isoDate(c.max!) };
       return { ...base, topValues: c.topValues };
     }),
@@ -208,7 +209,13 @@ function checkOne(raw: unknown, { profile, rows, parent }: ValidationContext): P
   const cols = fields.map((n) => profile.columns.find((col) => col.name === n));
   const missingField = fields.find((_, i) => cols[i] === undefined);
   if (missingField !== undefined) return `${label}: no column named "${missingField}".`;
-  if (chooseRule(cols.map((col) => col!.type)) === null) return `${label}: no chart rule fits ${fields.join(' + ')}.`;
+  const rule = chooseRule(cols.map((col) => col!.type));
+  if (rule === null) return `${label}: no chart rule fits ${fields.join(' + ')}.`;
+  // Never sum an average-only number (D-050): the total of every price means nothing.
+  if (aggregate === 'sum' && usesAggregate(rule) && !canSum(cols as ColumnProfile[])) {
+    const avg = cols.find((col) => col!.measure === 'average')!.name;
+    return `${label}: sums ${avg}, which can only be averaged.`;
+  }
 
   let filter: PathFilter | null = null;
   if (c.filter !== undefined && c.filter !== null) {

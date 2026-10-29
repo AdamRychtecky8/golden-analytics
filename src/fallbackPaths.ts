@@ -1,4 +1,4 @@
-import { aggregateValues, isMissing, parseNumber, type Row } from './aggregate';
+import { aggregateValues, isMissing, parseNumber, type Aggregate, type Row } from './aggregate';
 import type { ColumnProfile, DataProfile } from './profile';
 import type { Persona, Purpose } from './personas';
 import { filterRows, type Path, type PathDraft, type PathFilter, type PathKind } from './paths';
@@ -79,24 +79,31 @@ function candidatesInScope(
   const dates = usable.filter((c) => c.type === 'temporal');
   const categories = usable.filter((c) => c.type === 'nominal');
   const numbers = usable.filter((c) => c.type === 'quantitative');
-  const measure = numbers.find((c) => c.name === measureHint) ?? numbers[0];
+  // Prefer the parent's number, then the first additive one (revenue over price, D-050).
+  // With no additive number, totals come from counting records instead.
+  const measure = numbers.find((c) => c.name === measureHint) ?? numbers.find((c) => c.measure === 'additive');
+  const additive = measure?.measure === 'additive';
+  const how: Aggregate = additive ? 'sum' : 'mean';
+  const of = measure ? (additive ? measure.name : `average ${measure.name}`) : '';
   const date = dates[0];
   const category = categories[0];
   const scope = filter ? ` for ${filter.value}` : '';
   const out = new Map<PathKind, PathDraft>();
-  const add = (kind: PathKind, question: string, fields: string[], aggregate: 'sum' | 'mean' = 'sum') =>
+  const add = (kind: PathKind, question: string, fields: string[], aggregate: Aggregate = how) =>
     out.set(kind, { kind, question, fields, aggregate, filter });
 
-  if (date && measure) add('trend', `How has ${measure.name} changed over time${scope}?`, [date.name, measure.name]);
+  if (date && measure) add('trend', `How has ${of} changed over time${scope}?`, [date.name, measure.name]);
   else if (date) add('trend', `How has the number of records changed${scope}?`, [date.name]);
 
-  if (category && measure) add('comparison', `Which ${category.name} has the most ${measure.name}${scope}?`, [category.name, measure.name]);
-  else if (category) add('comparison', `Which ${category.name} appears most often${scope}?`, [category.name]);
+  if (category && measure && additive) add('comparison', `Which ${category.name} has the most ${of}${scope}?`, [category.name, measure.name]);
+  else if (category && measure) add('comparison', `Which ${category.name} has the highest ${of}${scope}?`, [category.name, measure.name]);
+  else if (category) add('comparison', `Which ${category.name} has the most records${scope}?`, [category.name]);
 
-  if (measure) add('distribution', `How are ${measure.name} values spread${scope}?`, [measure.name]);
+  const spread = measure ?? numbers[0];
+  if (spread) add('distribution', `How are ${spread.name} values spread${scope}?`, [spread.name]);
 
-  const other = numbers.find((c) => c !== measure);
-  if (measure && other) add('driver', `Does ${other.name} rise with ${measure.name}${scope}?`, [measure.name, other.name]);
+  const other = numbers.find((c) => c !== spread);
+  if (spread && other) add('driver', `Does ${other.name} rise with ${spread.name}${scope}?`, [spread.name, other.name]);
 
   const standout = findStandout(filterRows(rows, filter), categories, numbers);
   if (standout) {

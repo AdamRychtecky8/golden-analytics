@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { binNumbers, parseDate, parseNumber, pickTimeUnit } from './aggregate';
 import { parseCsv } from './loadCsv';
-import { detectType, profileColumn, profileDataset } from './profile';
+import { classifyMeasure, detectType, profileColumn, profileDataset } from './profile';
 
 describe('parseNumber', () => {
   it('accepts plain decimals', () => {
@@ -186,5 +186,41 @@ describe('the Bookshop demo data (made by scripts/prepare-bookshop.py)', () => {
     expect(off).toEqual([]);
     expect(col('discount').min).toBe(0);
     expect(col('discount').max).toBeLessThan(1);
+  });
+});
+
+describe('classifyMeasure', () => {
+  it.each([
+    ['revenue', 'additive'],
+    ['units', 'additive'],
+    ['Quantity', 'additive'],
+    ['total_price', 'additive'], // a total of money, even though it says price
+    ['discountAmount', 'additive'],
+    ['price', 'average'],
+    ['unit_price', 'average'], // one unit's price, not a count of units
+    ['discount', 'average'],
+    ['rating', 'average'],
+    ['conversion rate', 'average'],
+    ['avg_revenue', 'average'], // already an average
+    ['margin %', 'average'],
+    ['age', 'average'],
+    ['year', 'average'],
+    ['x', 'average'], // unknown names are average only: a mean is never false
+  ])('%s → %s', (name, kind) => {
+    expect(classifyMeasure(name)).toBe(kind);
+  });
+
+  it('is set on number columns only', () => {
+    const p = profileDataset(['price', 'genre'], [{ price: '5', genre: 'Fiction' }]);
+    expect(p.columns.map((c) => c.measure)).toEqual(['average', undefined]);
+  });
+
+  it('classifies the Bookshop measures', () => {
+    const text = readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8').split('\n').slice(0, 50).join('\n');
+    const r = parseCsv(text, 'b');
+    if (!r.ok) throw new Error();
+    const p = profileDataset(r.dataset.columns, r.dataset.rows);
+    const kinds = Object.fromEntries(p.columns.filter((c) => c.measure).map((c) => [c.name, c.measure]));
+    expect(kinds).toEqual({ price: 'average', discount: 'average', revenue: 'additive' });
   });
 });

@@ -90,6 +90,22 @@ export function usesAggregate(rule: RuleId): boolean {
   return rule === 'line' || rule === 'sorted-bars';
 }
 
+/**
+ * Whether these fields' chart may show a sum. Only charts that aggregate a number can,
+ * and only if that number is additive (profile.ts): summing prices or discount rates
+ * gives a total that describes nothing, so those charts always use the mean.
+ */
+export function canSum(fields: ColumnProfile[]): boolean {
+  const rule = chooseRule(fields.map((f) => f.type));
+  if (!rule || !usesAggregate(rule)) return false;
+  return fields.every((f) => f.type !== 'quantitative' || f.measure === 'additive');
+}
+
+/** The aggregate a chart really uses: a requested sum becomes a mean for average-only numbers. */
+export function effectiveAggregate(fields: ColumnProfile[], requested: Aggregate): Aggregate {
+  return requested === 'sum' && !canSum(fields) ? 'mean' : requested;
+}
+
 export interface ChartResult {
   rule: RuleId;
   title: string;
@@ -117,9 +133,10 @@ export function aggregateLabel(how: Aggregate, field: string): string {
 }
 
 /** A short plain title for a chart, used for previews and chart ideas. */
-export function chartTitle(fields: ColumnProfile[], how: Aggregate): string | null {
+export function chartTitle(fields: ColumnProfile[], requested: Aggregate): string | null {
   const rule = chooseRule(fields.map((f) => f.type));
   if (!rule) return null;
+  const how = effectiveAggregate(fields, requested);
   const [a, b] = orderFields(rule, fields);
   const unit = (f: ColumnProfile) => (f.timeUnit ? `by ${f.timeUnit}` : 'over time');
   switch (rule) {
@@ -171,6 +188,8 @@ export function buildChart(fields: ColumnProfile[], rows: Row[], options: ChartO
   const rule = chooseRule(fields.map((f) => f.type));
   if (!rule || fields.length === 0) return null;
   const ordered = orderFields(rule, fields);
+  // Never sum an average-only number, whatever was asked for (D-050).
+  options = { ...options, aggregate: effectiveAggregate(fields, options.aggregate) };
   const title = chartTitle(fields, options.aggregate)!;
 
   // Rows missing any selected field can't be placed on the chart. Count them out loud.

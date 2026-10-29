@@ -5,7 +5,7 @@ import { KIND_ORDER, findStandout, ruleCandidates, topValue } from './fallbackPa
 import { parseCsv } from './loadCsv';
 import { PRESETS, customPersona } from './personas';
 import { profileDataset } from './profile';
-import { finishPaths, validatePaths, type Path } from './paths';
+import { chartForView, finishPaths, validatePaths, type Path } from './paths';
 
 const text = readFileSync(new URL('./data/sample-sales-synthetic.csv', import.meta.url), 'utf8');
 const loaded = parseCsv(text, 'sample', true);
@@ -113,5 +113,29 @@ describe('topValue', () => {
     ];
     expect(topValue(data, 'g', 'v')).toBe('A');
     expect(topValue(data, 'g', undefined)).toBe('C'); // most rows
+  });
+});
+
+describe('fallback on the Bookshop data', () => {
+  const text = readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8');
+  const r = parseCsv(text, 'bookshop', true);
+  if (!r.ok) throw new Error('bookshop failed to parse');
+  const books = r.dataset.rows;
+  const bp = profileDataset(r.dataset.columns, books);
+  // What the user would see: the chart's own title names the aggregate it really used.
+  const sumsAnAverage = (p: Path) => /sum of (price|discount)/i.test(chartForView(p, bp, books, { highlight: null })!.title);
+
+  it.each(PRESETS.map((p) => [p.name, p] as const))('never sums price or discount for %s, two levels deep', (_, persona) => {
+    const top = validatePaths(ruleCandidates(bp, books, persona, null), { profile: bp, rows: books, parent: null }).paths;
+    const tops = finishPaths(top, top.map(() => 'rules'), null);
+    const kids = validatePaths(ruleCandidates(bp, books, persona, tops[0]), { profile: bp, rows: books, parent: tops[0] }).paths;
+    for (const p of [...tops, ...(kids as Path[])]) expect(sumsAnAverage(p)).toBe(false);
+    expect(tops.map((p) => p.question).join(' ')).not.toMatch(/most price/);
+  });
+
+  it('uses revenue, the additive measure, for the store owner’s comparison', () => {
+    const [first] = validatePaths(ruleCandidates(bp, books, PRESETS[0], null), { profile: bp, rows: books, parent: null }).paths;
+    expect(first).toMatchObject({ kind: 'comparison', aggregate: 'sum' });
+    expect(first.fields).toContain('revenue');
   });
 });

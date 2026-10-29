@@ -199,8 +199,8 @@ describe('what the AI is sent', () => {
       ['distinct', 'max', 'min', 'missing', 'name', 'type'],
       ['distinct', 'missing', 'name', 'topValues', 'type'],
       ['distinct', 'missing', 'name', 'topValues', 'type'],
-      ['distinct', 'max', 'min', 'missing', 'name', 'type'],
-      ['distinct', 'max', 'min', 'missing', 'name', 'type'],
+      ['distinct', 'max', 'measure', 'min', 'missing', 'name', 'type'],
+      ['distinct', 'max', 'measure', 'min', 'missing', 'name', 'type'],
     ]);
     // Dates go as readable ISO days. A revenue of 100 is neither the min nor the max, so it
     // can only appear if a row leaked into the request.
@@ -217,5 +217,30 @@ describe('what the AI is sent', () => {
       'kind',
       'question',
     ]);
+  });
+});
+
+describe('validatePaths: average-only measures', () => {
+  const books: Row[] = [
+    { format: 'Hardcover', price: '30', revenue: '30' },
+    { format: 'Paperback', price: '10', revenue: '9' },
+  ];
+  const p = profileDataset(['format', 'price', 'revenue'], books);
+  const c = { profile: p, rows: books, parent: null };
+  const path = (fields: string[], aggregate: string) => ({ question: 'Which format leads?', kind: 'comparison', fields, aggregate, filter: null });
+
+  it('rejects a path that sums price', () => {
+    const { paths, rejected } = validatePaths([path(['format', 'price'], 'sum')], c);
+    expect(paths).toEqual([]);
+    expect(rejected[0]).toMatch(/sums price, which can only be averaged/);
+  });
+
+  it('accepts the mean of price and the sum of revenue', () => {
+    expect(validatePaths([path(['format', 'price'], 'mean')], c).paths).toHaveLength(1);
+    expect(validatePaths([path(['format', 'revenue'], 'sum')], c).paths).toHaveLength(1);
+  });
+
+  it('does not mind "sum" on a chart that does not aggregate (a histogram of price)', () => {
+    expect(validatePaths([{ ...path(['price'], 'sum'), kind: 'distribution' }], c).paths).toHaveLength(1);
   });
 });
