@@ -2,7 +2,7 @@ import { isMissing, parseNumber, type Row } from './aggregate';
 import { groupView, periodLabel, type Group, type Grouping } from './groups';
 import type { ChartView } from './paths';
 import type { DataProfile } from './profile';
-import { roleOf, UNKNOWN_ROLES, type Roles } from './roles';
+import { roleOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
 
 // "Is this really an insight?" checks. Code runs them on every chart and returns any that
 // apply as findings, labeled as a check (never as AI). They catch the common ways a ranking
@@ -336,6 +336,8 @@ const skipAll = (reason: string): CheckRun => ({ findings: [], skipped: CHECKS.m
 export function runChecks(view: ChartView, profile: DataProfile, rows: Row[], roles: Roles = UNKNOWN_ROLES): CheckRun {
   const idField = view.fields.find((f) => roleOf(roles, f) === 'id');
   if (idField) return skipAll(`"${idField}" has the id role: ids are counted, never checked`);
+  // With roles, a number's role (not its name) decides whether it may be summed.
+  profile = withRoleMeasures(profile, roles);
   const g = groupView(view, profile, rows);
   if (!g) return skipAll('this chart has no single list of groups (scatter, histogram, or heatmap)');
   if (g.groups.length === 0) return skipAll('the chart has no groups');

@@ -149,12 +149,16 @@ describe('severity and skips on the Bookshop data', () => {
     expect(r.skipped.map((s) => s.reason)).toEqual(r.skipped.map(() => '"book id" has the id role: ids are counted, never checked'));
   });
 
-  it('uses the money role, not the name, when roles are known', () => {
-    // "price" sounds like money by name, but its role is price; summed, it is still not money.
+  it('uses the roles, not the names, when roles are known', () => {
+    // Swap them: "revenue" gets the price role and "price" gets the money role.
     const cols = Object.fromEntries(loaded.dataset.columns.map((c) => [c, { role: 'category' }]));
-    const pr = parseRoles({ columns: { ...cols, revenue: { role: 'price' } } }, loaded.dataset.columns);
+    const pr = parseRoles({ columns: { ...cols, revenue: { role: 'price' }, price: { role: 'money' } } }, loaded.dataset.columns);
     if (!pr.ok) throw new Error();
-    expect(runChecks(view(['format', 'revenue']), bp, books, pr.roles).skipped).toContainEqual({ id: 'mix', reason: '"revenue" doesn\'t have the money role' });
+    // Revenue is now average-only: asked for a sum, the chart is a mean, so mix skips.
+    expect(runChecks(view(['format', 'revenue']), bp, books, pr.roles).skipped).toContainEqual({ id: 'mix', reason: 'the chart is a mean, not a sum' });
+    // Price is now money: it is summed, and mix runs on it.
+    const priced = runChecks(view(['format', 'price']), bp, books, pr.roles);
+    expect(priced.skipped.map((s) => s.id)).not.toContain('mix');
   });
 });
 

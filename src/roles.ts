@@ -1,4 +1,5 @@
 import bookshopRolesJson from './data/bookshop-sales.roles.json';
+import type { DataProfile } from './profile';
 
 // The dataset contract: what each column is, declared by whoever prepared the data (for
 // Bookshop, the prep script; in production, an upstream classifier), so app code is keyed
@@ -98,6 +99,22 @@ export function facetOf(roles: Roles, column: string): Facet | null {
 /** What one row is called: the contract's noun, or record/records without one. */
 export function rowNounOf(roles: Roles): RowNoun {
   return roles.known ? roles.rowNoun : DEFAULT_ROW_NOUN;
+}
+
+/**
+ * The profile with each number column's measure kind decided by its role when roles are
+ * known: "money" can be summed; every other role (price, rate, id, …) is average-only, since
+ * a mean is always a true statement and a wrong sum is not. Without roles, the name-based
+ * guess in profile.ts stands.
+ */
+export function withRoleMeasures(profile: DataProfile, roles: Roles): DataProfile {
+  if (!roles.known) return profile;
+  return {
+    ...profile,
+    columns: profile.columns.map((c) =>
+      c.type === 'quantitative' && c.name in roles.byColumn ? { ...c, measure: roles.byColumn[c.name] === 'money' ? 'additive' : 'average' } : c,
+    ),
+  };
 }
 
 /**

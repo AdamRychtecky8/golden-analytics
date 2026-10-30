@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './loadCsv';
-import { bookshopRoles, facetOf, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES } from './roles';
+import { profileDataset } from './profile';
+import { bookshopRoles, facetOf, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
 
 describe('parseRoles', () => {
   const columns = ['date', 'store', 'revenue'];
@@ -63,6 +64,24 @@ describe('parseRoles', () => {
     expect(parseRoles(['date'], columns).ok).toBe(false);
     expect(parseRoles(null, columns).ok).toBe(false);
     expect(parseRoles({ date: 'date' }, columns).ok).toBe(false); // the old flat shape
+  });
+});
+
+describe('withRoleMeasures', () => {
+  // "amount" sounds additive and "x" sounds like nothing; the roles say otherwise.
+  const rows = [{ store: 'A', amount: '5', x: '7' }];
+  const profile = profileDataset(['store', 'amount', 'x'], rows);
+  const measures = (p: typeof profile) => p.columns.map((c) => c.measure);
+
+  it('lets roles decide what can be summed when they are known', () => {
+    const r = parseRoles({ columns: { store: { role: 'category' }, amount: { role: 'price' }, x: { role: 'money' } } }, ['store', 'amount', 'x']);
+    if (!r.ok) throw new Error();
+    expect(measures(profile)).toEqual([undefined, 'additive', 'average']); // by name
+    expect(measures(withRoleMeasures(profile, r.roles))).toEqual([undefined, 'average', 'additive']); // by role
+  });
+
+  it('keeps the name-based guess without roles', () => {
+    expect(withRoleMeasures(profile, UNKNOWN_ROLES)).toBe(profile);
   });
 });
 
