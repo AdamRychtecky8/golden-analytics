@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { POST as highlightHandler } from './api/highlight.ts';
 import { POST as storyHandler } from './api/story.ts';
 import { POST as suggestHandler } from './api/suggest.ts';
 
@@ -8,6 +9,7 @@ import { POST as suggestHandler } from './api/suggest.ts';
 const ROUTES: Record<string, (request: Request) => Promise<Response>> = {
   '/api/suggest': suggestHandler,
   '/api/story': storyHandler,
+  '/api/highlight': highlightHandler,
 };
 
 /**
