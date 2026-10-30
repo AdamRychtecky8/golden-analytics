@@ -7,6 +7,7 @@ so cleaning and joining happen here, once, in a script anyone can rerun and read
 Run:    npm run prep:bookshop      (or: python scripts/prepare-bookshop.py)
 Input:  data/raw/Bookshop.xlsx     (fictional bookshop data; sales are dated in 2193)
 Output: src/data/bookshop-sales.csv, one row per item sold
+        src/data/bookshop-sales.roles.json, the role of each CSV column (see step 6)
 
 Steps:
  1. Read the workbook with Python's standard library only (an .xlsx file is a zip of XML
@@ -16,27 +17,40 @@ Steps:
       Edition   by ISBN       -> BookID, Format, PubID, Price
       Book      by BookID     -> Title, AuthID
       Info      by BookID1 + BookID2 (the ID is split across two columns, e.g. "MM" + "424"
-                = "MM424")    -> Genre
-      Author    by AuthID     -> Country of Residence
+                = "MM424")    -> Genre, SeriesID (empty for books not in a series)
+      Author    by AuthID     -> First Name, Last Name, Country of Residence
       Publisher by PubID      -> Publishing House
+      Series    by SeriesID   -> Series Name
+    Award is read as a set of titles, not a lookup: one book can win more than one award
+    (The Mallemaroking appears twice), so a repeated title is expected there. Every Award
+    title must match a Book title, or the script stops.
  3. Read Sales Q1-Q4. Each row is one item sold. ItemIDs are reported if they repeat but
     the rows are kept: in this file two ItemIDs each appear on two different orders
     (different OrderIDs), which looks like an ID collision rather than a copied row, and the
     expected 56,350 counts both.
     For each row, join Sale -> Edition (ISBN) -> Book (BookID) -> Info (BookID) ->
-    Author (AuthID) and Publisher (PubID). Any key that doesn't match stops the script,
-    listing the first failures: nothing is dropped silently.
+    Author (AuthID) and Publisher (PubID), and Info -> Series (SeriesID) when Info has one.
+    Any key that doesn't match stops the script, listing the first failures: nothing is
+    dropped silently.
  4. Convert values:
       sale date: an Excel day number (1900 date system) -> ISO date, e.g. 2193-01-02
       discount:  empty -> 0; must be between 0 and 1
       price:     must be a positive number
       revenue:   price x (1 - discount), rounded to the cent
+      author:    First Name + " " + Last Name; both must be present
+      award winner: "yes" if the title is in the Award sheet, else "no"
+      series:    Series Name, or empty if the book is not in a series
+      book id:   the BookID from Edition, e.g. MM424
  5. Write the CSV (columns: sale date, title, genre, format, publisher, author country,
-    price, discount, revenue), print row counts per quarter and in total, and check the
-    total against the expected 56,350.
+    price, discount, revenue, author, award winner, series, book id), print row counts per
+    quarter and in total, and check the total against the expected 56,350. Empty series
+    values are reported on their own line, since they mean "not in a series".
+ 6. Write the roles file: one role per CSV column (money, price, rate, date, category,
+    entity, flag, id). The script stops if its keys aren't exactly the CSV's columns.
 """
 
 import csv
+import json
 import re
 import sys
 import zipfile
@@ -47,9 +61,37 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "data" / "raw" / "Bookshop.xlsx"
 OUTPUT = ROOT / "src" / "data" / "bookshop-sales.csv"
+ROLES_OUTPUT = ROOT / "src" / "data" / "bookshop-sales.roles.json"
 EXPECTED_ROWS = 56_350
 SALES_SHEETS = ["Sales Q1", "Sales Q2", "Sales Q3", "Sales Q4"]
-COLUMNS = ["sale date", "title", "genre", "format", "publisher", "author country", "price", "discount", "revenue"]
+COLUMNS = [
+    "sale date", "title", "genre", "format", "publisher", "author country", "price", "discount", "revenue",
+    "author", "award winner", "series", "book id",
+]
+# What each column is, for the app: money is summed, price and rate are averaged, id is
+# counted but never charted or checked for concentration.
+ROLES = {
+    "sale date": "date",
+    "title": "entity",
+    "genre": "category",
+    "format": "category",
+    "publisher": "category",
+    "author country": "category",
+    "price": "price",
+    "discount": "rate",
+    "revenue": "money",
+    "author": "entity",
+    "award winner": "flag",
+    "series": "category",
+    "book id": "id",
+}
+
+# Not included: Publisher."Marketing Spend" and the Ratings sheet.
+#   Marketing Spend is one value per publisher (4 values, 48,000 to 2,320,000), with no
+#   period or currency in the sheet.
+#   Ratings has one row per review (50,330 rows, several per book), not per sale.
+#   Neither has one value per sale row.
+#   Why: TODO(adam)
 
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL_ID = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
@@ -180,6 +222,15 @@ def main() -> None:
     infos = index(book.table("Info"), info_id, "Info")
     authors = index(book.table("Author"), "AuthID", "Author")
     publishers = index(book.table("Publisher"), "PubID", "Publisher")
+    series_names = index(book.table("Series"), "SeriesID", "Series")
+
+    book_titles = {row["Title"] for row in books.values() if "Title" in row}
+    award_titles: set[str] = set()
+    for n, row in enumerate(book.table("Award"), start=2):
+        title = row.get("Title")
+        if title not in book_titles:
+            fail(f"Award row {n}: title {title!r} doesn't match any Book title.")
+        award_titles.add(title)
 
     out_rows: list[list[str]] = []
     unmatched: list[str] = []
@@ -213,8 +264,11 @@ def main() -> None:
             info = lookup(infos, edition.get("BookID"), "Info", where)
             publisher = lookup(publishers, edition.get("PubID"), "Publisher", where)
             author = lookup(authors, title_row.get("AuthID"), "Author", where) if title_row else None
-            if None in (title_row, info, publisher, author):
+            series = lookup(series_names, info.get("SeriesID"), "Series", where) if info and "SeriesID" in info else {}
+            if None in (title_row, info, publisher, author, series):
                 continue
+            if not author.get("First Name") or not author.get("Last Name"):
+                fail(f"Author {author['AuthID']} is missing a first or last name.")
 
             price = to_number(edition.get("Price"), "price", f"Edition {edition['ISBN']}")
             if price <= 0:
@@ -234,6 +288,10 @@ def main() -> None:
                 plain(price, 2),
                 plain(discount, 4),
                 plain(revenue, 2),
+                f"{author['First Name']} {author['Last Name']}",
+                "yes" if title_row.get("Title") in award_titles else "no",
+                series.get("Series Name", ""),
+                edition["BookID"],
             ]
             for col, value in zip(COLUMNS, values):
                 if value == "":
@@ -250,6 +308,10 @@ def main() -> None:
         writer.writerow(COLUMNS)
         writer.writerows(out_rows)
 
+    if list(ROLES) != COLUMNS:
+        fail(f"The roles must name exactly the CSV's columns, in order. Roles: {list(ROLES)}")
+    ROLES_OUTPUT.write_text(json.dumps(ROLES, indent=2) + "\n", encoding="utf-8")
+
     print("\nSales rows per sheet:")
     for sheet, count in per_sheet.items():
         print(f"  {sheet}: {count:,}")
@@ -258,6 +320,9 @@ def main() -> None:
         print(f"ItemIDs seen before (rows kept): {len(repeated_items)}")
         for r in repeated_items:
             print(f"  {r}")
+    print(f"Roles written to {ROLES_OUTPUT.relative_to(ROOT)}")
+    not_in_series = missing.pop("series")
+    print(f"Empty series (books not in a series): {not_in_series:,} rows")
     gaps = {c: n for c, n in missing.items() if n}
     print(f"Empty values (kept as missing, not filled in): {gaps or 'none'}")
     if len(out_rows) != EXPECTED_ROWS:

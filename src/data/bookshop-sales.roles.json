@@ -1,0 +1,15 @@
+{
+  "sale date": "date",
+  "title": "entity",
+  "genre": "category",
+  "format": "category",
+  "publisher": "category",
+  "author country": "category",
+  "price": "price",
+  "discount": "rate",
+  "revenue": "money",
+  "author": "entity",
+  "award winner": "flag",
+  "series": "category",
+  "book id": "id"
+}

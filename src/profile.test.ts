@@ -154,7 +154,7 @@ describe('the Bookshop demo data (made by scripts/prepare-bookshop.py)', () => {
   const profile = profileDataset(columns, rows);
   const col = (name: string) => profile.columns.find((c) => c.name === name)!;
 
-  it('has one row per item sold, typed as expected, with nothing missing', () => {
+  it('has one row per item sold, typed as expected, with nothing missing except series', () => {
     expect(profile.rowCount).toBe(56_350);
     expect(profile.columns.map((c) => [c.name, c.type])).toEqual([
       ['sale date', 'temporal'],
@@ -166,8 +166,30 @@ describe('the Bookshop demo data (made by scripts/prepare-bookshop.py)', () => {
       ['price', 'quantitative'],
       ['discount', 'quantitative'],
       ['revenue', 'quantitative'],
+      ['author', 'nominal'],
+      ['award winner', 'nominal'],
+      ['series', 'nominal'],
+      ['book id', 'nominal'],
     ]);
-    expect(profile.columns.every((c) => c.missing === 0)).toBe(true);
+    // An empty series means the book isn't in a series, not a gap in the data.
+    expect(profile.columns.filter((c) => c.missing > 0).map((c) => c.name)).toEqual(['series']);
+  });
+
+  it('names an author on every row', () => {
+    expect(rows.filter((row) => !row.author?.trim())).toEqual([]);
+  });
+
+  it('marks award winners as a yes/no category', () => {
+    expect(col('award winner').type).toBe('nominal');
+    expect(col('award winner').distinct).toBe(2);
+    expect(col('award winner').topValues!.map((v) => v.value).sort()).toEqual(['no', 'yes']);
+  });
+
+  it('has a roles file that covers exactly the CSV columns', () => {
+    const roles = JSON.parse(readFileSync(new URL('./data/bookshop-sales.roles.json', import.meta.url), 'utf8'));
+    expect(Object.keys(roles)).toEqual(columns);
+    expect(roles['discount']).toBe('rate');
+    expect(roles['book id']).toBe('id');
   });
 
   it('parses its year-2193 dates in UTC and buckets them by month', () => {
