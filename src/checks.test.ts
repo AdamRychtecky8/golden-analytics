@@ -156,3 +156,40 @@ describe('severity and skips on the Bookshop data', () => {
     expect(runChecks(view(['format', 'revenue']), bp, books, pr.roles).skipped).toContainEqual({ id: 'mix', reason: '"revenue" doesn\'t have the money role' });
   });
 });
+
+describe('driven by one entity, on the Bookshop data', () => {
+  const roles = bookshopRoles(loaded.dataset.columns);
+  const entityOf = (v: ReturnType<typeof view>) => runChecks(v, bp, books, roles).findings.find((f) => f.id === 'entity');
+
+  it('revenue by genre: misleading, Bianca Thompson, and SciFi/Fantasy falls to 4th without her', () => {
+    const f = entityOf(view(['genre', 'revenue']))!;
+    expect(f.severity).toBe('misleading');
+    expect(f.text).toBe('Bianca Thompson accounts for 79% of revenue in SciFi/Fantasy. Without that author, SciFi/Fantasy ranks 4th.');
+    expect(f.evidence).toMatchObject({ column: 'author', entity: 'Bianca Thompson', group: 'SciFi/Fantasy', rankWithout: 4 });
+  });
+
+  it('revenue by award winner: misleading, "yes" ranks 2nd without Bianca Thompson', () => {
+    const f = entityOf(view(['award winner', 'revenue']))!;
+    expect(f.severity).toBe('misleading');
+    expect(f.evidence).toMatchObject({ entity: 'Bianca Thompson', group: 'yes', rankWithout: 2 });
+  });
+
+  it('revenue by author country: a caveat (64%), since the United States stays first', () => {
+    const f = entityOf(view(['author country', 'revenue']))!;
+    expect(f.severity).toBe('caveat');
+    expect(f.text).toBe('Bianca Thompson accounts for 64% of revenue in United States.');
+  });
+
+  it('stays quiet below half when the group keeps first place (count by format: 30%)', () => {
+    expect(entityOf(view(['format']))).toBeUndefined();
+  });
+
+  it('skips a chart whose field determines the entity (each title has one author)', () => {
+    const r = runChecks(view(['title', 'revenue']), bp, books, roles);
+    expect(r.skipped).toContainEqual({ id: 'entity', reason: '"title" determines "author" (one per group), so one entity always holds its whole group' });
+  });
+
+  it('skips means', () => {
+    expect(runChecks(view(['genre', 'price'], [], 'mean'), bp, books, roles).skipped.map((s) => s.id)).toContain('entity');
+  });
+});

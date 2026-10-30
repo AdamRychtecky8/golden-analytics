@@ -1,4 +1,4 @@
-import type { Row } from './aggregate';
+import { isMissing, parseNumber, type Row } from './aggregate';
 import { groupView, periodLabel, type Group, type Grouping } from './groups';
 import type { ChartView } from './paths';
 import type { DataProfile } from './profile';
@@ -7,7 +7,8 @@ import { roleOf, UNKNOWN_ROLES, type Roles } from './roles';
 // "Is this really an insight?" checks. Code runs them on every chart and returns any that
 // apply as findings, labeled as a check (never as AI). They catch the common ways a ranking
 // misleads: a few expensive items outranking many cheap ones, a group too small to trust,
-// and one group dwarfing the rest. Level 3 reads them as facts.
+// one group dwarfing the rest, and a group whose lead is really one author or title.
+// Level 3 reads them as facts.
 //
 // Each check is registered with its preconditions and a run function. A check whose
 // preconditions aren't met is skipped with a reason; the reasons are for tests and logs,
@@ -27,11 +28,17 @@ export const SMALL_GROUP = 30;
 // that group, and "the rest" may deserve its own look.
 export const CONCENTRATION = 0.4;
 
+// Driven by one entity: when a single entity (an author, a title) holds half or more of the
+// top group, the group's figure is mostly that one entity's. Half is the line where "mostly"
+// is literally true, so the caveat needs no further justification to a reader. (Below it,
+// on Bookshop: count by format, where one author is 30% of the top group.)
+export const ENTITY_SHARE = 0.5;
+
 // Words that mark a number as money, so a ranking by it can be compared to a ranking by
 // count. Only used when the data has no roles file; with roles, the "money" role decides.
 const MONEY_WORDS = ['revenue', 'sales', 'amount', 'cost', 'costs', 'spend', 'spending', 'profit', 'income', 'price', 'value'];
 
-export type CheckId = 'mix' | 'small' | 'concentration';
+export type CheckId = 'mix' | 'small' | 'concentration' | 'entity';
 
 // Misleading: the naive reading of the chart is wrong. Caveat: true, but worth saying.
 export type Severity = 'misleading' | 'caveat';
@@ -53,7 +60,19 @@ export interface LabeledCount {
 export type Evidence =
   | { check: 'mix'; measure: string; groups: RankedGroup[] } // #1 change: the #1 by value, then the #1 by count
   | { check: 'small'; threshold: number; small: LabeledCount[]; smallest: LabeledCount; top: LabeledCount; topIsSmall: boolean }
-  | { check: 'concentration'; measure: string | null; group: string; value: number; total: number; share: number; threshold: number };
+  | { check: 'concentration'; measure: string | null; group: string; value: number; total: number; share: number; threshold: number }
+  | {
+      check: 'entity';
+      measure: string | null; // null: the chart counts records
+      group: string; // the chart's top group
+      groupValue: number;
+      column: string; // the entity column, e.g. "author"
+      entity: string; // e.g. "Bianca Thompson"
+      entityValue: number; // the entity's part of the group's value
+      share: number; // entityValue / groupValue
+      rankWithout: number; // the group's rank once the entity's rows are removed everywhere
+      threshold: number;
+    };
 
 export interface Finding {
   id: CheckId;
@@ -206,8 +225,107 @@ const concentration: CheckDef = {
   },
 };
 
+/** Entity columns the check can use for this chart, and those it must leave out. */
+function entityColumns({ g, roles }: CheckContext): { usable: string[]; determined: string[] } {
+  if (!roles.known) return { usable: [], determined: [] };
+  const candidates = Object.keys(roles.byColumn).filter((c) => roles.byColumn[c] === 'entity' && c !== g.field.name);
+  const usable: string[] = [];
+  const determined: string[] = [];
+  for (const column of candidates) {
+    // If every group has only one value of this column (a title has one author), the chart
+    // field already determines it: the entity always holds its whole group, so "driven by
+    // one entity" would be true of every chart and say nothing.
+    const seen = new Map<string, string>();
+    let varies = false;
+    for (const r of g.rows) {
+      if (isMissing(r[column])) continue;
+      const group = r[g.field.name].trim();
+      const e = r[column].trim();
+      if (!seen.has(group)) seen.set(group, e);
+      else if (seen.get(group) !== e) {
+        varies = true;
+        break;
+      }
+    }
+    (varies ? usable : determined).push(column);
+  }
+  return { usable, determined };
+}
+
+const entity: CheckDef = {
+  id: 'entity',
+  // Only for categories summed or counted: a share of a mean means nothing.
+  preconditions: (ctx) => {
+    const { g, roles } = ctx;
+    if (!roles.known) return 'roles are unknown (no roles file), so no column is known to be an entity';
+    if (g.by !== 'category') return 'groups are periods, not categories';
+    if (g.total === null) return 'the chart is a mean, which has no total to take a share of';
+    if ((g.groups[0].value ?? 0) <= 0) return "the top group's value is zero or less";
+    const { usable, determined } = entityColumns(ctx);
+    if (usable.length > 0) return null;
+    if (determined.length === 0) return `no column besides "${g.field.name}" has the entity role`;
+    return `"${g.field.name}" determines ${determined.map((c) => `"${c}"`).join(', ')} (one per group), so one entity always holds its whole group`;
+  },
+  run: (ctx) => {
+    const { g } = ctx;
+    const top = g.groups[0];
+    const field = g.field.name;
+    const valueOf = (r: Row) => (g.measure ? parseNumber(r[g.measure.name])! : 1);
+
+    // The single entity, across every usable entity column, with the largest part of the
+    // top group's value. Ties go to the earlier column, then the name first alphabetically.
+    let best: { column: string; entity: string; value: number } | null = null;
+    for (const column of entityColumns(ctx).usable) {
+      const parts = new Map<string, number>();
+      for (const r of g.rows) {
+        if (r[field].trim() !== top.label || isMissing(r[column])) continue;
+        const e = r[column].trim();
+        parts.set(e, (parts.get(e) ?? 0) + valueOf(r));
+      }
+      for (const [e, v] of [...parts].sort((a, b) => a[0].localeCompare(b[0]))) {
+        if (best === null || v > best.value) best = { column, entity: e, value: v };
+      }
+    }
+    if (best === null) return null;
+
+    // Remove the entity's rows everywhere in the chart, then rank the groups again (same
+    // order as the chart: largest first, then by name). A group left with no rows counts as 0.
+    const without = new Map(g.groups.map((x) => [x.label, 0]));
+    for (const r of g.rows) {
+      if (!isMissing(r[best.column]) && r[best.column].trim() === best.entity) continue;
+      const k = r[field].trim();
+      without.set(k, without.get(k)! + valueOf(r));
+    }
+    const order = [...without].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const rankWithout = order.findIndex(([label]) => label === top.label) + 1;
+
+    const groupValue = top.value!;
+    const share = best.value / groupValue;
+    const m = g.measure ? g.measure.name : 'records';
+    const misleading = rankWithout > 1;
+    if (!misleading && share < ENTITY_SHARE) return null;
+    const evidence: Evidence = {
+      check: 'entity',
+      measure: g.measure?.name ?? null,
+      group: top.label,
+      groupValue,
+      column: best.column,
+      entity: best.entity,
+      entityValue: best.value,
+      share,
+      rankWithout,
+      threshold: ENTITY_SHARE,
+    };
+    const said = `${best.entity} accounts for ${pct(share)} of ${m} in ${top.label}.`;
+    return misleading
+      ? // The chart's #1 is only #1 because of one entity.
+        { id: 'entity', severity: 'misleading', text: `${said} Without that ${best.column}, ${top.label} ranks ${ordinal(rankWithout)}.`, evidence }
+      : { id: 'entity', severity: 'caveat', text: said, evidence };
+  },
+};
+
 /** Every check, in the order findings are listed. */
-const CHECKS: CheckDef[] = [mix, small, concentration];
+const CHECKS: CheckDef[] = [mix, small, concentration, entity];
 
 const skipAll = (reason: string): CheckRun => ({ findings: [], skipped: CHECKS.map((c) => ({ id: c.id, reason })) });
 
