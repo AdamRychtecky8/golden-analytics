@@ -20,7 +20,7 @@ export const PURPOSE_KINDS: Record<Purpose, OptionKind[]> = {
   'reporting results upward': ['trend', 'comparison'],
   'testing whether a pattern is real': ['comparison', 'trend'],
   'finding problems to fix': ['comparison', 'trend'],
-  'just exploring': ['trend', 'comparison'],
+  'getting a feel for the data': ['trend', 'comparison'],
 };
 
 /** Which facets each purpose prefers, in order (approved by Adam). */
@@ -29,7 +29,7 @@ export const PURPOSE_FACETS: Record<Purpose, Facet[]> = {
   'reporting results upward': ['offering'],
   'testing whether a pattern is real': [],
   'finding problems to fix': ['source', 'place'],
-  'just exploring': [],
+  'getting a feel for the data': [],
 };
 
 // Rules reasons, in Adam's wording. A reason mentions a check only when a check caught
@@ -68,7 +68,7 @@ const byEffect = (a: Option, b: Option) => (a.kind !== b.kind ? 0 : (b.effect ??
 
 /**
  * The rules highlight. Eligible options are ranked by the purpose's kind order, then its
- * preferred facets, then effect size, then menu order. With nothing eligible, the least
+ * preferred facets, then fewer caveats, then effect size, then menu order. With nothing eligible, the least
  * flagged option (fewest misleading, then fewest caveats, then effect, then menu order) is
  * the "best place to start". Null only when there are no options at all.
  */
@@ -76,9 +76,10 @@ export function rulesHighlight(options: Option[], persona: Pick<Persona, 'purpos
   if (options.length === 0) return null;
   const order = (o: Option) => options.indexOf(o);
   const eligible = options.filter(isEligible);
+  const count = (o: Option, s: Severity) => o.findings.filter((f) => f.severity === s).length;
+  const caveats = (o: Option) => count(o, 'caveat');
 
   if (eligible.length === 0) {
-    const count = (o: Option, s: Severity) => o.findings.filter((f) => f.severity === s).length;
     const [best] = [...options].sort(
       (a, b) => count(a, 'misleading') - count(b, 'misleading') || count(a, 'caveat') - count(b, 'caveat') || byEffect(a, b) || order(a) - order(b),
     );
@@ -88,7 +89,12 @@ export function rulesHighlight(options: Option[], persona: Pick<Persona, 'purpos
   const kinds = PURPOSE_KINDS[persona.purpose];
   const facets = PURPOSE_FACETS[persona.purpose];
   const [pick] = [...eligible].sort(
-    (a, b) => rank(kinds, a.kind) - rank(kinds, b.kind) || rank(facets, a.facet) - rank(facets, b.facet) || byEffect(a, b) || order(a) - order(b),
+    (a, b) =>
+      rank(kinds, a.kind) - rank(kinds, b.kind) ||
+      rank(facets, a.facet) - rank(facets, b.facet) ||
+      caveats(a) - caveats(b) ||
+      byEffect(a, b) ||
+      order(a) - order(b),
   );
   return { id: pick.id, label: 'highlight', reason: rulesReason(pick, options, persona.purpose, roles), source: 'rules', notice: null };
 }

@@ -207,7 +207,7 @@ const PURPOSE_GUIDANCE: Record<string, string> = {
   'reporting results upward': 'Lead with one headline trend over time, then the comparison that explains it.',
   'testing whether a pattern is real': 'Lead with drivers and distributions: does one number move with another, how spread out is it.',
   'finding problems to fix': 'Lead with outliers and deviations: which group or period falls short or stands out.',
-  'just exploring': 'Give a broad mix: one trend, one comparison, one distribution or outlier.',
+  'getting a feel for the data': 'Give a broad mix: one trend, one comparison, one distribution or outlier.',
 };
 
 export const SYSTEM_PROMPT = `You choose analytical questions for a data workspace used by non-technical people.
@@ -228,7 +228,7 @@ Take the dates as they are, even if they look unusual (the demo data is fictiona
 If a parent path is given, return 3 follow-ups about that parent only: each one should help answer the parent's question, not open a new topic. Each follow-up must keep all of the parent's filters and add exactly one new filter, so it looks inside the parent's slice (usually its top group, e.g. a ranking by genre goes deeper into the top genre). Keep the parent's measure when it has one (if the parent ranks revenue, the follow-ups are about revenue). Then look at that narrower slice in a different way: over time, broken down by another field, or its spread. Never repeat the parent or one of the top-level questions, and never suggest anything outside its slice.`;
 
 function userMessage(r: SuggestRequest): string {
-  const guidance = PURPOSE_GUIDANCE[r.persona.purpose] ?? PURPOSE_GUIDANCE['just exploring'];
+  const guidance = PURPOSE_GUIDANCE[r.persona.purpose] ?? PURPOSE_GUIDANCE['getting a feel for the data'];
   return [
     `User: ${r.persona.role} in ${r.persona.domain}, ${r.persona.purpose}. ${guidance}`,
     `Data profile: ${JSON.stringify(r.profile)}`,

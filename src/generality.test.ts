@@ -99,7 +99,7 @@ describe('generality: invariants on generated datasets', () => {
 });
 
 describe('generality: the highlight', () => {
-  const personas = [...PRESETS, customPersona('other', 'analyst', 'just exploring')];
+  const personas = [...PRESETS, customPersona('other', 'analyst', 'getting a feel for the data')];
 
   it('is always eligible when any option is, and "best place to start" only when none is', () => {
     let withEligible = 0;

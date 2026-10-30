@@ -32,8 +32,8 @@ describe('top-level fallback', () => {
     expect(fallback(PRESETS[0])[0].kind).toBe('comparison'); // deciding where to invest
     expect(fallback(PRESETS[1])[0].kind).toBe('trend'); // reporting results upward: headline trend
     expect(fallback(PRESETS[3])[0].kind).toBe('outlier'); // finding problems to fix
-    const explorer = customPersona('retail', 'owner', 'just exploring');
-    expect(fallback(explorer).map((p) => p.kind)).toEqual(KIND_ORDER['just exploring'].slice(0, 3));
+    const explorer = customPersona('retail', 'owner', 'getting a feel for the data');
+    expect(fallback(explorer).map((p) => p.kind)).toEqual(KIND_ORDER['getting a feel for the data'].slice(0, 3));
   });
 
   it('is deterministic', () => {

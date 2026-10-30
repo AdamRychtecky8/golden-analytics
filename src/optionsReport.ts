@@ -28,7 +28,7 @@ export function bookshopReport(): string {
   out.push('MENU', ...options.flatMap(line), '');
 
   out.push('HIGHLIGHT PER PERSONA (rules)');
-  for (const persona of [...PRESETS, customPersona('retail', 'owner', 'just exploring', 'Explorer')]) {
+  for (const persona of [...PRESETS, customPersona('retail', 'owner', 'getting a feel for the data', 'Getting a feel')]) {
     const h = rulesHighlight(options, persona, roles);
     out.push(`  ${persona.name} (${persona.purpose})`);
     if (!h) {

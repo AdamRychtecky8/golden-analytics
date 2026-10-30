@@ -10,7 +10,7 @@ export const PURPOSES = [
   'reporting results upward',
   'testing whether a pattern is real',
   'finding problems to fix',
-  'just exploring',
+  'getting a feel for the data',
 ] as const;
 
 export type Domain = (typeof DOMAINS)[number];

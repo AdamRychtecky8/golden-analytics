@@ -19,7 +19,7 @@ export const KIND_ORDER: Record<Purpose, PathKind[]> = {
   'reporting results upward': ['trend', 'comparison', 'outlier', 'distribution', 'driver'],
   'testing whether a pattern is real': ['driver', 'distribution', 'outlier', 'trend', 'comparison'],
   'finding problems to fix': ['outlier', 'trend', 'distribution', 'comparison', 'driver'],
-  'just exploring': ['trend', 'comparison', 'distribution', 'outlier', 'driver'],
+  'getting a feel for the data': ['trend', 'comparison', 'distribution', 'outlier', 'driver'],
 };
 
 /**

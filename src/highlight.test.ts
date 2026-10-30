@@ -44,19 +44,19 @@ describe('Bookshop, store owner, no API key', () => {
   });
 });
 
-describe('the rules highlight per persona: kind first, then facet, then effect, then menu order', () => {
+describe('the rules highlight per persona: kind first, then facet, then fewer caveats, then effect, then menu order', () => {
   it.each([
     ['store-owner', 'comparison:format:count'], // comparison first; offering
     ['marketing-analyst', 'trend:sale date:revenue'], // trend first
-    ['researcher', 'comparison:author country:revenue'], // comparison first; no facets, so largest effect
+    ['researcher', 'comparison:format:count'], // comparison first; no facets; one caveat (ties publisher), larger effect
     ['program-manager', 'comparison:publisher:revenue'], // comparison first; source
   ])('%s → %s', (id, expected) => {
     expect(rulesHighlight(options, PRESETS.find((p) => p.id === id)!, roles)!.id).toBe(expected);
   });
 
-  it('just exploring → the trend, with the kind reason', () => {
-    const h = rulesHighlight(options, customPersona('retail', 'owner', 'just exploring'), roles)!;
-    expect(h).toMatchObject({ id: 'trend:sale date:revenue', reason: 'A trend is a good way into just exploring.' });
+  it('getting a feel for the data → the trend, with the kind reason', () => {
+    const h = rulesHighlight(options, customPersona('retail', 'owner', 'getting a feel for the data'), roles)!;
+    expect(h).toMatchObject({ id: 'trend:sale date:revenue', reason: 'A trend is a good way into getting a feel for the data.' });
   });
 
   it('is always eligible on Bookshop', () => {
