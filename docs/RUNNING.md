@@ -67,7 +67,7 @@ No test calls the real API.
 | `npm run build` | Type-checks everything, then builds a production version into `dist/` |
 | `npm run preview` | Serves the `dist/` build locally, to check the production version |
 | `npm run prep:bookshop` | Rebuilds `src/data/bookshop-sales.csv` from `data/raw/Bookshop.xlsx` (see below) |
-| `npm run options:bookshop` | Prints the Bookshop options menu (each option's question, findings, and whether it is eligible) and each persona's highlight and reason, using the rules (no API key needed) |
+| `npm run options:bookshop` | Prints the Bookshop options menu (each option's question, findings, and whether it is eligible) and each persona's highlight and reason, using the rules (no API key needed), then every sentence the rules can produce (each purpose × kind × facet, the repair lines, and "best place to start") filled in with Bookshop values |
 | `npm run sample` | Regenerates `src/data/sample-sales-synthetic.csv` from `scripts/make-sample.mjs`. It's seeded, so the output is identical every time. The tests use this file; the app no longer shows it |
 
 The build warns that one file is larger than 500 kB. That's the Vega charting library; it's expected and harmless for now.

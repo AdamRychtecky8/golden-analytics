@@ -35,12 +35,20 @@ Code measures, the AI judges among real candidates, code verifies the AI returne
 **How it's chosen: gates, then rank. No weights** (a weighted score was rejected: its weights would be numbers no one could defend, and it would multiply an AI opinion by a coefficient).
 1. **Eligible (code):** no *misleading* finding, and enough records per group. *Caveat* findings don't disqualify.
 2. **Most relevant (AI):** picks one eligible option for the persona's decision; returns its ID plus a one-line reason with no digits. Code rejects any ID not in the eligible set and falls back to rules. No key: a fixed table maps the persona's purpose to preferred kinds (e.g., "deciding where to invest" → comparison, then trend).
-3. **Tie-break (code, fallback only):** preferred facet for the persona's purpose (see Generality), then effect size within the preferred kind, then fixed option order. The same data and persona always give the same highlight.
+3. **Tie-break (code, fallback only):** kind first (the purpose's kind order below), then preferred facet for the persona's purpose (see Generality), then effect size within the kind, then fixed option order. The same data and persona always give the same highlight.
+
+   | Purpose | Kind order | Preferred facets |
+   |---|---|---|
+   | deciding where to invest | comparison, trend | offering, place |
+   | reporting results upward | trend, comparison | offering |
+   | testing whether a pattern is real | comparison, trend | none |
+   | finding problems to fix | comparison, trend | source, place |
+   | just exploring | trend, comparison | none |
 The highlight is cached per dataset + persona, so it doesn't change on revisit.
 
 **Check severity** (each check declares one):
 - *Misleading*: the naive reading is wrong (mix when the #1 changes; driven by one entity; small group when it's the one ranked first). Disqualifies.
-- *Caveat*: true but worth saying (concentration within the chart; small groups in the tail; a fragile lead). Doesn't disqualify.
+- *Caveat*: true but worth saying (concentration within the chart; small groups in the tail; a fragile lead; a single cycle). Doesn't disqualify.
 
 **Effect size per kind** (a tie-breaker only, compared within one kind, never across kinds):
 | Kind | Effect size |
@@ -66,6 +74,7 @@ Each check is a pure function: (view, data, roles) → finding | null. Each decl
 | Concentration (within the chart) | yes | one group dominating the chart |
 | Driven by one entity | yes (D-060) | "Sci-Fi is our best genre" (one author is 33% of all revenue; without her, Sci-Fi is #4). Misleading only when removing the entity drops the group from first **and** the entity holds ≥ 50% of the group; a flip from a smaller entity is a fragile lead, not "driven by" |
 | Fragile lead | yes (D-061) | "Hardcover is our top format": first place is less than 10% ahead of second (top ÷ second < 1.10), **or** (roles known) removing the single largest entity in the top group flips first place while that entity is under half the group (half or more is "driven by"). Caveat. The 1.10 is practical significance, not statistical: the data is every sale, so the gap is real, but ordinary changes would erase it |
+| Single cycle | yes (D-067) | "Sales are growing" from a trend whose dates span one year or less (366 days): each season appears once, so seasonality can't be separated from growth. Caveat, on any chart over time |
 | Can't verify | always | cause, trend vs. season in one year of data |
 
 **Dataset-level findings:** when the same entity drives findings in several options, the engine reports it once as a fact about the whole dataset ("One author drives a third of all revenue"), so the UI can say it once instead of on every card. Detected in Phase 3a (D-063); displayed in Phase 5.
@@ -106,7 +115,7 @@ Arbitrary datasets (needs an upstream semantic classifier to write the roles fil
 1. Dataset columns + roles file. (done, D-058)
 2. Check engine: registry, roles, new entity check, fixtures. No UI. (done, D-059, D-060)
 3a. Generality: contract with facets + rowNoun, fragile-lead check, entity share rule, dataset-level findings, property tests, no-Bookshop test. No UI. (done, D-061 to D-063)
-3b. Options + highlight: one comparison per readable category (by the money measure, or by count with none) plus one trend; code-written questions; AI picks an eligible ID + no-digit reason; rules fallback.
+3b. Options + highlight: one comparison per readable category (by the money measure, or by count with none) plus one trend; code-written questions; AI picks an eligible ID + no-digit reason; rules fallback. (done, D-064 to D-068)
 4. Flow tree + remove slider and levels.
 5. Present card.
 6. Prompt-a-path + eval set.

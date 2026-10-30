@@ -111,3 +111,11 @@ AI proposed: A plan built on the real menu (nine options; format and award winne
 Adam chose / changed: Added a general "single cycle" caveat for trends spanning one year or less (fixtures: 11 months fires, 25 quiet). Reordered the ranking to kind first, then facet, then effect, then menu order, and set the facets (invest: offering, place; reporting upward: offering; testing: none; finding problems: source, place; exploring: none). Ruled that rules reasons mention a check only when a check caught something. Approved the templates, notices, {check, severity}, and the cap. D-064 to D-067.
 Open: Adam's approval gave the facet, kind, and repair reasons as "[my wording]" placeholders, so the code has Claude Code's stand-ins marked TODO(adam) until he supplies his wording.
 Why: TODO(adam)
+
+## #14 — 2026-10-30 — Phase 3b follow-up: reason wording, kind order, every reason printed
+Tool: Claude Code (VS Code)
+Asked: Use Adam's three reason lines; make `npm run options:bookshop` print every possible rules reason (purpose x kind x facet, plus repair and best place to start) filled with Bookshop values, so he can read them all; re-decide the kind order for the two-kind menu; update SPEC.md (kind-first ranking, single cycle, the kind table).
+AI proposed: Put the wording in one exported function, so the report prints exactly what the app would say; a separate kind table for the highlight instead of reusing Level 2's. Reported the resulting highlights: researcher → author country by revenue, program manager → publisher by revenue (both were the trend before).
+Adam chose / changed: Wrote the facet, kind, and repair lines himself, replacing Claude Code's stand-ins. Set the kind order: comparison first for investing, finding problems, and testing; trend first for reporting upward and exploring. D-068.
+Disclosure, recorded at Adam's request: since Phase 3a, the fragile-lead check's narrow-gap text appears as a "Check" line on Level 2 path cards (Level 2 shows every finding's text), a visible UI change in a phase meant to have none. Claude Code didn't say so in Phase 3a; it disclosed it only in Phase 3b, alongside the same effect from the new single-cycle check.
+Why: TODO(adam)

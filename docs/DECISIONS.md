@@ -322,7 +322,7 @@ Status: decided
 ## D-065 — 2026-10-30 — Eligibility and the rules highlight
 Decision: Eligible: no misleading finding; caveats don't disqualify. Rules rank eligible options by the purpose's kind order (KIND_ORDER), then its preferred facets, then effect size (only within one kind), then menu order. Preferred facets: deciding where to invest: offering, place; reporting results upward: offering; testing whether a pattern is real: none; finding problems to fix: source, place; just exploring: none. With nothing eligible, the least flagged option (fewest misleading, then fewest caveats, then effect, then menu order) is labelled "best place to start", with the spec's draft copy, and the AI is not asked. Rules reasons mention a check only when a check caught something. The facet, kind, and repair reason lines in code are Claude Code's stand-ins (TODO(adam)): Adam's approval left them as "[my wording]" placeholders. Bookshop with no key: store owner → format by items sold; the other presets and "just exploring" → revenue over time.
 Why: TODO(adam)
-Status: decided (reason wording pending)
+Status: decided; kind order and reason wording superseded by D-068
 
 ## D-066 — 2026-10-30 — The AI picks the highlight
 Decision: A new server handler, /api/highlight (api/suggest.ts stays until Phase 4), receives the eligible options only (id, question, kind, facet, findings as {check, severity}), the profile summary, and the persona, never rows, and returns { id, reason }. The browser accepts it only if the id is eligible and the reason is 1 to 140 characters with no digits; anything else, or no key, or no reply, falls back to the rules highlight with a quiet notice ("AI highlighting is off (no API key), so rules picked this." / "The AI couldn't be reached, so rules picked this." / "The AI's pick didn't pass the checks, so rules picked this."). The result is cached per dataset and persona.
@@ -331,6 +331,11 @@ Status: decided
 
 ## D-067 — 2026-10-30 — Single-cycle caveat
 Decision: A caveat on any chart over time whose dates span one year or less (SINGLE_CYCLE_DAYS = 366): with each season shown once, seasonality can't be separated from growth. Fixtures: 11 months fires, 25 months stays quiet. Every Bookshop trend gets it.
+Why: TODO(adam)
+Status: decided
+
+## D-068 — 2026-10-30 — Kind order for the two-kind menu, and the reason wording
+Decision: The highlight's kind order is its own table (PURPOSE_KINDS), replacing Level 2's KIND_ORDER for this menu: deciding where to invest, finding problems to fix, and testing whether a pattern is real put comparison first; reporting results upward and just exploring put trend first. Rules reasons use Adam's wording: facet "Looking at {column} fits what you're doing: {purpose}."; kind "A {kind} is a good way into {purpose}."; repair "We count {many} here, because {measure} alone tells a misleading story about {column}." `npm run options:bookshop` prints every rules reason for review. Bookshop with no key: store owner → format by items sold; marketing analyst → revenue over time; researcher → author country by revenue; program manager → publisher by revenue; just exploring → revenue over time.
 Why: TODO(adam)
 Status: decided
 
