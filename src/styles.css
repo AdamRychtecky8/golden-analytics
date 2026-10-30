@@ -1,26 +1,27 @@
 /*
   Visual style (D-016): Golden Analytics' palette, one meaning per color.
-  Navy: text (and the top bar). Off-white: the page; white: cards.
-  Blue: anything you can click or focus, plus the thin rules between sections.
-  Orange: data emphasis only (highlighted marks, selected fields, the path on the card).
+  Navy: text. Off-white: the page; white: cards.
+  Blue: anything you can click or focus.
+  Orange: emphasis only (highlighted marks, the highlighted question, the current node, chosen fields).
     It is never used for text: at about 2.5:1 on off-white it fails WCAG AA even for large text.
   Amber: AI provenance only, as a light wash behind navy text.
   Grey: structure (card and input outlines) and non-highlighted marks.
+  Persona tints (personas.ts) appear only in the map and the persona chip, never in charts.
   Square corners, no gradients, no shadows. Chart colors in chartRules.ts must match.
 */
 :root {
   --bg: #fafaf7;
+  --warm: #fbf9f4; /* map and menu panels, a shade off the page */
   --surface: #ffffff;
   --navy: #181833;
   --navy-soft: #4a4a63; /* secondary text: 8.6:1 on white */
-  --on-navy-soft: #c9c9d9; /* secondary text on the navy top bar: 10:1 */
   --blue: #2c5aff; /* 5.0:1 on off-white, 5.2:1 on white: passes AA as text */
   --blue-dark: #1f44d6; /* hover */
   --orange: #ff7b2c;
   --amber: #ffb30f;
   --amber-wash: #fff1cc; /* navy text on it: 15:1 */
-  --rule: var(--blue); /* hairline dividers between sections */
   --line: #e2e2e8; /* outlines of cards, inputs, and list rows */
+  --edge: #9a958a; /* lines between map nodes */
   --grey: #c4c0b6; /* non-highlighted marks */
   --disabled: #8b8b9c;
 
@@ -28,8 +29,7 @@
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
   --gutter: 20px;
-  --card-width: 440px;
-  --slider-width: 132px;
+  --rail-width: 340px;
 }
 
 * {
@@ -39,7 +39,7 @@
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
 }
 
@@ -96,6 +96,19 @@ textarea {
   border-color: var(--blue-dark);
 }
 
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.link-btn:hover {
+  color: var(--blue-dark);
+}
+
 select,
 input[type='text'],
 textarea {
@@ -110,18 +123,35 @@ textarea {
   outline-offset: 2px;
 }
 
-/* ---------- Page layout: top bar over three pinned columns ---------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Page layout: top bar, map, then the menu rail beside the card ---------- */
 
 .app {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .workspace {
   display: grid;
-  grid-template-columns: var(--slider-width) 1fr var(--card-width);
-  min-height: 0; /* lets the middle column scroll instead of growing the page */
+  grid-template-columns: var(--rail-width) 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 16px var(--gutter) var(--gutter);
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------- Top bar ---------- */
@@ -129,38 +159,12 @@ textarea {
 .topbar {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 10px var(--gutter);
-  background: var(--navy);
-  color: var(--bg);
+  gap: 20px;
+  padding: 12px var(--gutter);
+  border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
-/* On the navy bar: light secondary text, and buttons with light text (blue text on
-   navy would be only 3.3:1). They keep the blue outline that marks them as clickable. */
-.topbar .label,
-.topbar .field-card-stat {
-  color: var(--on-navy-soft);
-}
-.topbar .btn {
-  color: var(--bg);
-}
-/* Form controls keep their white background, so their text stays navy. */
-.topbar select,
-.topbar input {
-  color: var(--navy);
-}
-.topbar .btn:disabled {
-  color: var(--disabled);
-  border-color: var(--disabled);
-}
-.topbar :focus-visible {
-  outline-color: var(--bg);
-}
 .topbar-name {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
   font-weight: 600;
 }
 .topbar-group {
@@ -172,40 +176,50 @@ textarea {
   flex: 1;
 }
 .dataset-name {
-  font-family: var(--mono);
-  font-size: 12px;
-}
-.tag {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border: 1px solid currentColor;
-  padding: 1px 5px;
+  color: var(--navy-soft);
+  font-size: 13px;
 }
 .load-errors {
-  grid-column: 1 / -1;
+  margin: 12px var(--gutter) 0;
   border: 1px solid var(--navy);
   background: var(--surface);
   padding: 8px 12px;
-  margin: 0;
   font-size: 13px;
 }
 .load-errors ul {
   margin: 4px 0 0;
   padding-left: 18px;
 }
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-}
 
-/* Persona "build your own" form drops below the picker. */
+/* The persona chip: the persona's tint and color, its initial, and the picker. */
 .persona {
   position: relative;
+}
+.persona-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid;
+  padding: 2px 4px 2px 6px;
+}
+.persona-chip select {
+  border: 0;
+  background: transparent;
+  padding: 2px 4px;
+  font-size: 13px;
+}
+.persona-dot,
+.map-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: var(--surface);
+  font-size: 10px;
+  font-weight: 700;
 }
 .persona-form {
   position: absolute;
@@ -214,7 +228,6 @@ textarea {
   z-index: 10;
   width: 300px;
   background: var(--surface);
-  color: var(--navy);
   border: 1px solid var(--line);
   padding: 14px;
   display: grid;
@@ -230,359 +243,194 @@ textarea {
   justify-content: flex-end;
 }
 
-/* ---------- Slider (left, pinned) ---------- */
+/* ---------- The map: collapsed to one line, or the whole tree ---------- */
 
-.slider {
-  border-right: 1px solid var(--rule);
+.map {
+  margin: 16px var(--gutter) 0;
+  border: 1px solid var(--line);
+  background: var(--warm);
+  padding: 8px 14px;
+}
+.map-collapsed {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 16px 8px;
+  gap: 16px;
 }
-.slider-track {
-  display: flex;
-  gap: 10px;
-  height: 320px;
-}
-.slider-input {
-  /* A native range input turned vertical: writing-mode stands it up, and direction:rtl
-     puts the minimum (Level 0) at the bottom. Keyboard arrows and screen readers keep
-     working because it's still a real <input type="range">. */
-  writing-mode: vertical-lr;
-  direction: rtl;
-  height: 100%;
-  width: 18px;
-  margin: 0;
-  accent-color: var(--blue); /* the native thumb and track take this color */
-  cursor: pointer;
-}
-.slider-labels {
-  position: relative;
-  width: 64px;
-  --thumb: 16px; /* native range thumb size; the thumb's center never reaches the very ends */
-}
-.slider-label {
-  /* Each label sits at its stop: --pos is 0 for Level 3 (top) through 1 for Level 0. */
-  position: absolute;
-  left: 0;
-  top: calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--pos));
-  transform: translateY(-50%);
-  border: 0;
-  background: none;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-  display: grid;
-  line-height: 1.2;
-}
-.slider-label .label {
-  color: var(--navy-soft);
-}
-.slider-label-num {
-  font-family: var(--mono);
-  font-size: 18px;
-}
-.slider-label.is-current .slider-label-num,
-.slider-label.is-current .label {
-  color: var(--blue);
-}
-.slider-ai {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  color: var(--navy-soft);
-}
-
-/* ---------- Assist layer (middle, scrolls only when the slider moves) ---------- */
-
-.assist {
-  overflow: hidden; /* D-007: the column moves only with the slider */
-  position: relative;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .assist {
-    scroll-behavior: smooth;
-  }
-}
-.panel {
-  height: 100%;
-  overflow-y: auto; /* a panel may scroll internally if its content overflows */
-  padding: var(--gutter) calc(var(--gutter) + 4px);
-  border-bottom: 1px solid var(--rule);
-}
-.panel-head {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  border-bottom: 1px solid var(--rule);
-  padding-bottom: 8px;
-  margin-bottom: 16px;
-}
-.panel-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-}
-.placeholder {
-  border: 1px dashed var(--grey);
-  padding: 20px;
-  max-width: 560px;
-}
-.placeholder p {
-  margin: 6px 0 0;
-}
-.section {
-  margin-bottom: 22px;
-}
-.section > .label {
-  display: block;
-  margin-bottom: 8px;
-}
-
-/* Level 0 field list */
-.field-list {
+.map-path {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.field-chip {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  border-radius: 0;
-  padding: 6px 12px;
-  cursor: pointer;
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-}
-/* Selected fields: an orange edge (data emphasis); the text stays navy. */
-.field-chip[aria-pressed='true'],
-.field-card[aria-pressed='true'] {
-  border-color: var(--orange);
-  box-shadow: inset 3px 0 0 var(--orange);
-}
-.field-type {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--navy-soft);
-}
-
-/* Level 1 field cards */
-.field-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
-}
-.field-card {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  border-radius: 0;
-  padding: 10px 12px;
-  text-align: left;
-  cursor: pointer;
-  display: grid;
+  align-items: center;
   gap: 4px;
-}
-.field-card-name {
-  font-weight: 600;
-}
-.field-card-stat {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--navy-soft);
-}
-.mini-dist {
-  display: flex;
-  align-items: flex-end;
-  gap: 1px;
-  height: 28px;
-  margin-top: 4px;
-}
-.mini-dist span {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   flex: 1;
-  background: var(--grey);
-  min-height: 1px;
 }
-.mini-dist-cats {
-  display: grid;
-  gap: 2px;
-  margin-top: 4px;
-}
-.mini-dist-cat {
-  display: grid;
-  grid-template-columns: 70px 1fr;
-  gap: 6px;
-  align-items: center;
-  font-size: 11px;
-}
-.mini-dist-cat span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mini-dist-cat i {
-  display: block;
-  height: 6px;
-  background: var(--grey);
-}
-
-/* Level 1 chart ideas */
-.ideas {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  border-top: 1px solid var(--line);
-}
-.idea {
-  width: 100%;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: none;
-  text-align: left;
-  padding: 8px 4px;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-}
-.idea:hover {
-  background: var(--surface);
-}
-.idea[aria-pressed='true'] {
-  box-shadow: inset 3px 0 0 var(--orange);
-  font-weight: 600;
-}
-
-/* Chart preview in the assist layer */
-.preview {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  padding: 14px;
-}
-.preview-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.preview-title {
-  font-weight: 600;
-}
-.toggle {
-  display: inline-flex;
-}
-.toggle .btn + .btn {
-  border-left: 0;
-}
-.toggle .btn[aria-pressed='true'] {
-  background: var(--blue);
-  color: var(--surface);
-}
-.empty-note {
+.map-path li + li::before {
+  content: '›';
+  margin: 0 6px 0 2px;
   color: var(--navy-soft);
-  margin: 0;
 }
-.chart-notes {
-  margin: 8px 0 0;
-  padding: 0;
-  list-style: none;
+.map-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.map-crumb[aria-current] {
+  font-weight: 600;
+}
+.map-count {
+  color: var(--navy-soft);
+  font-size: 13px;
+}
+.map-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.map-scroll {
+  overflow-x: auto;
+  padding: 4px 4px 8px;
+}
+.map-canvas {
+  position: relative;
+}
+.map-edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.map-edge {
+  stroke: var(--edge);
+  stroke-width: 1.3;
+  fill: none;
+}
+.map-edge-dashed {
+  stroke-dasharray: 5 4;
+}
+.map-node {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.map-node-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* A slice has no chart of its own: a dashed outline on white. */
+.map-node-slice {
+  border-style: dashed;
+  background: var(--surface);
+}
+.map-node[aria-current] {
+  outline: 2.5px solid var(--orange);
+  outline-offset: -1px;
+}
+.map-more {
+  position: absolute;
+  width: 60px;
+  height: 30px;
+  border: 1px solid var(--edge);
+  background: var(--warm);
+  font-size: 12px;
+  cursor: pointer;
+}
+.map-legend {
+  margin: 6px 0 0;
   font-size: 12px;
   color: var(--navy-soft);
 }
-.chart {
-  width: 100%;
-}
-/* Stand-ins while a level is off screen, so the panel keeps its rough size. */
-.preview-hidden,
-.chart-placeholder {
-  min-height: 150px;
-}
 
-/* ---------- Level 2: analytical paths ---------- */
+/* ---------- The menu rail ---------- */
 
-.suggest-persona {
-  margin: 0 0 10px;
+.rail {
+  border: 1px solid var(--line);
+  background: var(--warm);
+  padding: 14px;
+}
+.rail-scope {
+  margin: 4px 0 0;
   font-size: 13px;
-}
-.link-btn {
-  border: 0;
-  background: none;
-  padding: 0;
-  color: var(--blue);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  cursor: pointer;
-}
-.link-btn:hover {
-  color: var(--blue-dark);
-}
-/* The current breadcrumb step isn't a link, so it's navy. */
-.crumbs [aria-current] {
-  color: var(--navy);
-}
-.crumbs ol {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  list-style: none;
-  margin: 0 0 14px;
-  padding: 0 0 10px;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13px;
-}
-.crumbs li + li::before {
-  content: '›';
-  margin-right: 6px;
   color: var(--navy-soft);
 }
-.crumbs [aria-current] {
+.options {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.option {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.option:hover {
+  border-color: var(--blue);
+}
+/* The question on the card: a blue edge, like a selected row. */
+.option[aria-pressed='true'] {
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+/* The highlighted question: the one orange outline in the rail. Its label stays navy. */
+.option-highlight {
+  border: 2px solid var(--orange);
+}
+.option-label {
+  color: var(--navy);
   font-weight: 600;
 }
+.option-question {
+  font-size: 14px;
+}
+.option-reason {
+  font-size: 12px;
+  color: var(--navy-soft);
+}
+.rail-build {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.build {
+  display: grid;
+  gap: 10px;
+}
+.build-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* A quiet one-line notice: grey text with a hairline, never an alarm. */
 .notice {
-  margin: 0 0 12px;
+  margin: 12px 0 0;
   padding-left: 8px;
   border-left: 2px solid var(--grey);
   font-size: 12px;
   color: var(--navy-soft);
 }
-.paths {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 12px;
-}
-.path-card {
-  border: 1px solid var(--line);
-  background: var(--surface);
-  padding: 12px 14px;
-  display: grid;
-  gap: 6px;
-}
-.path-tags {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-/* Kind chip: mono uppercase on a hairline box. */
-.chip {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border: 1px solid var(--navy);
-  padding: 1px 6px;
-}
-/* Source tag: filled navy for AI, outlined grey for rules, so the two read apart at a
-   glance without using the orange accent (reserved for highlights). */
+
+/* Provenance marker: amber wash for anything the AI wrote. */
 .source {
   font-family: var(--mono);
   font-size: 10px;
@@ -596,140 +444,103 @@ textarea {
   border-color: var(--amber);
   color: var(--navy);
 }
-.source-rules {
-  border-color: var(--grey);
-  color: var(--navy-soft);
-}
-.path-question {
-  margin: 2px 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-/* Check notes: computed in code, quiet grey with a hairline, like the notice. */
-.checks {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0 8px;
-  border-left: 2px solid var(--grey);
-  display: grid;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--navy-soft);
-}
-.checks .label {
-  font-size: 10px;
-  margin-right: 4px;
-}
-.path-actions {
+
+/* "Build my own chart" field chips */
+.field-list {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
-.skeleton {
-  min-height: 210px;
-  align-content: start;
-}
-.skeleton-line,
-.skeleton-block {
-  display: block;
-  background: var(--line);
-  height: 12px;
-}
-.skeleton-line.short {
-  width: 30%;
-}
-.skeleton-block {
-  height: 130px;
-  opacity: 0.5;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .skeleton {
-    animation: pulse 1.4s ease-in-out infinite;
-  }
-}
-@keyframes pulse {
-  50% {
-    opacity: 0.55;
-  }
-}
-
-/* ---------- Story card (right, pinned) ---------- */
-
-.story {
-  border-left: 1px solid var(--rule);
-  padding: var(--gutter);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.story-card {
+.field-chip {
   border: 1px solid var(--line);
   background: var(--surface);
-  padding: 16px;
-  display: grid;
-  gap: 12px;
+  border-radius: 0;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
 }
-.story-title {
-  font-size: 20px;
-  font-weight: 600;
-  border: 0;
-  border-bottom: 1px solid var(--rule);
-  background: transparent;
-  padding: 4px 0;
-  width: 100%;
-}
-.story-takeaway {
-  border: 0;
-  border-top: 1px solid var(--rule);
-  background: transparent;
-  padding: 8px 0 0;
-  width: 100%;
-  resize: vertical;
-  min-height: 60px;
-  /* Grow with the text, so a drafted two-sentence takeaway is fully visible. */
-  field-sizing: content;
-}
-/* Level 3 */
-.story-from {
-  margin: 0 0 10px;
-  font-size: 13px;
-}
-.draft {
-  border-color: var(--line);
-}
-/* The Level 2 path that's on the story card: an orange edge, like a selected field. */
-.path-card.is-selected {
+/* Chosen fields: an orange edge (emphasis); the text stays navy. */
+.field-chip[aria-pressed='true'] {
   border-color: var(--orange);
   box-shadow: inset 3px 0 0 var(--orange);
 }
-.draft-takeaway {
-  margin: 0;
-}
-.facts-used {
-  font-size: 12px;
+.field-type {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--navy-soft);
-}
-.facts-used summary {
-  cursor: pointer;
-}
-.facts-used ul {
-  margin: 6px 0 0;
-  padding-left: 16px;
-}
-.text-marker {
-  justify-self: start;
-  margin-bottom: -6px;
 }
 
-.story-chart-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+/* ---------- The card: question, chart, and the four sections ---------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 22px 24px;
+  min-width: 0; /* lets the chart shrink inside the grid */
 }
-.story-hint {
-  font-size: 12px;
+.card-title {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+.card-preview .label {
+  display: block;
+  margin-bottom: 6px;
+}
+.card-sub {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--navy-soft);
+}
+.card-actions {
+  margin-top: 14px;
+}
+.card-section {
+  border-top: 1px solid var(--line);
+  margin-top: 18px;
+  padding-top: 12px;
+}
+.card-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.card-later {
+  margin: 0;
+  font-size: 13px;
+  color: var(--navy-soft);
+}
+.findings {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+}
+.findings li + li {
+  margin-top: 4px;
+}
+
+.empty-note {
   color: var(--navy-soft);
   margin: 0;
+}
+.chart-notes {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--navy-soft);
+}
+.chart {
+  width: 100%;
 }

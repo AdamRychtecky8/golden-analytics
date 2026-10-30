@@ -43,7 +43,7 @@ describe('the tree', () => {
     // Every node that existed is still there, unchanged; new ones were only added.
     expect(s2.nodes.slice(0, before.length)).toEqual(before);
     expect(s2.nodes.length).toBe(before.length + 2);
-    expect(childrenOf(s2, 'n1').map(nodeLabel)).toEqual(['genre = Fiction', 'genre = Mystery']);
+    expect(childrenOf(s2, 'n1').map((n) => n.view.filters.at(-1)!.value)).toEqual(['Fiction', 'Mystery']);
   });
 
   it('inside a slice, a pick is a child of the node that made the slice', () => {
@@ -141,8 +141,19 @@ describe('a new dataset', () => {
 });
 
 describe('labels and paths', () => {
-  it('labels each kind of node, and lists the path from the root', () => {
+  const types: Record<string, 'nominal' | 'quantitative' | 'temporal'> = { genre: 'nominal', format: 'nominal', revenue: 'quantitative', price: 'quantitative', 'sale date': 'temporal' };
+  const ctx = { many: 'items sold', typeOf: (f: string) => types[f] };
+
+  it('labels each kind of node as the wireframe does, and lists the path from the root', () => {
     const s = run([pick('a', ['genre', 'revenue']), deeper('genre', 'Fiction'), { type: 'persona', persona: PRESETS[2] }]);
-    expect(pathTo(s, here(s)).map(nodeLabel)).toEqual(['All data', 'genre · revenue', 'genre = Fiction', 'as Researcher']);
+    expect(pathTo(s, here(s)).map((n) => nodeLabel(n, ctx))).toEqual(['Data', 'genre · revenue', 'genre is Fiction', 'same view, as Researcher']);
+  });
+
+  it('labels counts with the row noun, trends as "over time", and a single number by its name', () => {
+    const label = (fields: string[]) => nodeLabel(currentNode(run([pick('x', fields)])), ctx);
+    expect(label(['format'])).toBe('format · items sold');
+    expect(label(['sale date', 'revenue'])).toBe('revenue over time');
+    expect(label(['sale date'])).toBe('items sold over time');
+    expect(label(['price'])).toBe('price');
   });
 });

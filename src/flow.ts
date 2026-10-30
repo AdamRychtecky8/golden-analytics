@@ -80,15 +80,28 @@ export function scopeAnchor(s: FlowState, id: string): FlowNode {
   return n;
 }
 
-/** A short label for the map: "format · revenue", "genre = Fiction", "as Researcher". */
-export function nodeLabel(n: FlowNode): string {
-  if (n.how === 'root') return 'All data';
-  if (n.how === 'persona') return `as ${n.persona.name}`;
+/** What the map needs to know about the data to label a node. */
+export interface LabelContext {
+  many: string; // what the rows are called, plural: "items sold"
+  typeOf: (field: string) => 'nominal' | 'quantitative' | 'temporal' | undefined;
+}
+
+/**
+ * A short label for the map, as in the wireframe: "Data", "format · items sold",
+ * "revenue over time", "format is Hardcover" (a slice), "same view, as Researcher".
+ */
+export function nodeLabel(n: FlowNode, ctx: LabelContext): string {
+  if (n.how === 'root') return 'Data';
+  if (n.how === 'persona') return `same view, as ${n.persona.name}`;
   if (n.how === 'deeper') {
     const f = n.view.filters[n.view.filters.length - 1];
-    return `${f.field} = ${f.value}`;
+    return `${f.field} is ${f.value}`;
   }
-  return n.view.fields.join(' · ');
+  const { fields } = n.view;
+  const date = fields.find((f) => ctx.typeOf(f) === 'temporal');
+  if (date) return `${fields.find((f) => f !== date) ?? ctx.many} over time`;
+  if (fields.length === 1) return ctx.typeOf(fields[0]) === 'nominal' ? `${fields[0]} · ${ctx.many}` : fields[0];
+  return fields.join(' · ');
 }
 
 // ---------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
-// Who the user is and why they're here (D-014). Phase 1 only stores and displays it;
-// Phase 2 sends it to the AI with the data profile to tailor suggested questions.
+// Who the user is and why they're here (D-014). The purpose decides the highlight's kind
+// order and preferred facets (highlight.ts); the AI sees domain, role, and purpose.
 
 // `as const` makes TypeScript treat each list as a fixed set of exact strings, so the
 // types below can be derived from the lists instead of written out twice.
@@ -53,3 +53,22 @@ export function customPersona(domain: Domain, role: Role, purpose: Purpose, name
 export function describePersona(p: Persona): string {
   return `${p.name} · ${p.domain} · ${p.purpose}`;
 }
+
+// Persona colors (Adam's choice): muted tints, never the accent orange, red, or green, so a
+// persona can't be mistaken for data emphasis or a warning. They appear only in the map and
+// the persona chip, never in charts, and always with the persona's initial, so color is
+// never the only signal. A built-your-own persona is neutral grey.
+const PERSONA_COLORS: Record<string, { color: string; tint: string }> = {
+  'store-owner': { color: '#5b7aa8', tint: '#e3e9f2' }, // slate blue
+  'marketing-analyst': { color: '#9a6a8f', tint: '#efe5ec' }, // plum
+  researcher: { color: '#a08a5c', tint: '#f1ece1' }, // sand
+  'program-manager': { color: '#4f8a8b', tint: '#e1eded' }, // muted teal
+};
+const CUSTOM_COLOR = { color: '#8a8a8a', tint: '#ecebe6' };
+
+export function personaColor(p: Persona): { color: string; tint: string } {
+  return p.custom ? CUSTOM_COLOR : (PERSONA_COLORS[p.id] ?? CUSTOM_COLOR);
+}
+
+/** The letter shown in every map node and on the chip: "S" for Store owner. */
+export const personaInitial = (p: Persona) => p.name.trim().charAt(0).toUpperCase() || '?';

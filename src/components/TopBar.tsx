@@ -6,6 +6,8 @@ import {
   PURPOSES,
   ROLES,
   customPersona,
+  personaColor,
+  personaInitial,
   type Domain,
   type Persona,
   type Purpose,
@@ -35,14 +37,17 @@ export function TopBar(props: TopBarProps) {
 
   return (
     <header className="topbar">
-      <span className="topbar-name">Autonomy Slider</span>
+      <span className="topbar-name">Before you present it</span>
+      <span className="dataset-name">
+        {dataset.name} · {dataset.rows.length.toLocaleString('en-US')} rows
+        {dataset.demo && ' · Fictional demo data'}
+      </span>
+
+      <PersonaPicker persona={props.persona} onChange={props.onPersona} />
+
+      <div className="topbar-spacer" />
 
       <div className="topbar-group">
-        <span className="label">Data</span>
-        <span className="dataset-name">
-          {dataset.name} · {dataset.rows.length} rows
-        </span>
-        {dataset.demo && <span className="tag">Fictional demo data</span>}
         <label className="btn">
           Load CSV
           <input className="visually-hidden" type="file" accept=".csv,text/csv" onChange={handleFile} />
@@ -54,16 +59,13 @@ export function TopBar(props: TopBarProps) {
         )}
       </div>
 
-      <PersonaPicker persona={props.persona} onChange={props.onPersona} />
-
-      <div className="topbar-spacer" />
-
+      {/* Back and forward follow the order you visited questions in, like a browser. */}
       <div className="topbar-group" aria-label="History">
-        <button type="button" className="btn" onClick={props.onBack} disabled={!props.canBack}>
-          ← Back
+        <button type="button" className="btn" onClick={props.onBack} disabled={!props.canBack} aria-label="Back" title="Back to the last question you looked at">
+          ←
         </button>
-        <button type="button" className="btn" onClick={props.onForward} disabled={!props.canForward}>
-          Forward →
+        <button type="button" className="btn" onClick={props.onForward} disabled={!props.canForward} aria-label="Forward" title="Forward">
+          →
         </button>
       </div>
     </header>
@@ -73,9 +75,9 @@ export function TopBar(props: TopBarProps) {
 const BUILD = '__build__';
 
 /**
- * Persona picker: presets plus "build your own". The build form keeps its own local
- * state while the user is choosing, and only sends a persona to app state on Apply,
- * so half-finished choices don't create history steps.
+ * The persona chip: the persona's color and initial, and a picker of presets plus "build
+ * your own". The build form keeps its own local state while the user is choosing, and only
+ * sends a persona on Apply, so half-finished choices don't create nodes in the map.
  */
 function PersonaPicker({ persona, onChange }: { persona: Persona; onChange: (p: Persona) => void }) {
   const [building, setBuilding] = useState(false);
@@ -83,6 +85,7 @@ function PersonaPicker({ persona, onChange }: { persona: Persona; onChange: (p: 
   const [role, setRole] = useState<Role>(persona.role);
   const [purpose, setPurpose] = useState<Purpose>(persona.purpose);
   const [name, setName] = useState('');
+  const { color, tint } = personaColor(persona);
 
   function handleSelect(e: ChangeEvent<HTMLSelectElement>) {
     if (e.target.value === BUILD) {
@@ -105,21 +108,23 @@ function PersonaPicker({ persona, onChange }: { persona: Persona; onChange: (p: 
   }
 
   return (
-    <div className="topbar-group persona">
-      <label className="label" htmlFor="persona-select">
-        Persona
-      </label>
-      <select id="persona-select" value={building ? BUILD : persona.id} onChange={handleSelect}>
-        {PRESETS.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-        {persona.custom && <option value="custom">{persona.name} (custom)</option>}
-        <option value={BUILD}>Build your own…</option>
-      </select>
-      <span className="field-card-stat">
-        {persona.domain} · {persona.purpose}
+    <div className="persona">
+      <span className="persona-chip" style={{ background: tint, borderColor: color }} title={`${persona.domain} · ${persona.purpose}`}>
+        <span className="persona-dot" style={{ background: color }} aria-hidden="true">
+          {personaInitial(persona)}
+        </span>
+        <label className="visually-hidden" htmlFor="persona-select">
+          Persona
+        </label>
+        <select id="persona-select" value={building ? BUILD : persona.id} onChange={handleSelect}>
+          {PRESETS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+          {persona.custom && <option value="custom">{persona.name} (custom)</option>}
+          <option value={BUILD}>Build your own…</option>
+        </select>
       </span>
 
       {building && (
