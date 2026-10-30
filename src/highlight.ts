@@ -1,7 +1,7 @@
 import { askAi, type AskOptions } from './aiRequest';
 import type { CheckId, Severity } from './checks';
 import { isEligible, type Option, type OptionKind } from './options';
-import { summarizeProfile, type SuggestRequest } from './paths';
+import { summarizeProfile, type PathFilter, type SuggestRequest } from './paths';
 import type { Persona, Purpose } from './personas';
 import type { DataProfile } from './profile';
 import { rowNounOf, type Facet, type Roles } from './roles';
@@ -163,9 +163,9 @@ export function checkAiPick(body: Record<string, unknown>, eligibleIds: string[]
   return { id, reason: text };
 }
 
-/** Cache key: the same dataset and persona always get the same highlight. */
-export const highlightKey = (dataset: string | number, persona: Pick<Persona, 'domain' | 'role' | 'purpose'>) =>
-  JSON.stringify([dataset, persona.domain, persona.role, persona.purpose]);
+/** Cache key: the same dataset, persona, and slice always get the same highlight. */
+export const highlightKey = (dataset: string | number, persona: Pick<Persona, 'domain' | 'role' | 'purpose'>, filters: PathFilter[] = []) =>
+  JSON.stringify([dataset, persona.domain, persona.role, persona.purpose, filters.map((f) => [f.field, f.value])]);
 
 export interface HighlightLoadOptions extends AskOptions {
   cache?: Map<string, Promise<Highlight | null>>;

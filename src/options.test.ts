@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './loadCsv';
-import { buildOptions, isEligible } from './options';
+import { buildOptions, isEligible, scopeQuestion } from './options';
 import { profileDataset } from './profile';
 import { bookshopRoles, parseRoles, UNKNOWN_ROLES } from './roles';
 
@@ -97,3 +97,37 @@ describe('repairs come only from checks that know a sturdier view', () => {
     expect(options.every((o) => o.repairs === null)).toBe(true);
   });
 });
+
+describe('a menu for a slice', () => {
+  const sciFi = [{ field: 'genre', value: 'SciFi/Fantasy' }];
+  const options = buildOptions(profile, rows, roles, sciFi);
+
+  it('never offers the filtered column again, and every view and question carries the filter', () => {
+    expect(options.map((o) => o.column)).not.toContain('genre');
+    expect(options.every((o) => o.view.filters === sciFi || JSON.stringify(o.view.filters) === JSON.stringify(sciFi))).toBe(true);
+    expect(options.find((o) => o.id === 'comparison:format:revenue')!.question).toBe('Which format brings in the most revenue where genre is SciFi/Fantasy?');
+  });
+
+  it('counts groups inside the slice, not in the whole dataset', () => {
+    // Inside SciFi/Fantasy, each column has only the values that slice has.
+    const inSlice = (c: string) => new Set(rows.filter((r) => r.genre === 'SciFi/Fantasy').map((r) => r[c])).size;
+    for (const o of options.filter((x) => x.kind === 'comparison')) {
+      expect(inSlice(o.column)).toBeGreaterThanOrEqual(2);
+      expect(inSlice(o.column)).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('runs the checks on the slice: findings come from the filtered rows', () => {
+    const o = options.find((x) => x.id === 'comparison:format:revenue')!;
+    // The format ranking inside SciFi/Fantasy, checked as its own chart.
+    expect(o.findings.length).toBeGreaterThan(0);
+    expect(o.view).toEqual({ fields: ['format', 'revenue'], aggregate: 'sum', filters: sciFi });
+  });
+
+  it('joins several filters with "and"', () => {
+    expect(scopeQuestion('Which format has the most items sold?', [{ field: 'genre', value: 'Fiction' }, { field: 'publisher', value: 'Palimpsest Printing' }])).toBe(
+      'Which format has the most items sold where genre is Fiction and publisher is Palimpsest Printing?',
+    );
+  });
+});
+

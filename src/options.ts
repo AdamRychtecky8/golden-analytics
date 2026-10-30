@@ -1,8 +1,7 @@
-import type { Row } from './aggregate';
+import { isMissing, type Row } from './aggregate';
 import { runChecks, type Finding } from './checks';
-import { READABLE_GROUPS } from './fallbackPaths';
 import { groupView } from './groups';
-import type { ChartView } from './paths';
+import { filterRows, type ChartView, type PathFilter } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
 import { facetOf, roleOf, rowNounOf, withRoleMeasures, type Facet, type Roles } from './roles';
 
@@ -11,6 +10,9 @@ import { facetOf, roleOf, rowNounOf, withRoleMeasures, type Facet, type Roles } 
 // option carries its checks' findings, so code can tell which ones are safe to recommend.
 
 export type OptionKind = 'comparison' | 'trend';
+
+// Past about 12 bars a chart gets crowded (the rest are combined into "Other").
+export const READABLE_GROUPS = 12;
 
 export interface Option {
   id: string; // "comparison:format:revenue", "trend:sale date:count"
@@ -37,19 +39,36 @@ const QUESTIONS = {
 
 const fill = (template: string, slots: Record<string, string>) => template.replace(/\{(\w+)\}/g, (_, k: string) => slots[k]);
 
+/** A question inside a slice (approved by Adam): "…? " becomes "… where genre is Fiction and format is Hardcover?" */
+export function scopeQuestion(question: string, filters: PathFilter[]): string {
+  if (filters.length === 0) return question;
+  const where = filters.map((f) => `${f.field} is ${f.value}`).join(' and ');
+  return `${question.replace(/\?$/, '')} where ${where}?`;
+}
+
 /**
- * Every option for a dataset, in a fixed menu order: one comparison per readable category,
- * entity, or flag column (2 to READABLE_GROUPS groups), each repair right after the option it
- * repairs, then one trend. Each is by the money measure, or by count when there is none.
+ * Every option for a dataset, or for a slice of it, in a fixed menu order: one comparison per
+ * readable category, entity, or flag column (2 to READABLE_GROUPS groups), each repair right
+ * after the option it repairs, then one trend. Each is by the money measure, or by count when
+ * there is none. With filters, groups are counted inside the slice, a filtered column is not
+ * offered again (it has one value there), and every view and question carries the filters.
  */
-export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles): Option[] {
+export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles, filters: PathFilter[] = []): Option[] {
   const effective = withRoleMeasures(profile, roles);
   const role = (c: ColumnProfile) => roleOf(roles, c.name);
   const many = rowNounOf(roles).many;
 
   // Without roles, any category column qualifies; with them, only labelled ones (never ids).
   const labelled = (c: ColumnProfile) => (roles.known ? ['category', 'entity', 'flag'].includes(role(c)!) : true);
-  const categories = effective.columns.filter((c) => c.type === 'nominal' && labelled(c) && c.distinct >= 2 && c.distinct <= READABLE_GROUPS);
+  const slice = filterRows(rows, filters);
+  const filtered = (c: ColumnProfile) => filters.some((f) => f.field === c.name);
+  // Groups in the slice: the whole-data profile counts groups the slice may not have.
+  const groupsIn = (c: ColumnProfile) => (filters.length === 0 ? c.distinct : new Set(slice.filter((r) => !isMissing(r[c.name])).map((r) => r[c.name].trim())).size);
+  const readable = (c: ColumnProfile) => {
+    const n = groupsIn(c);
+    return n >= 2 && n <= READABLE_GROUPS;
+  };
+  const categories = effective.columns.filter((c) => c.type === 'nominal' && labelled(c) && !filtered(c) && readable(c));
   // The money measure: the "money" role, or without roles the first number a sum makes sense of.
   const numbers = effective.columns.filter((c) => c.type === 'quantitative' && c.count > 0);
   const money = roles.known ? numbers.find((c) => role(c) === 'money') : numbers.find((c) => c.measure === 'additive');
@@ -57,7 +76,7 @@ export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles): O
 
   const options: Option[] = [];
   const make = (kind: OptionKind, column: ColumnProfile, measure: string | null, repairs: string | null = null): Option => {
-    const view: ChartView = { fields: measure ? [column.name, measure] : [column.name], aggregate: 'sum', filters: [] };
+    const view: ChartView = { fields: measure ? [column.name, measure] : [column.name], aggregate: 'sum', filters };
     const flag = role(column) === 'flag';
     const template =
       kind === 'trend'
@@ -67,7 +86,7 @@ export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles): O
           : measure ? QUESTIONS.comparisonMoney : QUESTIONS.comparisonCount;
     return {
       id: `${kind}:${column.name}:${measure ?? 'count'}`,
-      question: fill(template, { column: column.name, measure: measure ?? '', many }),
+      question: scopeQuestion(fill(template, { column: column.name, measure: measure ?? '', many }), filters),
       kind,
       view,
       column: column.name,
@@ -88,7 +107,7 @@ export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles): O
     const sturdier = option.findings.find((f) => f.severity === 'misleading' && f.countView);
     if (sturdier) options.push(make('comparison', column, null, option.id));
   }
-  if (dates[0]) options.push(make('trend', dates[0], money?.name ?? null));
+  if (dates[0] && slice.length > 0) options.push(make('trend', dates[0], money?.name ?? null));
   return options;
 }
 

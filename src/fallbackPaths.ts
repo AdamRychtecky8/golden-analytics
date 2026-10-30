@@ -11,8 +11,7 @@ import { MAX_FILTERS, filterRows, type Path, type PathDraft, type PathFilter, ty
  * Which kinds of path come first for each purpose. The AI gets the same guidance in
  * words (api/suggest.ts); this is the version code can follow exactly.
  */
-// Past about 12 bars a chart gets crowded (the rest are combined into "Other").
-export const READABLE_GROUPS = 12;
+import { READABLE_GROUPS } from './options';
 
 export const KIND_ORDER: Record<Purpose, PathKind[]> = {
   'deciding where to invest': ['comparison', 'outlier', 'trend', 'driver', 'distribution'],

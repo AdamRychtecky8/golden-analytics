@@ -136,3 +136,11 @@ describe('caching per dataset and persona', () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('the highlight cache key', () => {
+  it('differs per slice, so each slice gets its own highlight', () => {
+    expect(highlightKey(1, storeOwner)).not.toBe(highlightKey(1, storeOwner, [{ field: 'genre', value: 'Fiction' }]));
+    expect(highlightKey(1, storeOwner, [{ field: 'genre', value: 'Fiction' }])).toBe(highlightKey(1, storeOwner, [{ field: 'genre', value: 'Fiction' }]));
+  });
+});
+
