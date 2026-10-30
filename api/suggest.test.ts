@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { PATH_KINDS, buildRequest } from '../src/paths';
 import { PRESETS } from '../src/personas';
 import { profileDataset } from '../src/profile';
-import { DEFAULT_MODEL, POST, suggest, type MessagesClient } from './suggest';
+import { DEFAULT_MODEL, type MessagesClient } from './_shared';
+import { POST, suggest } from './suggest';
 
 // These tests never call the real API: `suggest` takes the client as an argument, and
 // each test passes a fake whose `create` returns (or throws) whatever the test needs.

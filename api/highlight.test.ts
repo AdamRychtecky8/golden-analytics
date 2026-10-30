@@ -4,7 +4,7 @@ import type { HighlightRequest } from '../src/highlight';
 import { summarizeProfile } from '../src/paths';
 import { profileDataset } from '../src/profile';
 import { highlight } from './highlight';
-import type { MessagesClient } from './suggest';
+import type { MessagesClient } from './_shared';
 
 // The real API is never called: `highlight` takes the client as an argument.
 

@@ -11,8 +11,8 @@ import {
   str,
   type ErrorBody,
   type MessagesClient,
-  type SuggestEnv,
-} from './suggest.ts';
+  type AiEnv,
+} from './_shared.ts';
 
 // The highlight's AI call (SPEC "The highlight"): the same server-side pattern as
 // api/suggest.ts. Code has already built the options and removed every ineligible one; the
@@ -39,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
 
 export async function highlight(
   body: unknown,
-  env: SuggestEnv,
+  env: AiEnv,
   makeClient: (apiKey: string) => MessagesClient = realClient,
 ): Promise<{ status: number; body: HighlightResponse }> {
   if (!env.apiKey) return noKey();

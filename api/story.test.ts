@@ -4,7 +4,7 @@ import { summarizeProfile } from '../src/paths';
 import { profileDataset } from '../src/profile';
 import type { StoryRequest } from '../src/story';
 import { story } from './story';
-import type { MessagesClient } from './suggest';
+import type { MessagesClient } from './_shared';
 
 // The real API is never called: `story` takes the client as an argument.
 

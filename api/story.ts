@@ -12,8 +12,8 @@ import {
   str,
   type ErrorBody,
   type MessagesClient,
-  type SuggestEnv,
-} from './suggest.ts';
+  type AiEnv,
+} from './_shared.ts';
 
 // Level 3's AI call: the same server-side pattern as api/suggest.ts. It sends the data
 // profile, the persona, and for each candidate path its facts (computed in the browser
@@ -34,7 +34,7 @@ export async function POST(request: Request): Promise<Response> {
 
 export async function story(
   body: unknown,
-  env: SuggestEnv,
+  env: AiEnv,
   makeClient: (apiKey: string) => MessagesClient = realClient,
 ): Promise<{ status: number; body: StoryResponse }> {
   if (!env.apiKey) return noKey();
