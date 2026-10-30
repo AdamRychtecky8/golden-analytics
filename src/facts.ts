@@ -130,7 +130,7 @@ export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[])
   }
 
   // The insight checks become facts too, so a story can mention them.
-  for (const check of runChecks(view, profile, rows)) add(`check_${check.id}`, `check: ${check.id}`, check.text);
+  for (const check of runChecks(view, profile, rows).findings) add(`check_${check.id}`, `check: ${check.id}`, check.text);
   // The aggregate actually used, in words (a mean if the number is average only).
   if (cols.some((c) => c.type === 'quantitative')) add('aggregate', 'how values are combined', effectiveAggregate(cols, view.aggregate));
   return facts;

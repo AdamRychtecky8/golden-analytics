@@ -21,6 +21,7 @@ export interface Grouping {
   groups: Group[]; // categories: largest value first; periods: in time order, empty ones included
   total: number | null; // sum of the measure (or of records) over all groups; null for means
   records: number; // rows in the chart
+  rows: Row[]; // those rows: the filtered slice, minus rows missing a charted field
   timeUnit?: TimeUnit;
 }
 
@@ -54,7 +55,7 @@ export function groupView(view: ChartView, profile: DataProfile, rows: Row[]): G
       value: useMeasure ? aggregateValues(nums, how) : nums.length,
     }));
     groups.sort((a, b) => (b.value ?? 0) - (a.value ?? 0) || a.label.localeCompare(b.label));
-    return finish('category', cat, useMeasure, useMeasure ? how : 'count', groups, subset.length);
+    return finish('category', cat, useMeasure, useMeasure ? how : 'count', groups, subset);
   }
 
   if (rule === 'line' || rule === 'count-line') {
@@ -68,7 +69,7 @@ export function groupView(view: ChartView, profile: DataProfile, rows: Row[]): G
       records: nums.length,
       value: measure ? aggregateValues(nums, how) : nums.length,
     }));
-    return { ...finish('period', date, measure, measure ? how : 'count', groups, subset.length), timeUnit: unit };
+    return { ...finish('period', date, measure, measure ? how : 'count', groups, subset), timeUnit: unit };
   }
   return null;
 }
@@ -79,11 +80,11 @@ function finish(
   measure: ColumnProfile | null,
   aggregate: Grouping['aggregate'],
   groups: Group[],
-  records: number,
+  rows: Row[],
 ): Grouping {
   // A total only makes sense when the groups are parts of a whole: sums and counts.
   const total = aggregate === 'mean' ? null : groups.reduce((s, g) => s + (g.value ?? 0), 0);
-  return { by, field, measure, aggregate, groups, total, records };
+  return { by, field, measure, aggregate, groups, total, records: rows.length, rows };
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

@@ -5,6 +5,7 @@ import { CONCENTRATION, SMALL_GROUP, isMoney, runChecks } from './checks';
 import { groupView } from './groups';
 import { parseCsv } from './loadCsv';
 import { profileDataset } from './profile';
+import { bookshopRoles, parseRoles } from './roles';
 
 const text = readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8');
 const loaded = parseCsv(text, 'bookshop', true);
@@ -16,11 +17,11 @@ const view = (fields: string[], filters: { field: string; value: string }[] = []
   aggregate,
   filters,
 });
-const ids = (v: ReturnType<typeof view>, profile = bp, rows = books) => runChecks(v, profile, rows).map((c) => c.id);
+const ids = (v: ReturnType<typeof view>, profile = bp, rows = books) => runChecks(v, profile, rows).findings.map((c) => c.id);
 
 describe('price/mix check', () => {
   it('catches hardcover vs mass-market paperback in revenue by format', () => {
-    const [mix] = runChecks(view(['format', 'revenue']), bp, books).filter((c) => c.id === 'mix');
+    const [mix] = runChecks(view(['format', 'revenue']), bp, books).findings.filter((c) => c.id === 'mix');
     expect(mix.text).toBe(
       'Hardcover ranks first by revenue, but Mass market paperback has the most records (26,881 vs 11,720): price, not volume, puts Hardcover on top.',
     );
@@ -29,7 +30,7 @@ describe('price/mix check', () => {
   });
 
   it('catches a group that moves two places (Fiction: 3rd by revenue, 5th by records)', () => {
-    const [mix] = runChecks(view(['genre', 'revenue']), bp, books).filter((c) => c.id === 'mix');
+    const [mix] = runChecks(view(['genre', 'revenue']), bp, books).findings.filter((c) => c.id === 'mix');
     expect(mix.text).toMatch(/ranks 3rd by revenue but 5th by records/);
   });
 
@@ -53,7 +54,7 @@ describe('small-group check', () => {
       ...Array.from({ length: 12 }, () => ({ team: 'B', amount: '1' })),
     ];
     const p = profileDataset(['team', 'amount'], rows);
-    const [small] = runChecks(view(['team', 'amount']), p, rows).filter((c) => c.id === 'small');
+    const [small] = runChecks(view(['team', 'amount']), p, rows).findings.filter((c) => c.id === 'small');
     expect(small.text).toBe(`B has only 12 records, too few to compare reliably (under ${SMALL_GROUP}).`);
   });
 
@@ -78,7 +79,7 @@ describe('small-group check', () => {
 
 describe('concentration check', () => {
   it(`flags a top group with ${CONCENTRATION * 100}% or more of the total`, () => {
-    const [c] = runChecks(view(['genre', 'revenue']), bp, books).filter((x) => x.id === 'concentration');
+    const [c] = runChecks(view(['genre', 'revenue']), bp, books).findings.filter((x) => x.id === 'concentration');
     expect(c.text).toBe('SciFi/Fantasy holds 42% of revenue, so this chart is mostly about one group.');
     expect(ids(view(['publisher']))).toContain('concentration'); // by count: 63% of records
   });
@@ -104,5 +105,54 @@ describe('groupView', () => {
 
   it('has no single list of groups for a scatter', () => {
     expect(groupView(view(['price', 'revenue']), bp, books)).toBeNull();
+  });
+});
+
+describe('severity and skips on the Bookshop data', () => {
+  const run = (v: ReturnType<typeof view>) => runChecks(v, bp, books, roles);
+  const roles = bookshopRoles(loaded.dataset.columns);
+
+  it('revenue by format: mix is misleading (the #1 changes), with ranks and records as evidence', () => {
+    const mix = run(view(['format', 'revenue'])).findings.find((f) => f.id === 'mix')!;
+    expect(mix.severity).toBe('misleading');
+    expect(mix.evidence).toEqual({
+      check: 'mix',
+      measure: 'revenue',
+      groups: [
+        { label: 'Hardcover', valueRank: 1, countRank: 2, records: 11_720 },
+        { label: 'Mass market paperback', valueRank: 2, countRank: 1, records: 26_881 },
+      ],
+    });
+  });
+
+  it('revenue by genre: mix is only a caveat, since the #1 holds and Fiction moves', () => {
+    const mix = run(view(['genre', 'revenue'])).findings.find((f) => f.id === 'mix')!;
+    expect(mix.severity).toBe('caveat');
+    expect(mix.evidence).toMatchObject({ groups: [{ label: 'Fiction', valueRank: 3, countRank: 5 }] });
+  });
+
+  it('count by format: only a concentration caveat, no misleading findings', () => {
+    const { findings } = run(view(['format']));
+    expect(findings.map((f) => [f.id, f.severity])).toEqual([['concentration', 'caveat']]);
+    expect(findings[0].evidence).toMatchObject({ group: 'Mass market paperback', value: 26_881, total: 56_350 });
+  });
+
+  it('says why each check that did not run was skipped', () => {
+    expect(run(view(['format'])).skipped).toContainEqual({ id: 'mix', reason: 'the chart is a count, not a sum' });
+    expect(run(view(['sale date', 'revenue'])).skipped).toContainEqual({ id: 'concentration', reason: 'groups are periods, not categories' });
+    expect(run(view(['format', 'price'], [], 'mean')).skipped).toContainEqual({ id: 'mix', reason: 'the chart is a mean, not a sum' });
+  });
+
+  it('never scans an id column', () => {
+    const r = run(view(['book id']));
+    expect(r.findings).toEqual([]);
+    expect(r.skipped.map((s) => s.reason)).toEqual(r.skipped.map(() => '"book id" has the id role: ids are counted, never checked'));
+  });
+
+  it('uses the money role, not the name, when roles are known', () => {
+    // "price" sounds like money by name, but its role is price; summed, it is still not money.
+    const pr = parseRoles({ ...Object.fromEntries(loaded.dataset.columns.map((c) => [c, 'category'])), revenue: 'price' }, loaded.dataset.columns);
+    if (!pr.ok) throw new Error();
+    expect(runChecks(view(['format', 'revenue']), bp, books, pr.roles).skipped).toContainEqual({ id: 'mix', reason: '"revenue" doesn\'t have the money role' });
   });
 });

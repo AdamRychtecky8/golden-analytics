@@ -127,7 +127,7 @@ interface PathCardProps {
 function PathCard({ path, profile, rows, card, visible, onGoDeeper, onUse }: PathCardProps) {
   // "View by count" is a look at this card only, so it's local state, not history.
   const [byCount, setByCount] = useState(false);
-  const checks = useMemo(() => (visible ? runChecks(path, profile, rows) : []), [visible, path, profile, rows]);
+  const checks = useMemo(() => (visible ? runChecks(path, profile, rows).findings : []), [visible, path, profile, rows]);
   const countView = checks.find((c) => c.countView)?.countView;
   // The path as shown: the same question and source, charted by count instead of money.
   const shown = useMemo<Path>(
