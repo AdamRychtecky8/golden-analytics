@@ -40,7 +40,7 @@ The highlight is cached per dataset + persona, so it doesn't change on revisit.
 
 **Check severity** (each check declares one):
 - *Misleading*: the naive reading is wrong (mix when the #1 changes; driven by one entity; small group when it's the one ranked first). Disqualifies.
-- *Caveat*: true but worth saying (concentration within the chart; small groups in the tail). Doesn't disqualify.
+- *Caveat*: true but worth saying (concentration within the chart; small groups in the tail; a fragile lead). Doesn't disqualify.
 
 **Effect size per kind** (a tie-breaker only, compared within one kind, never across kinds):
 | Kind | Effect size |
@@ -64,11 +64,11 @@ Each check is a pure function: (view, data, roles) → finding | null. Each decl
 | Mix (totals vs. units) | yes (checks.ts) | "Hardcover is our top format" (38% of revenue, 21% of units) |
 | Small group | yes | "Mystery performs best per title" (3 titles) |
 | Concentration (within the chart) | yes | one group dominating the chart |
-| Driven by one entity | yes (D-060) | "Sci-Fi is our best genre" (one author is 33% of all revenue; without her, Sci-Fi is #4). Misleading only when removing the entity drops the group from first **and** the entity holds ≥ 50% of the group; a flip from a smaller entity is a narrow lead, not "driven by" |
-| Narrow lead | new | "Hardcover is our top format": first place is less than 10% ahead of second (top ÷ second < 1.10). Caveat. This is practical significance, not statistical: the data is every sale, so the gap is real, but ordinary changes would erase it |
+| Driven by one entity | yes (D-060) | "Sci-Fi is our best genre" (one author is 33% of all revenue; without her, Sci-Fi is #4). Misleading only when removing the entity drops the group from first **and** the entity holds ≥ 50% of the group; a flip from a smaller entity is a fragile lead, not "driven by" |
+| Fragile lead | yes (D-061) | "Hardcover is our top format": first place is less than 10% ahead of second (top ÷ second < 1.10), **or** (roles known) removing the single largest entity in the top group flips first place while that entity is under half the group (half or more is "driven by"). Caveat. The 1.10 is practical significance, not statistical: the data is every sale, so the gap is real, but ordinary changes would erase it |
 | Can't verify | always | cause, trend vs. season in one year of data |
 
-**Dataset-level findings:** when the same entity drives findings in several options, the engine reports it once as a fact about the whole dataset ("One author drives a third of all revenue"), so the UI can say it once instead of on every card. Detected in Phase 3a; displayed in Phase 5.
+**Dataset-level findings:** when the same entity drives findings in several options, the engine reports it once as a fact about the whole dataset ("One author drives a third of all revenue"), so the UI can say it once instead of on every card. Detected in Phase 3a (D-063); displayed in Phase 5.
 
 ## Prompt-a-path (the most regulated AI piece)
 1. AI sees the user's text + the profile. Returns only structure: a path spec, or a refusal with a category. Never prose answers or numbers.
@@ -80,8 +80,8 @@ Each check is a pure function: (view, data, roles) → finding | null. Each decl
 ## Generality: Bookshop is the test case, not the target
 Bookshop reveals failure modes; every fix must work on any dataset. Rule: **app code is keyed to roles, facets, and data shape, never to column names or values.**
 - **The dataset contract** (the roles file, written by hand here and by an upstream classifier in production) declares each column's role, an optional facet, and the dataset's `rowNoun`.
-- **Facets** say what kind of thing a category is: *offering* (what the business sells or does), *source* (who supplies or creates it), *place* (where), *attribute* (a yes/no property). The persona's purpose prefers facets (e.g., "deciding where to invest" → offering, then place). No facets → kind order + effect only.
-- **rowNoun** names one row ("item sold"), so code-written questions read naturally; default "records".
+- **Facets** say what kind of thing a category is: *offering* (what the business sells or does), *source* (who supplies or creates it), *place* (where). Only category and entity columns have one; a yes/no column is a flag, with no facet. The persona's purpose prefers facets (e.g., "deciding where to invest" → offering, then place). No facets → kind order + effect only.
+- **rowNoun** names one row in both forms ("item sold" / "items sold"), so code-written questions read naturally; default "record" / "records".
 - **Invariant:** a tie-breaker may never reward a property a check penalizes.
 - **Evidence:** (1) property-based tests on generated datasets, including degenerate ones; (2) a test that fails if Bookshop column names or values appear in app code; (3) a second dataset run through the same flow (after the core flow works).
 
@@ -90,12 +90,12 @@ Bookshop reveals failure modes; every fix must work on any dataset. Rule: **app 
 | Top ÷ second rewarded dominance | Comparison tie-break = effective number of groups; the invariant above |
 | One author in finding after finding | Dataset-level findings |
 | Author on a title chart always fires | Functional-dependency guard |
-| 5–12% leads flip when anything is removed | Narrow-lead caveat (< 1.10) |
+| 5–12% leads flip when anything is removed | Fragile-lead caveat (< 1.10, or a smaller entity tips first place) |
 | "Records" reads badly | rowNoun |
-| Guessing money from names | Roles first, names as fallback |
+| Guessing money from names | Roles first, names as fallback (roles also decide what can be summed) |
 
 ## Data
-Bookshop sales (fictional, 2193), one row per item sold, joined by `scripts/prepare-bookshop.py`, with a roles file declaring each column's role (date, money, price, rate, category, entity, flag, id), facet (offering: genre, format, series; source: publisher, author; place: author country; attribute: award winner), and rowNoun ("item sold"). Real values only: planted effects exist only in test fixtures.
+Bookshop sales (fictional, 2193), one row per item sold, joined by `scripts/prepare-bookshop.py`, with a roles file declaring each column's role (date, money, price, rate, category, entity, flag, id), facet (offering: genre, format, series; source: publisher, author; place: author country; award winner is a flag with no facet), and rowNoun ("item sold" / "items sold"). Real values only: planted effects exist only in test fixtures.
 Excluded: marketing spend and ratings (reason: TODO(adam)); BookshopLibraries (holdings, not sales; future work).
 
 ## Out of scope (future work)
@@ -105,7 +105,7 @@ Arbitrary datasets (needs an upstream semantic classifier to write the roles fil
 0. This spec + DECISIONS entry for the pivot. Tag `slider-concept` before removing anything.
 1. Dataset columns + roles file. (done, D-058)
 2. Check engine: registry, roles, new entity check, fixtures. No UI. (done, D-059, D-060)
-3a. Generality: contract with facets + rowNoun, narrow-lead check, entity share rule, dataset-level findings, property tests, no-Bookshop test. No UI.
+3a. Generality: contract with facets + rowNoun, fragile-lead check, entity share rule, dataset-level findings, property tests, no-Bookshop test. No UI. (done, D-061 to D-063)
 3b. Options + highlight: one comparison per readable category (by the money measure, or by count with none) plus one trend; code-written questions; AI picks an eligible ID + no-digit reason; rules fallback.
 4. Flow tree + remove slider and levels.
 5. Present card.

@@ -299,6 +299,21 @@ Decision: For category charts summed or counted, with roles known: within the to
 Why: TODO(adam)
 Status: decided
 
+## D-061 — 2026-10-30 — Fragile lead, and "driven by" needs half the group
+Decision: The entity check reports only when the top group's largest entity holds at least 50% of it: misleading if removing its rows everywhere drops the group from first, caveat if not. Below 50% it says nothing. A new caveat check, fragile lead, covers category charts summed or counted: it fires when top ÷ second < 1.10 (NARROW_LEAD; practical, not statistical, significance: the data is the whole population, so the gap is real but small enough that ordinary changes erase it), or, with roles known, when removing the top group's largest entity (under 50%) flips first place. It skips when the second group's value is zero or less. Text: "{top} is only {gap} ahead of {second}, a lead small enough that ordinary changes could erase it." (gap with one decimal); an exact tie reads "{top} is tied with {second}, so ordinary changes could decide first place."; a flip with a clear gap reads "{top} leads {second} by {gap}, but without {entity} (one {column}), {top} ranks {rank}." (the last two are Claude Code's wording, for Adam to review). Bookshop: fires on revenue by title, award winner, and format (narrow) and count by award winner (Carolyn Segal flip).
+Why: TODO(adam)
+Status: decided
+
+## D-062 — 2026-10-30 — The dataset contract: facets, rowNoun, roles decide summing
+Decision: The roles file is { rowNoun: { one, many }, columns: { name: { role, facet? } } }. Facets are offering, source, place, allowed only on category and entity columns; no "attribute" facet, so a yes/no column is a flag with no facet. rowNoun stores both forms and defaults to record/records. Bookshop: "item sold"/"items sold"; genre, format, series = offering; publisher, author = source; author country = place. When roles are known they decide what can be summed: money is additive, every other role is average-only; the name-based guess is the fallback without roles.
+Why: TODO(adam)
+Status: decided
+
+## D-063 — 2026-10-30 — Dataset-level findings and generality evidence
+Decision: datasetFindings runs the checks over a list of views and reports each entity named by a finding (entity check or fragile-lead flip) in 2 or more views (DATASET_MIN_VIEWS), with the views, the checks, and its share of the whole dataset's total per measure. Engine only. Generality evidence: property tests on datasets from a small seeded generator (mulberry32, no new library), 200 seeds plus degenerate cases, with roles known and unknown; invariants: no check throws, an average-only measure is never summed, the same input gives the same findings. A test fails on any string literal in app code equal to a Bookshop column name or value unless it is on an allowlist with a reason; comments are reported, not failed.
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)

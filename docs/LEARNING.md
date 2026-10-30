@@ -97,18 +97,19 @@ One function enforces it everywhere: `effectiveAggregate` ([chartRules.ts:105](.
 
 ### "Is this really an insight?" checks
 
-A ranking can be true and still mislead. [checks.ts](../src/checks.ts) runs four checks on every path's chart and returns what they find as **findings**. The app shows them as notes labeled **Check**, never as AI:
+A ranking can be true and still mislead. [checks.ts](../src/checks.ts) runs five checks on every path's chart and returns what they find as **findings**. The app shows them as notes labeled **Check**, never as AI:
 
 | Check | Fires when | Why it matters |
 |---|---|---|
 | Price/mix | categories are ranked by a sum of money, and the #1 by money isn't the #1 by records (or a top group moves 2+ places) | Hardcover tops revenue with 11,720 sales; mass-market paperback sells 26,881. Price, not volume, made the ranking. "View by count" shows the other view. |
 | Small group | a shown group has fewer than 30 records | A mean or share of a handful of records swings with each new one. |
 | Concentration | the top group holds 40% or more of the total | The chart is mostly about one group; "the rest" may deserve its own look. |
-| Driven by one entity | one author or title holds 50% or more of the top group, or the group loses first place without it | SciFi/Fantasy leads revenue, but Bianca Thompson is 79% of it; without her rows, SciFi/Fantasy ranks 4th. Needs a roles file (D-060). |
+| Driven by one entity | one author or title holds 50% or more of the top group (misleading if the group loses first place without it) | SciFi/Fantasy leads revenue, but Bianca Thompson is 79% of it; without her rows, SciFi/Fantasy ranks 4th. Needs a roles file (D-060, D-061). |
+| Fragile lead | first place is less than 10% ahead of second, or a smaller entity (under half the group) tips it | Hardcover is only 7.2% ahead of mass-market paperback; "no" leads "yes" by 12% in items sold, but without Carolyn Segal it ranks 2nd (D-061). |
 
 Every finding has a **severity**. *Misleading* means the naive reading is wrong: the #1 changes under mix, the top group is small, or the top group's lead is one entity. *Caveat* means it's true but worth saying. Each finding also carries **evidence**, the numbers behind its sentence (ranks, shares, record counts), so later phases can phrase it with facts and slots. A check whose preconditions aren't met is **skipped** with a reason, which tests and logs can read but the user never sees (D-059).
 
-The roles file ([roles.ts](../src/roles.ts)) says what each column is. With roles, mix only runs on a column with the `money` role, the entity check knows which columns are authors or titles, and `id` columns are never checked. An uploaded CSV has no roles, so mix falls back to guessing money from the column name and the entity check skips. The app passes no roles yet (D-059).
+The roles file ([roles.ts](../src/roles.ts)) is the **dataset contract**: each column's role, a facet for categories (offering, source, place), and what one row is called (`rowNoun`, "item sold" / "items sold"). With roles, only a `money` column can be summed (`withRoleMeasures`), mix only runs on a column with the `money` role, the entity check knows which columns are authors or titles, and `id` columns are never checked. An uploaded CSV has no roles, so mix falls back to guessing money from the column name and the entity check skips. The app passes no roles yet (D-059).
 
 The thresholds are named constants with their reasoning ([checks.ts:14](../src/checks.ts#L14)). The numbers behind both the checks and Level 3's facts come from one place, `groupView` ([groups.ts:32](../src/groups.ts#L32)), which groups rows exactly the way the chart does.
 
@@ -172,8 +173,9 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 | [src/aiRequest.ts](../src/aiRequest.ts) | `askAi`: post to an AI handler, with a timeout and one automatic retry. Never throws. | Shared by Levels 2 and 3 (D-051). |
 | [src/useAsyncCache.ts](../src/useAsyncCache.ts) | A generic hook: load a value once per key, remember it, `retry()` on demand. | The cache behind both Level 2 and Level 3. |
 | [src/groups.ts](../src/groups.ts) | `groupView`: a chart's groups (bars or periods) with record counts and values. | One source of the numbers checks and facts use. |
-| [src/roles.ts](../src/roles.ts) | `parseRoles`: validates a roles file against the columns (each column exactly one known role); `bookshopRoles`; `UNKNOWN_ROLES` for uploads. | Lets checks use what a column *is* instead of guessing from its name (D-058, D-059). |
-| [src/checks.ts](../src/checks.ts) | The check registry: four checks (mix, small, concentration, driven by one entity), each with preconditions and a run function; `runChecks` returns findings with severity and evidence, plus skip reasons. | Quiet notes on path cards; facts for Level 3; the "Don't say this" section later (D-051, D-055, D-059, D-060). |
+| [src/roles.ts](../src/roles.ts) | The dataset contract: `parseRoles` validates roles, facets, and rowNoun against the columns; `facetOf`, `rowNounOf`, `withRoleMeasures`; `bookshopRoles`; `UNKNOWN_ROLES` for uploads. | Lets code use what a column *is* instead of guessing from its name (D-058, D-059, D-062). |
+| [src/datasetFindings.ts](../src/datasetFindings.ts) | `datasetFindings`: runs the checks over many charts and reports an entity that drives findings in two or more, with its share of the whole dataset. | So the UI can say "one author drives a third of revenue" once, not on every card (D-063). Not shown yet. |
+| [src/checks.ts](../src/checks.ts) | The check registry: five checks (mix, small, concentration, driven by one entity, fragile lead), each with preconditions and a run function; `runChecks` returns findings with severity and evidence, plus skip reasons. | Quiet notes on path cards; facts for Level 3; the "Don't say this" section later (D-051, D-055, D-059, D-060). |
 | [src/facts.ts](../src/facts.ts) | `computeFacts`: every fact a story may use, with ids and display values; `strength` for the rules' pick. | The only source of numbers in a story (D-052). |
 | [src/templates.ts](../src/templates.ts) | `fillTemplate` (slots must exist, no digits outside them), `ruleStory` (the no-AI templates). | Where an AI draft is accepted or rejected. |
 | [src/story.ts](../src/story.ts) | `loadStory`: facts per candidate, ask `/api/story`, check the pick and the templates, fall back to rules. | The browser half of Level 3. |
@@ -213,6 +215,10 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 | [src/checks.test.ts](../src/checks.test.ts) | Each check on the Bookshop data, including hardcover vs mass-market paperback, severities, skip reasons, the id rule, and the entity check (Bianca Thompson: genre and award winner); groups match the chart. |
 | [src/checks.fixtures.test.ts](../src/checks.fixtures.test.ts) | Every check fires with the expected severity on its planted synthetic fixture and stays quiet on its control; a CSV without roles skips the entity check and says why. |
 | [src/roles.test.ts](../src/roles.test.ts) | Roles files: accepted, rejected for missing/extra/unknown roles, Bookshop's loaded against its columns. |
+| [src/datasetFindings.test.ts](../src/datasetFindings.test.ts) | Bianca Thompson across eight Bookshop charts with her shares computed from the rows; Carolyn Segal (one chart) left out; nothing without roles; a fragile-lead flip counts. |
+| [src/generality.test.ts](../src/generality.test.ts) | Property tests: 200 seeded datasets plus degenerate ones, roles known and unknown; no check throws, average-only is never summed, same input gives same findings, and a guard that it isn't passing vacuously. |
+| [src/noBookshop.test.ts](../src/noBookshop.test.ts) | Fails if a string literal in app code equals a Bookshop column name or value, unless allowlisted with a reason; prints Bookshop examples found in comments. |
+| [src/fixtures/generateDataset.ts](../src/fixtures/generateDataset.ts) | The seeded generator (mulberry32) and the degenerate datasets for the property tests. Synthetic. |
 | [src/fixtures/synthetic-checks/](../src/fixtures/synthetic-checks/) | Synthetic CSV + roles pairs, one planted and one control per check, with the hand arithmetic in its README. Invented numbers, never shown in the app. |
 | [src/facts.test.ts](../src/facts.test.ts) | Facts computed from rows, the template filler (unknown slots, digits), rule stories. |
 | [src/story.test.ts](../src/story.test.ts) | Level 3 with a fake network: AI templates filled, every fallback, the candidate order. |
@@ -386,6 +392,16 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **Removing one entity and ranking again.** The entity check doesn't only ask "is Bianca a big share?". It also deletes her rows from the chart's rows and re-ranks every group the same way the chart does (largest first, ties by name). That's a counterfactual you can verify by hand: filter the CSV, re-sum, re-sort. *First seen:* the `entity` check in [checks.ts](../src/checks.ts).
 
+### Generality patterns (Phase 3a)
+
+**Computed once, on first use.** `ctx.largest()` finds the top group's largest entity and its rank without it. Two checks need that answer, and it means scanning every row, so `runChecks` wraps it in a function that remembers its result: the first call computes, later calls return the stored value. `undefined` means "not computed yet", which is why "no entity" is stored as `null`, a different value. *See:* `runChecks` in [checks.ts](../src/checks.ts).
+
+**Property-based testing.** Instead of one example with one expected answer, the test generates hundreds of datasets and checks things that must be true of *every* answer: nothing throws, a price is never summed, the same input gives the same output. The datasets come from a seed, so a failure names a seed that rebuilds the exact case. *See:* [generality.test.ts](../src/generality.test.ts).
+
+**Guarding against a test that passes on nothing.** An invariant like "an average-only measure is never summed" passes trivially if the generator never asks for such a sum. The coverage test counts that it does (hundreds of times) and that every check fires at every severity. To check the test can fail at all, the roles step was removed from `runChecks` once by hand: the invariant failed, then the line was restored. This kind of deliberate break is called a *mutation test*.
+
+**An allowlist with reasons, and a stale-entry check.** The no-Bookshop test can't tell "keyed to Bookshop" from "uses the same ordinary word" (`'price'` is a role name and a Bookshop column). So each known exception is written down with why it's fine, and the test fails both on anything new and on an entry that no longer matches, so the list can't quietly grow stale. *See:* `ALLOWED` in [noBookshop.test.ts](../src/noBookshop.test.ts).
+
 ### The prep script (Python)
 
 **Reading .xlsx without a library.** An .xlsx file is a zip archive of XML files: `xl/workbook.xml` lists the sheets, each sheet is `xl/worksheets/sheetN.xml`, and text cells hold an index into `xl/sharedStrings.xml`. The script opens the zip with `zipfile` and walks the rows with `xml.etree.ElementTree.iterparse`, which reads one row at a time instead of the whole 9 MB sheet. *See:* `Workbook` in [prepare-bookshop.py](../scripts/prepare-bookshop.py).
@@ -486,3 +502,12 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 42. **Why 50% for the entity caveat?** → `ENTITY_SHARE` and its comment. Which Bookshop chart sits just under it, and which just over?
 43. **An uploaded CSV has a column called "revenue". Which checks run?** → `measureIsMoney` and the no-roles test in [checks.fixtures.test.ts](../src/checks.fixtures.test.ts). What does "skipped" record, and who sees it?
 44. **How do you know a check works, not just that it ran?** → the fixtures README: a planted effect where it must fire, a control where it must stay quiet, and arithmetic you can redo by hand.
+
+**Generality (Phase 3a)**
+
+45. **Hardcover leads by 7%. Is that a finding or noise?** → `NARROW_LEAD` in [checks.ts](../src/checks.ts), D-061. Why isn't this a significance test, when the data is every sale?
+46. **Why two checks for "one author tips it"?** → `ENTITY_SHARE` and the fragile lead's flip. What does the 50% line separate, and which Bookshop chart sits on each side (Bianca Thompson at 79% vs Carolyn Segal at 25%)?
+47. **A column called "x" has the money role. Can it be summed? And "amount" with the price role?** → `withRoleMeasures` in [roles.ts](../src/roles.ts), D-062.
+48. **What does a property test prove that an example test can't, and what would make it worthless?** → [generality.test.ts](../src/generality.test.ts): the coverage test and the mutation check.
+49. **Why is `'price'` allowed in app code, but `'Hardcover'` isn't?** → `ALLOWED` in [noBookshop.test.ts](../src/noBookshop.test.ts). What can't the test see (hint: JSX text)?
+50. **Why report Bianca Thompson once for the dataset, and how is her share computed?** → `datasetFindings` and `shareOf` in [datasetFindings.ts](../src/datasetFindings.ts). Why the whole dataset, not a filtered chart?
