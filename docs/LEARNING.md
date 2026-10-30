@@ -97,7 +97,7 @@ One function enforces it everywhere: `effectiveAggregate` ([chartRules.ts:105](.
 
 ### "Is this really an insight?" checks
 
-A ranking can be true and still mislead. [checks.ts](../src/checks.ts) runs five checks on every path's chart and returns what they find as **findings**. The app shows them as notes labeled **Check**, never as AI:
+A ranking can be true and still mislead. [checks.ts](../src/checks.ts) runs six checks on every path's chart and returns what they find as **findings**. The app shows them as notes labeled **Check**, never as AI:
 
 | Check | Fires when | Why it matters |
 |---|---|---|
@@ -106,6 +106,7 @@ A ranking can be true and still mislead. [checks.ts](../src/checks.ts) runs five
 | Concentration | the top group holds 40% or more of the total | The chart is mostly about one group; "the rest" may deserve its own look. |
 | Driven by one entity | one author or title holds 50% or more of the top group (misleading if the group loses first place without it) | SciFi/Fantasy leads revenue, but Bianca Thompson is 79% of it; without her rows, SciFi/Fantasy ranks 4th. Needs a roles file (D-060, D-061). |
 | Fragile lead | first place is less than 10% ahead of second, or a smaller entity (under half the group) tips it | Hardcover is only 7.2% ahead of mass-market paperback; "no" leads "yes" by 12% in items sold, but without Carolyn Segal it ranks 2nd (D-061). |
+| Single cycle | a trend's dates span one year or less | Each season appears once, so a seasonal high can't be told apart from growth. Every Bookshop trend gets it (2193 only) (D-067). |
 
 Every finding has a **severity**. *Misleading* means the naive reading is wrong: the #1 changes under mix, the top group is small, or the top group's lead is one entity. *Caveat* means it's true but worth saying. Each finding also carries **evidence**, the numbers behind its sentence (ranks, shares, record counts), so later phases can phrase it with facts and slots. A check whose preconditions aren't met is **skipped** with a reason, which tests and logs can read but the user never sees (D-059).
 
@@ -174,8 +175,11 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 | [src/useAsyncCache.ts](../src/useAsyncCache.ts) | A generic hook: load a value once per key, remember it, `retry()` on demand. | The cache behind both Level 2 and Level 3. |
 | [src/groups.ts](../src/groups.ts) | `groupView`: a chart's groups (bars or periods) with record counts and values. | One source of the numbers checks and facts use. |
 | [src/roles.ts](../src/roles.ts) | The dataset contract: `parseRoles` validates roles, facets, and rowNoun against the columns; `facetOf`, `rowNounOf`, `withRoleMeasures`; `bookshopRoles`; `UNKNOWN_ROLES` for uploads. | Lets code use what a column *is* instead of guessing from its name (D-058, D-059, D-062). |
+| [src/options.ts](../src/options.ts) | `buildOptions`: the menu. One comparison per readable category column and one trend, by money or count, with template questions, facets, findings, effect sizes, and repairs. | Code builds every option; the AI only picks among them (D-064). |
+| [src/highlight.ts](../src/highlight.ts) | Eligibility, the rules ranking (kind, facet, effect, menu order), "best place to start", the AI pick and its checks, the notices, the cache. | The highlight: gates, then rank, no weights (D-065, D-066). |
+| [src/optionsReport.ts](../src/optionsReport.ts) | The text report behind `npm run options:bookshop`. | For checking the menu and highlights by eye. Not part of the app. |
 | [src/datasetFindings.ts](../src/datasetFindings.ts) | `datasetFindings`: runs the checks over many charts and reports an entity that drives findings in two or more, with its share of the whole dataset. | So the UI can say "one author drives a third of revenue" once, not on every card (D-063). Not shown yet. |
-| [src/checks.ts](../src/checks.ts) | The check registry: five checks (mix, small, concentration, driven by one entity, fragile lead), each with preconditions and a run function; `runChecks` returns findings with severity and evidence, plus skip reasons. | Quiet notes on path cards; facts for Level 3; the "Don't say this" section later (D-051, D-055, D-059, D-060). |
+| [src/checks.ts](../src/checks.ts) | The check registry: six checks (mix, small, concentration, driven by one entity, fragile lead, single cycle), each with preconditions and a run function; `runChecks` returns findings with severity and evidence, plus skip reasons. | Quiet notes on path cards; facts for Level 3; the "Don't say this" section later (D-051, D-055, D-059, D-060). |
 | [src/facts.ts](../src/facts.ts) | `computeFacts`: every fact a story may use, with ids and display values; `strength` for the rules' pick. | The only source of numbers in a story (D-052). |
 | [src/templates.ts](../src/templates.ts) | `fillTemplate` (slots must exist, no digits outside them), `ruleStory` (the no-AI templates). | Where an AI draft is accepted or rejected. |
 | [src/story.ts](../src/story.ts) | `loadStory`: facts per candidate, ask `/api/story`, check the pick and the templates, fall back to rules. | The browser half of Level 3. |
@@ -223,6 +227,9 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 | [src/facts.test.ts](../src/facts.test.ts) | Facts computed from rows, the template filler (unknown slots, digits), rule stories. |
 | [src/story.test.ts](../src/story.test.ts) | Level 3 with a fake network: AI templates filled, every fallback, the candidate order. |
 | [api/story.test.ts](../api/story.test.ts) | The story handler with a fake client. |
+| [api/highlight.test.ts](../api/highlight.test.ts) | The highlight handler with a fake client: no key, bad requests, pass-through, never rows or extra fields. |
+| [src/options.test.ts](../src/options.test.ts) | The Bookshop menu, its questions, repairs (from mix only), facets, effect sizes; the no-roles menu. |
+| [src/highlight.test.ts](../src/highlight.test.ts) | The store-owner highlight, each persona's, "best place to start", every AI fallback, what the AI is sent, the cache. |
 
 ---
 
@@ -392,6 +399,18 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **Removing one entity and ranking again.** The entity check doesn't only ask "is Bianca a big share?". It also deletes her rows from the chart's rows and re-ranks every group the same way the chart does (largest first, ties by name). That's a counterfactual you can verify by hand: filter the CSV, re-sum, re-sort. *First seen:* the `entity` check in [checks.ts](../src/checks.ts).
 
+### Options and highlight patterns (Phase 3b)
+
+**Gates, then rank.** `isEligible` is a gate: an option with a misleading finding is out, whatever else is true of it. Only then are the eligible ones sorted. No score adds things up, so no weight has to be defended (SPEC "The highlight"). *See:* `rulesHighlight` in [highlight.ts](../src/highlight.ts).
+
+**Sorting by several keys with `||`.** `rank(kinds, a.kind) - rank(kinds, b.kind) || rank(facets, a.facet) - … || byEffect(a, b) || order(a) - order(b)`. A comparator returns a negative number, zero, or a positive number. `||` moves to the next key only when the one before gives 0 (a tie), so this reads as "by kind, then by facet, then by effect, then by menu order". The last key never ties, which is what makes the result the same every time.
+
+**The AI chooses; code checks the choice.** The AI is only sent the eligible options and can only answer with an id and a sentence. `checkAiPick` accepts the id only if it is in the eligible list, and the reason only if it has no digits and fits in 140 characters. Anything else is treated like no answer: rules pick, with a quiet notice. The AI can't add an option, approve itself, or put a number on screen.
+
+**Caching a promise, not a value.** `loadHighlight` stores the *promise* in the cache before it finishes. A second call with the same key, even one that arrives while the first is still waiting on the AI, gets the same promise, so the AI is asked once per dataset and persona. *See:* `loadHighlight` in [highlight.ts](../src/highlight.ts).
+
+**Running TypeScript from a script without a new tool.** `scripts/options-bookshop.mjs` starts Vite in "middleware mode" (no web server) and calls `ssrLoadModule`, which compiles and runs a `.ts` file the way the dev server would, including the `?raw` CSV import and the JSON import. Then it closes Vite.
+
 ### Generality patterns (Phase 3a)
 
 **Computed once, on first use.** `ctx.largest()` finds the top group's largest entity and its rank without it. Two checks need that answer, and it means scanning every row, so `runChecks` wraps it in a function that remembers its result: the first call computes, later calls return the stored value. `undefined` means "not computed yet", which is why "no entity" is stored as `null`, a different value. *See:* `runChecks` in [checks.ts](../src/checks.ts).
@@ -511,3 +530,12 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 48. **What does a property test prove that an example test can't, and what would make it worthless?** → [generality.test.ts](../src/generality.test.ts): the coverage test and the mutation check.
 49. **Why is `'price'` allowed in app code, but `'Hardcover'` isn't?** → `ALLOWED` in [noBookshop.test.ts](../src/noBookshop.test.ts). What can't the test see (hint: JSX text)?
 50. **Why report Bianca Thompson once for the dataset, and how is her share computed?** → `datasetFindings` and `shareOf` in [datasetFindings.ts](../src/datasetFindings.ts). Why the whole dataset, not a filtered chart?
+
+**Options and highlight (Phase 3b)**
+
+51. **Why does the AI pick from a menu instead of writing paths, as it did in Phase 2?** → [highlight.ts](../src/highlight.ts), D-064, D-066. What can go wrong when the AI writes a path, and what can't go wrong when it only returns an id?
+52. **The store owner's highlight is "Which format has the most items sold?", not revenue. Why?** → the repair in `buildOptions` ([options.ts](../src/options.ts)). Why does only the mix check produce repairs?
+53. **Why is the order kind, then facet, then effect, and not one score?** → `rulesHighlight`, the SPEC's "gates, then rank". What would a weight mean, and who would defend it?
+54. **The AI answers with the id of a misleading option. What does the user see?** → `checkAiPick` and the notices. Where is this tested?
+55. **Every Bookshop trend gets a "single cycle" caveat. Is the trend still worth showing?** → `SINGLE_CYCLE_DAYS` in [checks.ts](../src/checks.ts), D-067. What can one year of data say, and what can't it?
+56. **Nothing is eligible. What happens, and why not just show nothing?** → "best place to start" in `rulesHighlight`; the SPEC's wording.
