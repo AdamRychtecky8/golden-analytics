@@ -339,6 +339,26 @@ Decision: The highlight's kind order is its own table (PURPOSE_KINDS), replacing
 Why: TODO(adam)
 Status: decided
 
+## D-069 — 2026-10-30 — The flow tree replaces the linear history
+Decision: App state is a tree of nodes that only grows. A node stores only its spec: id, parent, how it was made (pick | deeper | persona | custom), the view (fields, sum or mean, filters), the persona, and the option id if it came from the menu; charts, findings, menus, and highlights are recomputed from it. The root is the dataset. A pick is a child of the current node's scope anchor (the root, or the "deeper" node that made the slice). Go deeper (clicking a bar) is a child of the current node with one more filter and a fresh menu for that slice; at most 3 filters; a column already filtered is refused and not offered again. A persona switch is a child with the same view. "Build my own chart" is a child (custom) with up to 2 fields in the current slice. Repeating an action from the same node revisits the existing child instead of copying it. Back/forward follow the visit order, like a browser; jumping in the map is a visit. The AI highlight cache key includes the filters. A node with no question (the root, a fresh slice) shows a Preview of the highlighted question with "Use this question"; it becomes a node only when picked. Slice questions read "... where {column} is {value}", joined with "and".
+Why: TODO(adam)
+Status: decided
+
+## D-070 — 2026-10-30 — The Phase 4 layout, the map, and persona colors
+Decision: The layout follows docs/wireframe-phase4.svg: map on top, menu rail on the left, one merged card on the right. The app is named "Before you present it". The map is collapsed by default to the current path as colored dots with short labels and "N questions explored"; expanded, the whole tree left to right, one column per depth, solid lines for pick/deeper/custom, dashed for persona switches, dashed boxes for slices, the current node outlined in the accent, "+N" markers for folded off-path branches; the layout is a pure, tested function. Persona tints: Store owner #5b7aa8, Marketing analyst #9a6a8f, Researcher #a08a5c, Program manager #4f8a8b (muted teal, replacing the proposed steel), built-your-own neutral grey; never orange, red, or green; only in the map and the chip; always with the persona's initial. The card shows the question, the chart, and Say this / Don't say this / If they ask / What this data can't tell you; until Phase 5, "Don't say this" lists findings in their existing text marked Draft, the rest say Phase 5. Bar clicks go deeper, so click-to-highlight is removed (Phase 5 will auto-highlight the headline's group).
+Why: TODO(adam)
+Status: decided
+
+## D-071 — 2026-10-30 — Fewer caveats before effect; "getting a feel for the data"
+Decision: The rules highlight ranks eligible options by kind, then facet, then fewer caveats, then effect size, then menu order. Bookshop: the researcher moves to format by items sold. The purpose "just exploring" is renamed "getting a feel for the data" in code, tables, reasons, and tests; earlier log entries keep the old name as written.
+Why: TODO(adam)
+Status: decided
+
+## D-072 — 2026-10-30 — What Phase 4 removed
+Decision: Removed: the slider, the scrolling level panels, Levels 0/1 as screens (the field picker lives on as "Build my own chart"), the Level 3 story panel and its hook, the old story card and its click-to-highlight, the linear history (state.ts), Level 2's paths (SuggestLevel, suggest.ts, useSuggestions, fallbackPaths with KIND_ORDER, the path validator and request builder in paths.ts), chartIdeas, and api/suggest.ts with its tests. The shared server helpers moved to api/_shared.ts first. Kept for Phase 5 to decide: facts.ts, story.ts, templates.ts, api/story.ts. The old concept is tagged `slider-concept` on 18b58d7.
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)

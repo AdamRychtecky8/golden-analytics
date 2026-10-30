@@ -9,15 +9,26 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts a local server and opens the app in your browser (usually at http://localhost:5173). It loads with the Bookshop demo data (56,350 fictional book sales, dated in the year 2193) and the "Store owner" persona, at Level 2. Loading takes about a second: the whole file is parsed and profiled when the page opens.
+`npm run dev` starts a local server and opens the app in your browser (usually at http://localhost:5173). It loads with the Bookshop demo data (56,350 fictional book sales, dated in the year 2193) and the "Store owner" persona. Loading takes about a second: the whole file is parsed and profiled when the page opens.
 
 Stop the server with `Ctrl+C` in the terminal.
 
-## AI suggestions (Level 2): with or without an API key
+## What you see
 
-Level 2 works either way.
+The layout follows `docs/wireframe-phase4.svg`:
 
-**Without a key** (the default): Level 2 shows three paths suggested by rules, each tagged **Rules**, with one quiet line saying "AI suggestions are off (no API key)". Level 3 drafts its story card with rule templates, marked **Rules draft**. Everything else, including go deeper, the breadcrumb, the checks, "Use this", "Try another angle", and back/forward, works the same.
+- **Top bar:** the dataset, the persona chip (its color and initial; click to switch or build your own), Load CSV, Use demo data (after loading your own file), and back/forward.
+- **Map**, under the top bar: collapsed to one line showing the path to the current question and how many questions you've explored. "Expand" shows the whole tree; click any box to go back to it.
+- **Menu rail**, on the left: the questions for the current slice of the data, the highlighted one first with its reason, and "Build my own chart" at the bottom.
+- **Card**, on the right: the question, its chart (click a bar to go deeper into that group), and four sections. Only "Don't say this" has content yet (the checks' findings, marked Draft); the other three say Phase 5.
+
+On the first screen, and right after going deeper, no question is picked yet: the card shows a **Preview** of the highlighted question with "Use this question".
+
+## The AI highlight: with or without an API key
+
+The app works either way.
+
+**Without a key** (the default): rules pick the highlighted question, and one quiet line under the menu says "AI highlighting is off (no API key), so rules picked this."
 
 **With a key:**
 
@@ -29,13 +40,13 @@ Level 2 works either way.
 3. Open `.env` and replace `your-anthropic-api-key-here` with your key. Optionally set `ANTHROPIC_MODEL` (default: `claude-haiku-5-5`).
 4. Restart `npm run dev`. The dev server reads `.env` only when it starts.
 
-Level 2 then opens with paths tagged **AI**, and Level 3 drafts story cards marked **AI draft**. If some AI paths fail the checks, rules fill the gaps and a notice says so. If the call fails (bad key, no network, timeout), the paths come from rules and the notice says the AI couldn't be reached.
+The AI then picks the highlight among the questions that passed the checks and writes the one-line reason, marked **AI**. If its answer fails a check (a question that isn't eligible, a digit in the reason, a reason over 140 characters), or the call fails, rules pick and the notice says why.
 
-**Where the key lives:** only in `.env` (gitignored, never committed) and in the server-side handlers in `api/`. The browser never sees it: it calls `/api/suggest` (Level 2) and `/api/story` (Level 3) on the dev server, which call Anthropic. Each AI request sends only the data profile (column names, types, ranges, top values, missing counts, whether a number can be summed), the persona, and the path(s) involved; Level 3 also sends the facts code computed for each path. It never sends rows.
+**Where the key lives:** only in `.env` (gitignored, never committed) and in the server-side handlers in `api/`. The browser never sees it: it calls `/api/highlight` on the dev server, which calls Anthropic. Each request sends only the data profile (column names, types, ranges, top values, missing counts), the persona, and the eligible questions with their caveats. It never sends rows.
 
-**Cost:** one request each time the app opens, when you switch persona, when you go deeper on a new path, and when Level 3 drafts for a new path or angle. Revisiting a branch, back/forward, and moving the slider reuse cached answers. If the AI can't be reached, the app retries once by itself; after that a "Try again" link appears next to the notice.
+**Cost:** one small request per dataset, persona, and slice: when the app opens, when you switch persona, and when you go deeper into a new group. Going back, jumping in the map, and revisiting a slice reuse the cached answer.
 
-`npm run preview` and the plain `dist/` build have no server behind `/api`, so they always show rule-based paths. The handler is written as a Vercel serverless function (`api/`), but nothing is deployed yet.
+`npm run preview` and the plain `dist/` build have no server behind `/api`, so they always use the rules. The handlers are written as Vercel serverless functions (`api/`), but nothing is deployed yet.
 
 ## Run the tests
 
@@ -43,18 +54,16 @@ Level 2 then opens with paths tagged **AI**, and Level 3 drafts story cards mark
 npm test
 ```
 
-This runs every `*.test.ts` file once with Vitest:
+This runs every `*.test.ts` file once with Vitest. The main ones:
 
-- `src/profile.test.ts`: number and date parsing, type detection, missing counts, ranges, bins, and CSV loading errors.
-- `src/chartRules.test.ts`: which chart each field combination gets, the numbers each chart would draw (sums, means, counts, empty periods, "Other" grouping), and a check that every chart renders in Vega.
-- `src/state.test.ts`: back/forward history, the two-field limit, that the user's text is never overwritten, and Level 2's go deeper, breadcrumb jumps, "use this", and persona changes.
-- `src/paths.test.ts`: the path validator (bad fields, bad filters, duplicate kinds, repeats of the parent), row filtering, filtered charts, and what is sent to the AI.
-- `src/fallbackPaths.test.ts`: the rule-based paths for every persona, the outlier finder, and go deeper two levels down.
-- `src/suggest.test.ts`: how the browser combines AI and rule paths, with the network faked (no key, errors, invalid answers).
-- `src/checks.test.ts`: the insight checks (price/mix catches hardcover vs mass-market paperback, small groups, concentration) and the groups they read.
-- `src/facts.test.ts`: the story facts, the template filler (unknown slots, digits in AI text), and the rule-based stories.
-- `src/story.test.ts`: Level 3 in the browser with the network faked: filling AI templates, every fallback, who picks the path.
-- `api/suggest.test.ts`, `api/story.test.ts`: the two server handlers, with the Anthropic API faked.
+- `src/flow.test.ts`: the tree: branching keeps every node, back/forward follow visit order, a persona switch keeps the view, go deeper adds one filter and stops at 3.
+- `src/mapLayout.test.ts`: map positions per depth, the current path never folded, "+N" counts.
+- `src/options.test.ts`, `src/highlight.test.ts`: the menu (for the whole data and for a slice), repairs, the highlight per persona, every AI fallback, the cache.
+- `src/checks.test.ts`, `src/checks.fixtures.test.ts`: every check on the Bookshop data and on synthetic fixtures.
+- `src/generality.test.ts`: invariants on 200 generated datasets plus degenerate ones.
+- `src/noBookshop.test.ts`: no Bookshop column names or values in app code.
+- `src/profile.test.ts`, `src/chartRules.test.ts`, `src/paths.test.ts`: parsing, chart rules, filtered charts.
+- `api/highlight.test.ts`, `api/story.test.ts`: the server handlers, with the Anthropic API faked.
 
 No test calls the real API.
 

@@ -22,6 +22,23 @@ Smart, motivated business users with real questions and no data training. They m
    All text editable; AI-written text marked as AI.
 5. **Explore.** Every flow is kept as a node in a tree. The user can go back to any earlier idea and branch from it without losing anything.
 
+## Layout and the tree (Phase 4, D-069 to D-072)
+The screen follows `docs/wireframe-phase4.svg`: the map on top, the menu rail on the left, one merged card on the right.
+- **Top bar:** the app name ("Before you present it"), the dataset, the persona chip (its color and initial), Load CSV, Use demo data, back/forward.
+- **Map:** collapsed by default to one line: the path to the current node as colored dots with short labels, plus "N questions explored". Expanded: the whole tree left to right, one column per depth; solid lines for a pick, go deeper, or build-your-own; dashed lines for a persona switch; a dashed box for a slice (no chart of its own); the current node outlined in the accent. Click any node to jump there. When the tree needs more rows than fit, branches off the current path fold into a "+N" marker that opens on click; the current path is never folded. The layout is a pure, tested function (`mapLayout.ts`).
+- **Persona colors:** fixed muted tints for the presets (Store owner slate blue, Marketing analyst plum, Researcher sand, Program manager muted teal), neutral grey for a built-your-own persona; never the accent orange, red, or green. Only in the map and the persona chip, never in charts, and always with the persona's initial.
+- **Menu rail:** the options for the current node's scope, the highlight first with its label ("Highlighted" or "Best place to start") and reason, any notice, and "Build my own chart" (up to 2 fields) at the bottom.
+- **Card:** the question as the title, the chart (click a bar to go deeper), then Say this, Don't say this, If they ask, What this data can't tell you. Until Phase 5, "Don't say this" lists the view's findings in their existing text, marked Draft; the other three say Phase 5.
+- **Preview:** on the root, and on a slice just made by going deeper, the card shows the scope's highlighted question's chart labeled Preview, with "Use this question"; the four sections stay hidden, and it becomes a node only when picked.
+
+**Node rules.** A node stores only its spec: id, parent, how it was made (pick | deeper | persona | custom), the view (fields, sum or mean, filters), the persona, and the option id if it came from the menu. Charts, findings, menus, and highlights are recomputed from it.
+- The root is the dataset. **Pick** = a child of the current node's scope anchor (the root, or the "deeper" node that made the slice), so a new question is a sibling of the last one.
+- **Go deeper** (click a bar) = a child of the current node, filtered to that group, with a fresh menu for that slice. At most 3 filters; a column already filtered is refused, and is not offered in the slice's menu.
+- **Persona switch** = a child of the current node with the same view, re-highlighted. **Build my own chart** = a child (how = custom) in the current slice; the checks run on it like any other view.
+- Doing the same thing again from the same node revisits the existing child instead of copying it. Nothing is ever deleted.
+- **Back/forward** follow the visit order, like a browser, not the tree. Jumping to a node in the map is a visit. A new visit after going back drops the forward visits, never nodes.
+- The AI highlight is cached per dataset, persona, and slice (the filters are in the key).
+
 ## The boundary (enforced in code)
 Code decides what is true and how it is drawn. The AI decides what is relevant and how it is said.
 - The AI sees the data profile and persona, never raw rows (D-011).
@@ -35,7 +52,7 @@ Code measures, the AI judges among real candidates, code verifies the AI returne
 **How it's chosen: gates, then rank. No weights** (a weighted score was rejected: its weights would be numbers no one could defend, and it would multiply an AI opinion by a coefficient).
 1. **Eligible (code):** no *misleading* finding, and enough records per group. *Caveat* findings don't disqualify.
 2. **Most relevant (AI):** picks one eligible option for the persona's decision; returns its ID plus a one-line reason with no digits. Code rejects any ID not in the eligible set and falls back to rules. No key: a fixed table maps the persona's purpose to preferred kinds (e.g., "deciding where to invest" → comparison, then trend).
-3. **Tie-break (code, fallback only):** kind first (the purpose's kind order below), then preferred facet for the persona's purpose (see Generality), then effect size within the kind, then fixed option order. The same data and persona always give the same highlight.
+3. **Tie-break (code, fallback only):** kind first (the purpose's kind order below), then preferred facet for the persona's purpose (see Generality), then fewer caveats, then effect size within the kind, then fixed option order. The same data and persona always give the same highlight.
 
    | Purpose | Kind order | Preferred facets |
    |---|---|---|
@@ -43,7 +60,7 @@ Code measures, the AI judges among real candidates, code verifies the AI returne
    | reporting results upward | trend, comparison | offering |
    | testing whether a pattern is real | comparison, trend | none |
    | finding problems to fix | comparison, trend | source, place |
-   | just exploring | trend, comparison | none |
+   | getting a feel for the data | trend, comparison | none |
 The highlight is cached per dataset + persona, so it doesn't change on revisit.
 
 **Check severity** (each check declares one):
@@ -116,7 +133,7 @@ Arbitrary datasets (needs an upstream semantic classifier to write the roles fil
 2. Check engine: registry, roles, new entity check, fixtures. No UI. (done, D-059, D-060)
 3a. Generality: contract with facets + rowNoun, fragile-lead check, entity share rule, dataset-level findings, property tests, no-Bookshop test. No UI. (done, D-061 to D-063)
 3b. Options + highlight: one comparison per readable category (by the money measure, or by count with none) plus one trend; code-written questions; AI picks an eligible ID + no-digit reason; rules fallback. (done, D-064 to D-068)
-4. Flow tree + remove slider and levels.
-5. Present card.
+4. Flow tree + remove slider and levels. (done, D-069 to D-072; the old concept is tagged `slider-concept`)
+5. Present card. Note: the card's chart auto-highlights the group the headline is about (replacing click-to-highlight, which Phase 4 removed; bar clicks now go deeper).
 6. Prompt-a-path + eval set.
 7. User testing, video, README (README by Adam).
