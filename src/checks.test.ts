@@ -202,3 +202,25 @@ describe('driven by one entity, on the Bookshop data', () => {
     expect(runChecks(view(['genre', 'price'], [], 'mean'), bp, books, roles).skipped.map((s) => s.id)).toContain('entity');
   });
 });
+
+describe('fragile lead, on the Bookshop data', () => {
+  const roles = bookshopRoles(loaded.dataset.columns);
+  const fragileOf = (v: ReturnType<typeof view>) => runChecks(v, bp, books, roles).findings.find((f) => f.id === 'fragile');
+
+  it('fires on the three narrow leads: title 1.0%, award winner 5.3%, format 7.2%', () => {
+    expect(fragileOf(view(['title', 'revenue']))!.text).toMatch(/^The Mallemaroking is only 1\.0% ahead of Rystwyth/);
+    expect(fragileOf(view(['award winner', 'revenue']))!.text).toMatch(/^yes is only 5\.3% ahead of no/);
+    expect(fragileOf(view(['format', 'revenue']))!.text).toMatch(/^Hardcover is only 7\.2% ahead of Mass market paperback/);
+  });
+
+  it('count by award winner: a clear 12% lead that one smaller author (Carolyn Segal, 25%) tips', () => {
+    const f = fragileOf(view(['award winner']))!;
+    expect(f.severity).toBe('caveat');
+    expect(f.text).toBe('no leads yes by 12%, but without Carolyn Segal (one author), no ranks 2nd.');
+  });
+
+  it("stays quiet on clear leads, and doesn't repeat a flip the entity check already reports", () => {
+    expect(fragileOf(view(['format']))).toBeUndefined(); // 2.29x
+    expect(fragileOf(view(['genre', 'revenue']))).toBeUndefined(); // Bianca Thompson is 79%: entity check's
+  });
+});

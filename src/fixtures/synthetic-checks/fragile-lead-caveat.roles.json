@@ -1,0 +1,10 @@
+{
+  "columns": {
+    "store": {
+      "role": "category"
+    },
+    "revenue": {
+      "role": "money"
+    }
+  }
+}

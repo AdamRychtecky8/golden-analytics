@@ -35,11 +35,16 @@ export const CONCENTRATION = 0.4;
 // entity tipping a close race is a fragile lead, not "driven by" (D-061).
 export const ENTITY_SHARE = 0.5;
 
+// Fragile lead: first place is less than 10% ahead of second (top ÷ second < 1.10). This is
+// practical significance, not statistical: the data is the whole population (every sale),
+// so the gap is real, but it is small enough that ordinary changes would erase it.
+export const NARROW_LEAD = 1.1;
+
 // Words that mark a number as money, so a ranking by it can be compared to a ranking by
 // count. Only used when the data has no roles file; with roles, the "money" role decides.
 const MONEY_WORDS = ['revenue', 'sales', 'amount', 'cost', 'costs', 'spend', 'spending', 'profit', 'income', 'price', 'value'];
 
-export type CheckId = 'mix' | 'small' | 'concentration' | 'entity';
+export type CheckId = 'mix' | 'small' | 'concentration' | 'entity' | 'fragile';
 
 // Misleading: the naive reading of the chart is wrong. Caveat: true, but worth saying.
 export type Severity = 'misleading' | 'caveat';
@@ -73,6 +78,17 @@ export type Evidence =
       share: number; // entityValue / groupValue
       rankWithout: number; // the group's rank once the entity's rows are removed everywhere
       threshold: number;
+    }
+  | {
+      check: 'fragile';
+      measure: string | null; // null: the chart counts records
+      top: { label: string; value: number; records: number };
+      second: { label: string; value: number; records: number };
+      ratio: number; // top ÷ second
+      threshold: number; // NARROW_LEAD
+      narrow: boolean; // ratio < threshold
+      // Set when removing the top group's largest entity (under half the group) flips first place.
+      flip: { column: string; entity: string; share: number; rankWithout: number } | null;
     };
 
 export interface Finding {
@@ -346,8 +362,54 @@ const entity: CheckDef = {
   },
 };
 
+const fragile: CheckDef = {
+  id: 'fragile',
+  // Only for categories summed or counted, where "first place" is a share of a whole.
+  preconditions: ({ g }) => {
+    if (g.by !== 'category') return 'groups are periods, not categories';
+    if (g.total === null) return 'the chart is a mean, not a sum or count';
+    if (g.groups.length < 2) return 'fewer than 2 groups, so there is no second place';
+    if ((g.groups[1].value ?? 0) <= 0) return "the second group's value is zero or less, so top ÷ second means nothing";
+    return null;
+  },
+  run: (ctx) => {
+    const { g } = ctx;
+    const [top, second] = g.groups;
+    const ratio = top.value! / second.value!;
+    const narrow = ratio < NARROW_LEAD;
+    // A lead can also be fragile with a clear gap, when one entity tips it. An entity that is
+    // half the group or more is the entity check's ("driven by"), so it isn't repeated here.
+    const e = ctx.largest();
+    const flip = e !== null && e.share < ENTITY_SHARE && e.rankWithout > 1 ? e : null;
+    if (!narrow && !flip) return null;
+
+    let text: string;
+    if (ratio === 1) text = `${top.label} is tied with ${second.label}, so ordinary changes could decide first place.`;
+    // Every narrow gap is under 10%, so one decimal keeps "4.6%" from rounding to "5%".
+    else if (narrow) text = `${top.label} is only ${((ratio - 1) * 100).toFixed(1)}% ahead of ${second.label}, a lead small enough that ordinary changes could erase it.`;
+    else text = `${top.label} leads ${second.label} by ${pct(ratio - 1)}, but without ${flip!.entity} (one ${flip!.column}), ${top.label} ranks ${ordinal(flip!.rankWithout)}.`;
+
+    const side = (x: Group) => ({ label: x.label, value: x.value!, records: x.records });
+    return {
+      id: 'fragile',
+      severity: 'caveat', // first place is real today; it just isn't safe to build on
+      text,
+      evidence: {
+        check: 'fragile',
+        measure: g.measure?.name ?? null,
+        top: side(top),
+        second: side(second),
+        ratio,
+        threshold: NARROW_LEAD,
+        narrow,
+        flip: flip && { column: flip.column, entity: flip.entity, share: flip.share, rankWithout: flip.rankWithout },
+      },
+    };
+  },
+};
+
 /** Every check, in the order findings are listed. */
-const CHECKS: CheckDef[] = [mix, small, concentration, entity];
+const CHECKS: CheckDef[] = [mix, small, concentration, entity, fragile];
 
 const skipAll = (reason: string): CheckRun => ({ findings: [], skipped: CHECKS.map((c) => ({ id: c.id, reason })) });
 
