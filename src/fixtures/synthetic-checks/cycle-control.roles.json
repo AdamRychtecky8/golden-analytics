@@ -1,0 +1,10 @@
+{
+  "columns": {
+    "day": {
+      "role": "date"
+    },
+    "revenue": {
+      "role": "money"
+    }
+  }
+}

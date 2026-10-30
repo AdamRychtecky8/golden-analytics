@@ -1,4 +1,4 @@
-import { isMissing, parseNumber, type Row } from './aggregate';
+import { isMissing, parseDate, parseNumber, type Row } from './aggregate';
 import { groupView, periodLabel, type Group, type Grouping } from './groups';
 import type { ChartView } from './paths';
 import type { DataProfile } from './profile';
@@ -40,11 +40,16 @@ export const ENTITY_SHARE = 0.5;
 // so the gap is real, but it is small enough that ordinary changes would erase it.
 export const NARROW_LEAD = 1.1;
 
+// Single cycle: a trend whose dates span one year or less shows each season once, so a
+// seasonal high can't be told apart from growth (or a seasonal low from decline). 366 days
+// is one year even with a leap day.
+export const SINGLE_CYCLE_DAYS = 366;
+
 // Words that mark a number as money, so a ranking by it can be compared to a ranking by
 // count. Only used when the data has no roles file; with roles, the "money" role decides.
 const MONEY_WORDS = ['revenue', 'sales', 'amount', 'cost', 'costs', 'spend', 'spending', 'profit', 'income', 'price', 'value'];
 
-export type CheckId = 'mix' | 'small' | 'concentration' | 'entity' | 'fragile';
+export type CheckId = 'mix' | 'small' | 'concentration' | 'entity' | 'fragile' | 'cycle';
 
 // Misleading: the naive reading of the chart is wrong. Caveat: true, but worth saying.
 export type Severity = 'misleading' | 'caveat';
@@ -89,7 +94,8 @@ export type Evidence =
       narrow: boolean; // ratio < threshold
       // Set when removing the top group's largest entity (under half the group) flips first place.
       flip: { column: string; entity: string; share: number; rankWithout: number } | null;
-    };
+    }
+  | { check: 'cycle'; first: string; last: string; days: number; threshold: number }; // ISO days of the chart's first and last date
 
 export interface Finding {
   id: CheckId;
@@ -408,8 +414,32 @@ const fragile: CheckDef = {
   },
 };
 
+const cycle: CheckDef = {
+  id: 'cycle',
+  // Any chart over time, summed, counted, or averaged: seasonality affects them all.
+  preconditions: ({ g }) => (g.by !== 'period' ? 'groups are categories, not periods' : null),
+  run: ({ g }) => {
+    let first = Infinity;
+    let last = -Infinity;
+    for (const r of g.rows) {
+      const t = parseDate(r[g.field.name])!; // the chart's rows all have a valid date
+      if (t < first) first = t;
+      if (t > last) last = t;
+    }
+    const days = Math.round((last - first) / 86_400_000);
+    if (days > SINGLE_CYCLE_DAYS) return null;
+    const [from, to] = [first, last].map((t) => new Date(t).toISOString().slice(0, 10));
+    return {
+      id: 'cycle',
+      severity: 'caveat', // the trend is drawn correctly; it just can't say why it moves
+      text: `These dates run from ${from} to ${to}, one year or less, so a seasonal pattern can't be told apart from growth or decline.`,
+      evidence: { check: 'cycle', first: from, last: to, days, threshold: SINGLE_CYCLE_DAYS },
+    };
+  },
+};
+
 /** Every check, in the order findings are listed. */
-const CHECKS: CheckDef[] = [mix, small, concentration, entity, fragile];
+const CHECKS: CheckDef[] = [mix, small, concentration, entity, fragile, cycle];
 
 const skipAll = (reason: string): CheckRun => ({ findings: [], skipped: CHECKS.map((c) => ({ id: c.id, reason })) });
 

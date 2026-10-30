@@ -37,6 +37,7 @@ describe('each check fires on its planted fixture, with the expected severity', 
     ['entity-caveat', 'entity', 'caveat'],
     ['fragile-lead-caveat', 'fragile', 'caveat'],
     ['fragile-lead-flip', 'fragile', 'caveat'],
+    ['cycle-caveat', 'cycle', 'caveat'],
   ])('%s → %s, %s', (name, id, severity) => {
     expect(severityOf(name, id)).toBe(severity);
   });
@@ -51,6 +52,7 @@ describe('each check stays quiet on its clean control', () => {
     ['fragile-lead-flip', 'entity'], // a 37.5% author flips first place: not "driven by"
     ['fragile-lead-control', 'fragile'], // 1.20
     ['fragile-lead-boundary', 'fragile'], // exactly 1.10: "less than" means quiet
+    ['cycle-control', 'cycle'], // 25 months
   ])('%s → no %s finding, and it ran (not skipped)', (name, id) => {
     const run = fixture(name);
     expect(run.findings.map((f) => f.id)).not.toContain(id);
@@ -75,7 +77,7 @@ describe('the entity fixtures, by the numbers', () => {
 describe('an uploaded CSV with no roles file', () => {
   it('skips the role-dependent checks and says why, while the name-based ones still run', () => {
     const run = fixture('entity-misleading', false);
-    expect(run.skipped).toEqual([{ id: 'entity', reason: 'roles are unknown (no roles file), so no column is known to be an entity' }]);
+    expect(run.skipped).toContainEqual({ id: 'entity', reason: 'roles are unknown (no roles file), so no column is known to be an entity' });
     // Mix falls back to the name guess: "revenue" looks like money, so it ran.
     expect(run.skipped.map((s) => s.id)).not.toContain('mix');
   });
@@ -110,5 +112,13 @@ describe('the fragile-lead fixtures, by the numbers', () => {
     ];
     const run = runChecks({ fields: ['store', 'revenue'], aggregate: 'sum', filters: [] }, profileDataset(['store', 'revenue'], rows), rows);
     expect(run.skipped).toContainEqual({ id: 'fragile', reason: "the second group's value is zero or less, so top ÷ second means nothing" });
+  });
+});
+
+describe('the single-cycle fixture, by the numbers', () => {
+  it('11 months: 304 days, so one cycle or less', () => {
+    const f = fixture('cycle-caveat').findings.find((x) => x.id === 'cycle')!;
+    expect(f.text).toBe("These dates run from 2025-01-15 to 2025-11-15, one year or less, so a seasonal pattern can't be told apart from growth or decline.");
+    expect(f.evidence).toEqual({ check: 'cycle', first: '2025-01-15', last: '2025-11-15', days: 304, threshold: 366 });
   });
 });

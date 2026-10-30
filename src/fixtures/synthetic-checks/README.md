@@ -21,3 +21,5 @@ Each `name.csv` has a `name.roles.json` beside it. Rows are sorted in blocks of 
 | fragile-lead-caveat | First place is barely ahead | A 105, B 100: 105 ÷ 100 = 1.05 | fragile, caveat |
 | fragile-lead-control | First place is clearly ahead | A 120, B 100: 1.20 | no fragile finding |
 | fragile-lead-boundary | Exactly at the line | A 110, B 100: 1.10, which is not less than 1.10 | no fragile finding |
+| cycle-caveat | A trend over less than a year | 11 monthly rows, 2025-01-15 to 2025-11-15: 304 days | cycle, caveat |
+| cycle-control | A trend over more than two years | 25 monthly rows, 2025-01-15 to 2027-01-15: 730 days | no cycle finding |

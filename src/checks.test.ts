@@ -224,3 +224,16 @@ describe('fragile lead, on the Bookshop data', () => {
     expect(fragileOf(view(['genre', 'revenue']))).toBeUndefined(); // Bianca Thompson is 79%: entity check's
   });
 });
+
+describe('single cycle, on the Bookshop data', () => {
+  it('fires on any trend: the sales run 2193-01-02 to 2193-12-31, one year', () => {
+    const f = runChecks(view(['sale date', 'revenue']), bp, books).findings.find((x) => x.id === 'cycle')!;
+    expect(f.severity).toBe('caveat');
+    expect(f.evidence).toMatchObject({ first: '2193-01-02', last: '2193-12-31', days: 363 });
+    expect(runChecks(view(['sale date']), bp, books).findings.map((x) => x.id)).toContain('cycle');
+  });
+
+  it('skips category charts', () => {
+    expect(runChecks(view(['format']), bp, books).skipped).toContainEqual({ id: 'cycle', reason: 'groups are categories, not periods' });
+  });
+});
