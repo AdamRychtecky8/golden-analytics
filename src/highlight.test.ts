@@ -36,7 +36,7 @@ describe('Bookshop, store owner, no API key', () => {
     expect(h).toEqual<Highlight>({
       id: 'comparison:format:count',
       label: 'highlight',
-      reason: 'It compares by format, which fits deciding where to invest. It counts items sold instead of revenue, because revenue by format is misleading.',
+      reason: "Looking at format fits what you're doing: deciding where to invest. We count items sold here, because revenue alone tells a misleading story about format.",
       source: 'rules',
       notice: HIGHLIGHT_NOTICES.noKey,
     });
@@ -48,15 +48,15 @@ describe('the rules highlight per persona: kind first, then facet, then effect, 
   it.each([
     ['store-owner', 'comparison:format:count'], // comparison first; offering
     ['marketing-analyst', 'trend:sale date:revenue'], // trend first
-    ['researcher', 'trend:sale date:revenue'], // trend before comparison in its kind order
-    ['program-manager', 'trend:sale date:revenue'], // trend before comparison in its kind order
+    ['researcher', 'comparison:author country:revenue'], // comparison first; no facets, so largest effect
+    ['program-manager', 'comparison:publisher:revenue'], // comparison first; source
   ])('%s → %s', (id, expected) => {
     expect(rulesHighlight(options, PRESETS.find((p) => p.id === id)!, roles)!.id).toBe(expected);
   });
 
   it('just exploring → the trend, with the kind reason', () => {
     const h = rulesHighlight(options, customPersona('retail', 'owner', 'just exploring'), roles)!;
-    expect(h).toMatchObject({ id: 'trend:sale date:revenue', reason: 'A trend fits just exploring.' });
+    expect(h).toMatchObject({ id: 'trend:sale date:revenue', reason: 'A trend is a good way into just exploring.' });
   });
 
   it('is always eligible on Bookshop', () => {

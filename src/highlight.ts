@@ -1,6 +1,5 @@
 import { askAi, type AskOptions } from './aiRequest';
 import type { CheckId, Severity } from './checks';
-import { KIND_ORDER } from './fallbackPaths';
 import { isEligible, type Option, type OptionKind } from './options';
 import { summarizeProfile, type SuggestRequest } from './paths';
 import type { Persona, Purpose } from './personas';
@@ -12,6 +11,18 @@ import { rowNounOf, type Facet, type Roles } from './roles';
 // and say why in one line with no digits; code checks its answer. Without a key, or if the
 // AI's answer fails a check, rules pick, the same way every time.
 
+/**
+ * Which kind of option comes first for each purpose (Adam's table for the two-kind menu).
+ * Ranked before facets, so this decides whether a purpose leads with a ranking or a trend.
+ */
+export const PURPOSE_KINDS: Record<Purpose, OptionKind[]> = {
+  'deciding where to invest': ['comparison', 'trend'],
+  'reporting results upward': ['trend', 'comparison'],
+  'testing whether a pattern is real': ['comparison', 'trend'],
+  'finding problems to fix': ['comparison', 'trend'],
+  'just exploring': ['trend', 'comparison'],
+};
+
 /** Which facets each purpose prefers, in order (approved by Adam). */
 export const PURPOSE_FACETS: Record<Purpose, Facet[]> = {
   'deciding where to invest': ['offering', 'place'],
@@ -21,14 +32,12 @@ export const PURPOSE_FACETS: Record<Purpose, Facet[]> = {
   'just exploring': [],
 };
 
-// TODO(adam): the facet, kind, and repair lines are Claude Code's stand-ins. Adam's approval
-// left them as "[my wording]" placeholders; replace them with his wording. His rule: a reason
-// mentions a check only when a check caught something (so only the repair line does).
-// bestPlace is the spec's draft copy.
+// Rules reasons, in Adam's wording. A reason mentions a check only when a check caught
+// something, so only the repair line does. bestPlace is the spec's draft copy.
 export const REASONS = {
-  facet: 'It compares by {column}, which fits {purpose}.',
-  kind: 'A {kind} fits {purpose}.',
-  repair: 'It counts {many} instead of {measure}, because {measure} by {column} is misleading.',
+  facet: "Looking at {column} fits what you're doing: {purpose}.",
+  kind: 'A {kind} is a good way into {purpose}.',
+  repair: 'We count {many} here, because {measure} alone tells a misleading story about {column}.',
   bestPlace: "Every option in this data has a catch. This one's is the easiest to work around, and we'll show you how.",
 };
 
@@ -76,7 +85,7 @@ export function rulesHighlight(options: Option[], persona: Pick<Persona, 'purpos
     return { id: best.id, label: 'best-place-to-start', reason: REASONS.bestPlace, source: 'rules', notice: null };
   }
 
-  const kinds = KIND_ORDER[persona.purpose] as OptionKind[];
+  const kinds = PURPOSE_KINDS[persona.purpose];
   const facets = PURPOSE_FACETS[persona.purpose];
   const [pick] = [...eligible].sort(
     (a, b) => rank(kinds, a.kind) - rank(kinds, b.kind) || rank(facets, a.facet) - rank(facets, b.facet) || byEffect(a, b) || order(a) - order(b),
@@ -85,13 +94,25 @@ export function rulesHighlight(options: Option[], persona: Pick<Persona, 'purpos
 }
 
 function rulesReason(pick: Option, options: Option[], purpose: Purpose, roles: Roles): string {
+  const original = pick.repairs ? options.find((o) => o.id === pick.repairs) : undefined;
+  const repair = original?.measure ? { many: rowNounOf(roles).many, measure: original.measure, column: original.column } : null;
+  return reasonFor(pick, purpose, repair);
+}
+
+/**
+ * The rules reason for an option: the facet line when the option's facet is one the purpose
+ * prefers, otherwise the kind line, plus the repair line when the option repairs another.
+ */
+export function reasonFor(
+  pick: Pick<Option, 'kind' | 'facet' | 'column'>,
+  purpose: Purpose,
+  repair: { many: string; measure: string; column: string } | null = null,
+): string {
   const why =
     pick.facet && PURPOSE_FACETS[purpose].includes(pick.facet)
       ? fill(REASONS.facet, { column: pick.column, purpose })
       : fill(REASONS.kind, { kind: pick.kind, purpose });
-  const original = pick.repairs ? options.find((o) => o.id === pick.repairs) : undefined;
-  if (!original?.measure) return why;
-  return `${why} ${fill(REASONS.repair, { many: rowNounOf(roles).many, measure: original.measure, column: original.column })}`;
+  return repair ? `${why} ${fill(REASONS.repair, repair)}` : why;
 }
 
 // ---------------------------------------------------------------------------------------

@@ -1,10 +1,10 @@
 import demoText from './data/bookshop-sales.csv?raw';
-import { rulesHighlight } from './highlight';
+import { REASONS, reasonFor, rulesHighlight } from './highlight';
 import { parseCsv } from './loadCsv';
 import { buildOptions, isEligible, type Option } from './options';
-import { PRESETS, customPersona } from './personas';
+import { PRESETS, PURPOSES, customPersona } from './personas';
 import { profileDataset } from './profile';
-import { bookshopRoles } from './roles';
+import { FACETS, bookshopRoles, facetOf, rowNounOf, type Facet } from './roles';
 
 // A plain-text report of the Bookshop menu and each persona's highlight, for checking the
 // options and highlight logic by eye (npm run options:bookshop). It uses the rules only, the
@@ -38,5 +38,26 @@ export function bookshopReport(): string {
     const picked = options.find((o) => o.id === h.id)!;
     out.push(`      ${h.label === 'highlight' ? 'Highlight' : 'Best place to start'}: ${h.id}`, `      "${picked.question}"`, `      Reason: ${h.reason}`);
   }
+
+  // Every sentence the rules can produce, for reading them all at once. Each facet is filled
+  // with the first Bookshop column that has it; "no facet" with the first option without one.
+  out.push('', 'EVERY RULES REASON (purpose x kind x facet), filled with Bookshop values');
+  const comparisons = options.filter((o) => o.kind === 'comparison' && !o.repairs);
+  const columnFor = (facet: Facet | null) => comparisons.find((o) => facetOf(roles, o.column) === facet)?.column;
+  const trend = options.find((o) => o.kind === 'trend');
+  for (const purpose of PURPOSES) {
+    out.push(`  ${purpose}`);
+    for (const facet of [...FACETS, null]) {
+      const column = columnFor(facet);
+      if (column) out.push(`      comparison, ${facet ?? 'no facet'} (${column}): ${reasonFor({ kind: 'comparison', facet, column }, purpose)}`);
+    }
+    if (trend) out.push(`      trend (${trend.column}): ${reasonFor(trend, purpose)}`);
+  }
+  // The repair line, for each repair in the menu, and the best-place-to-start line.
+  for (const o of options.filter((x) => x.repairs)) {
+    const original = options.find((x) => x.id === o.repairs)!;
+    out.push(`  repair (${o.id}): ${reasonFor(o, 'deciding where to invest', { many: rowNounOf(roles).many, measure: original.measure!, column: original.column })}`);
+  }
+  out.push(`  best place to start: ${REASONS.bestPlace}`);
   return out.join('\n');
 }
