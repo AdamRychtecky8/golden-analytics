@@ -148,6 +148,7 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 | [scripts/prepare-bookshop.py](../scripts/prepare-bookshop.py) | Python, standard library only. Joins the raw Bookshop workbook's sheets into one sales CSV, checking every join. | The "upstream prep tool" (D-010, D-047): cleaning and joining happen once, outside the app, in a script anyone can rerun. |
 | [data/raw/Bookshop.xlsx](../data/raw/Bookshop.xlsx) | The raw fictional bookshop workbook (13 sheets). | Committed so the prep step can be reproduced. |
 | [src/data/bookshop-sales.csv](../src/data/bookshop-sales.csv) | 56,350 sales rows, the app's default demo data. | Generated; rerun the prep script instead of editing it. |
+| [src/data/bookshop-sales.roles.json](../src/data/bookshop-sales.roles.json) | One role per CSV column: money, price, rate, date, category, entity, flag, or id. | Written by the prep script, which knows what each column means; the app can't safely guess that from names (D-058). Not read by the app yet. |
 | [src/data/sample-sales-synthetic.csv](../src/data/sample-sales-synthetic.csv) | 200 synthetic sales rows. | Used by the tests: small and seeded, so expected numbers can be checked by hand. The app opens on the Bookshop data instead. |
 
 ### Logic (pure functions)
@@ -372,6 +373,10 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **Joins as dictionary lookups.** Each lookup sheet becomes a dict from key to row (`index()`), which also checks the key is unique. A join is then `table.get(key)`. A miss is recorded, and after all rows are read the script stops and lists the first ten, so you see every problem at once instead of one per run.
 
+**A set, not a lookup, for Award.** `index()` refuses duplicate keys because a join on a repeated key would be ambiguous. Award is only asked "is this title in here?", so it becomes a Python `set` of titles: "The Mallemaroking" winning two awards is two rows but one member of the set, and nothing is ambiguous. The script still checks every Award title matches a Book title.
+
+**Empty is not the same as unmatched.** A book with no SeriesID isn't in a series, so its `series` cell is empty, and that's correct. A SeriesID that isn't in the Series sheet is a broken join, so the script stops. The output keeps the two apart: empty series values are counted on their own line, not under "Empty values".
+
 **Fail loudly, print counts.** The script exits with an error (`sys.exit(1)`) for anything it can't explain, and otherwise prints what it did: rows per sheet, the total, repeated ItemIDs, empty values. A prep step that silently drops a row would break the precision rule before the app even starts.
 
 ---
@@ -445,4 +450,10 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 33. **Why doesn't filling the card add a history step?** → the `fillDraft` branch of `historyReducer`. What would "back" do if it did?
 34. **How does go deeper avoid repeating the top-level paths now?** → the inherit-plus-one filter rule in `checkOne` ([paths.ts](../src/paths.ts)), D-051, and the prompt. Why enforce it in code when the prompt already asks?
 35. **What's the weakest part of Phase 3?** Honest candidates: name-based measure classification (a column called "x" can't be summed, a column called "count_rate" is a guess); checks only look at one chart at a time; the money-word list is English; Level 3 was tested against a local mock of the API, not the real model.
+
+**Bookshop columns and roles**
+
+36. **Why is Marketing Spend not a column, when it's right there in the Publisher sheet?** → the exclusion comment at the top of [prepare-bookshop.py](../scripts/prepare-bookshop.py), D-058. What happens if you sum a per-publisher number that was copied onto 56,350 sale rows?
+37. **Could the library workbook be joined to sales by ISBN?** → each ISBN has 1 to 5 Catalog rows. What does that do to the row count and to total revenue?
+38. **Why write the roles in a separate file instead of letting the app guess from column names?** → compare D-054 (name-based measures). Who knows that `book id` is an identifier, the prep script or the app?
 

@@ -284,6 +284,11 @@ Status: tentative
 Decision: Scatter point area grows with the count (30–900 px²), with a note like "56350 records are shown as 58 points". Bars and heatmap rows get at least 17 px each, so a chart grows taller rather than overlapping labels, and axis labels that would touch are thinned. Rules prefer category columns with 2–12 values (genre before title), the same advice the AI gets. A follow-up's new filter is the parent's top value in a category it doesn't filter yet, ranked by the parent's measure only if it is additive. The AI prompt now says follow-ups must answer the parent's question and keep its measure, steer away from columns with many values unless filtered, and take the fictional dates as given. Failed calls wait 600 ms before the one retry; a missing key is never retried.
 Status: tentative
 
+## D-058 — 2026-10-30 — More Bookshop columns, a roles file, and what stays out
+Decision: The prep script adds four columns after the existing nine, which stay unchanged: author (First Name + Last Name via Book.AuthID), award winner (yes/no: title is in the Award sheet), series (Series Name via Info.SeriesID, empty if none), book id. An Award title or SeriesID that doesn't match stops the script. It also writes src/data/bookshop-sales.roles.json with one role per column: sale date = date; title, author = entity; genre, format, publisher, author country, series = category; price = price; discount = rate; revenue = money; award winner = flag; book id = id (counted, never charted or scanned for concentration). The app doesn't read the roles yet. Publisher."Marketing Spend" (one value per publisher) and Ratings (one row per review) are not added. BookshopLibraries.xlsx (LibraryProfile: one row per library and staff type; Catalog: one row per library and ISBN with a copy count) is not joined; its use is undecided.
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)
