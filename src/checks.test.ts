@@ -185,6 +185,10 @@ describe('driven by one entity, on the Bookshop data', () => {
     expect(f.text).toBe('Bianca Thompson accounts for 64% of revenue in United States.');
   });
 
+  it('stays quiet below half even when removing the author flips first place (count by award winner: 25%)', () => {
+    expect(entityOf(view(['award winner']))).toBeUndefined();
+  });
+
   it('stays quiet below half when the group keeps first place (count by format: 30%)', () => {
     expect(entityOf(view(['format']))).toBeUndefined();
   });

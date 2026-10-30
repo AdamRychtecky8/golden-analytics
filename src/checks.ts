@@ -30,8 +30,9 @@ export const CONCENTRATION = 0.4;
 
 // Driven by one entity: when a single entity (an author, a title) holds half or more of the
 // top group, the group's figure is mostly that one entity's. Half is the line where "mostly"
-// is literally true, so the caveat needs no further justification to a reader. (Below it,
-// on Bookshop: count by format, where one author is 30% of the top group.)
+// is literally true, so the finding needs no further justification to a reader. Below it,
+// the entity check says nothing, even if removing the entity flips first place: a smaller
+// entity tipping a close race is a fragile lead, not "driven by" (D-061).
 export const ENTITY_SHARE = 0.5;
 
 // Words that mark a number as money, so a ranking by it can be compared to a ranking by
@@ -92,12 +93,22 @@ export interface CheckRun {
   skipped: Skipped[];
 }
 
+/** The single largest entity in the chart's top group, and where the group ranks without it. */
+interface LargestEntity {
+  column: string;
+  entity: string;
+  value: number; // the entity's part of the top group's value
+  share: number; // value / the top group's value
+  rankWithout: number; // the top group's rank once the entity's rows are removed everywhere
+}
+
 /** What every check gets: the chart, the data, its roles, and the chart's groups. */
 interface CheckContext {
   view: ChartView;
   profile: DataProfile;
   roles: Roles;
   g: Grouping;
+  largest: () => LargestEntity | null; // computed on first use, then remembered
 }
 
 interface CheckDef {
@@ -226,7 +237,7 @@ const concentration: CheckDef = {
 };
 
 /** Entity columns the check can use for this chart, and those it must leave out. */
-function entityColumns({ g, roles }: CheckContext): { usable: string[]; determined: string[] } {
+function entityColumns({ g, roles }: Pick<CheckContext, 'g' | 'roles'>): { usable: string[]; determined: string[] } {
   if (!roles.known) return { usable: [], determined: [] };
   const candidates = Object.keys(roles.byColumn).filter((c) => roles.byColumn[c] === 'entity' && c !== g.field.name);
   const usable: string[] = [];
@@ -252,6 +263,48 @@ function entityColumns({ g, roles }: CheckContext): { usable: string[]; determin
   return { usable, determined };
 }
 
+/**
+ * The single entity, across every usable entity column, with the largest part of the top
+ * group's value (ties go to the earlier column, then the name first alphabetically), and the
+ * top group's rank once that entity's rows are removed everywhere in the chart. Null when
+ * roles are unknown, the chart has no usable entity column, or the top group is empty.
+ */
+function largestEntity(ctx: Omit<CheckContext, 'largest'>): LargestEntity | null {
+  const { g } = ctx;
+  if (g.by !== 'category' || g.total === null) return null;
+  const top = g.groups[0];
+  const groupValue = top.value ?? 0;
+  if (groupValue <= 0) return null;
+  const field = g.field.name;
+  const valueOf = (r: Row) => (g.measure ? parseNumber(r[g.measure.name])! : 1);
+
+  let best: { column: string; entity: string; value: number } | null = null;
+  for (const column of entityColumns(ctx).usable) {
+    const parts = new Map<string, number>();
+    for (const r of g.rows) {
+      if (r[field].trim() !== top.label || isMissing(r[column])) continue;
+      const e = r[column].trim();
+      parts.set(e, (parts.get(e) ?? 0) + valueOf(r));
+    }
+    for (const [e, v] of [...parts].sort((a, b) => a[0].localeCompare(b[0]))) {
+      if (best === null || v > best.value) best = { column, entity: e, value: v };
+    }
+  }
+  if (best === null) return null;
+
+  // Remove the entity's rows everywhere in the chart, then rank the groups again (same
+  // order as the chart: largest first, then by name). A group left with no rows counts as 0.
+  const without = new Map(g.groups.map((x) => [x.label, 0]));
+  for (const r of g.rows) {
+    if (!isMissing(r[best.column]) && r[best.column].trim() === best.entity) continue;
+    const k = r[field].trim();
+    without.set(k, without.get(k)! + valueOf(r));
+  }
+  const order = [...without].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const rankWithout = order.findIndex(([label]) => label === top.label) + 1;
+  return { ...best, share: best.value / groupValue, rankWithout };
+}
+
 const entity: CheckDef = {
   id: 'entity',
   // Only for categories summed or counted: a share of a mean means nothing.
@@ -268,58 +321,27 @@ const entity: CheckDef = {
   },
   run: (ctx) => {
     const { g } = ctx;
+    const best = ctx.largest();
+    // Under half the group, one entity doesn't "drive" it (a flip is the fragile-lead check's).
+    if (best === null || best.share < ENTITY_SHARE) return null;
     const top = g.groups[0];
-    const field = g.field.name;
-    const valueOf = (r: Row) => (g.measure ? parseNumber(r[g.measure.name])! : 1);
-
-    // The single entity, across every usable entity column, with the largest part of the
-    // top group's value. Ties go to the earlier column, then the name first alphabetically.
-    let best: { column: string; entity: string; value: number } | null = null;
-    for (const column of entityColumns(ctx).usable) {
-      const parts = new Map<string, number>();
-      for (const r of g.rows) {
-        if (r[field].trim() !== top.label || isMissing(r[column])) continue;
-        const e = r[column].trim();
-        parts.set(e, (parts.get(e) ?? 0) + valueOf(r));
-      }
-      for (const [e, v] of [...parts].sort((a, b) => a[0].localeCompare(b[0]))) {
-        if (best === null || v > best.value) best = { column, entity: e, value: v };
-      }
-    }
-    if (best === null) return null;
-
-    // Remove the entity's rows everywhere in the chart, then rank the groups again (same
-    // order as the chart: largest first, then by name). A group left with no rows counts as 0.
-    const without = new Map(g.groups.map((x) => [x.label, 0]));
-    for (const r of g.rows) {
-      if (!isMissing(r[best.column]) && r[best.column].trim() === best.entity) continue;
-      const k = r[field].trim();
-      without.set(k, without.get(k)! + valueOf(r));
-    }
-    const order = [...without].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    const rankWithout = order.findIndex(([label]) => label === top.label) + 1;
-
-    const groupValue = top.value!;
-    const share = best.value / groupValue;
     const m = g.measure ? g.measure.name : 'records';
-    const misleading = rankWithout > 1;
-    if (!misleading && share < ENTITY_SHARE) return null;
     const evidence: Evidence = {
       check: 'entity',
       measure: g.measure?.name ?? null,
       group: top.label,
-      groupValue,
+      groupValue: top.value!,
       column: best.column,
       entity: best.entity,
       entityValue: best.value,
-      share,
-      rankWithout,
+      share: best.share,
+      rankWithout: best.rankWithout,
       threshold: ENTITY_SHARE,
     };
-    const said = `${best.entity} accounts for ${pct(share)} of ${m} in ${top.label}.`;
-    return misleading
-      ? // The chart's #1 is only #1 because of one entity.
-        { id: 'entity', severity: 'misleading', text: `${said} Without that ${best.column}, ${top.label} ranks ${ordinal(rankWithout)}.`, evidence }
+    const said = `${best.entity} accounts for ${pct(best.share)} of ${m} in ${top.label}.`;
+    return best.rankWithout > 1
+      ? // The chart's #1 is only #1 because of one entity that is most of it.
+        { id: 'entity', severity: 'misleading', text: `${said} Without that ${best.column}, ${top.label} ranks ${ordinal(best.rankWithout)}.`, evidence }
       : { id: 'entity', severity: 'caveat', text: said, evidence };
   },
 };
@@ -342,7 +364,9 @@ export function runChecks(view: ChartView, profile: DataProfile, rows: Row[], ro
   if (!g) return skipAll('this chart has no single list of groups (scatter, histogram, or heatmap)');
   if (g.groups.length === 0) return skipAll('the chart has no groups');
 
-  const ctx: CheckContext = { view, profile, roles, g };
+  const base = { view, profile, roles, g };
+  let largest: LargestEntity | null | undefined; // undefined: not computed yet
+  const ctx: CheckContext = { ...base, largest: () => (largest === undefined ? (largest = largestEntity(base)) : largest) };
   const run: CheckRun = { findings: [], skipped: [] };
   for (const check of CHECKS) {
     const reason = check.preconditions(ctx);

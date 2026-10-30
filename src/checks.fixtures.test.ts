@@ -46,6 +46,7 @@ describe('each check stays quiet on its clean control', () => {
     ['small-control', 'small'],
     ['concentration-control', 'concentration'],
     ['entity-control', 'entity'],
+    ['fragile-lead-flip', 'entity'], // a 37.5% author flips first place: not "driven by"
   ])('%s → no %s finding, and it ran (not skipped)', (name, id) => {
     const run = fixture(name);
     expect(run.findings.map((f) => f.id)).not.toContain(id);

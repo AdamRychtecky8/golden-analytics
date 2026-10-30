@@ -17,3 +17,4 @@ Each `name.csv` has a `name.roles.json` beside it. Rows are sorted in blocks of 
 | entity-misleading | The top group's lead is one author | SciFi 310 (Ann 300 = 97%, Bob 10); Mystery 250. Without Ann: Mystery 250, SciFi 10 → SciFi 2nd | entity, misleading |
 | entity-caveat | One author is half or more of the top group, which stays first | SciFi 500 (Ann 300 = 60%, Bob 200); Mystery 150. Without Ann: SciFi 200 > 150 → still 1st | entity, caveat |
 | entity-control | No author reaches half, and the top group stays first | SciFi 500 (Ann 200 = 40%, Bob 200, Cal 100); Mystery 150. Without Ann: SciFi 300 → still 1st | no entity finding |
+| fragile-lead-flip | A smaller author tips first place, with a clear gap | SciFi 80 (Ann 30 = 37.5%, Bob 25, Cal 25); Mystery 65 (Cy 35, Di 30). 80 ÷ 65 = 1.23. Without Ann: SciFi 50 < Mystery 65 → SciFi 2nd | no entity finding (under half) |
