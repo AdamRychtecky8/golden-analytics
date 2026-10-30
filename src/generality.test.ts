@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { runChecks } from './checks';
 import { datasetFindings } from './datasetFindings';
-import { degenerateDatasets, randomDataset, type Generated } from './fixtures/generateDataset';
+import { degenerateDatasets, mulberry32, randomDataset, type Generated } from './fixtures/generateDataset';
 import { groupView } from './groups';
+import { loadHighlight, rulesHighlight } from './highlight';
+import { buildOptions, isEligible } from './options';
 import type { ChartView } from './paths';
+import { PRESETS, customPersona } from './personas';
 import { profileDataset } from './profile';
 import { withRoleMeasures } from './roles';
 
@@ -92,5 +95,42 @@ describe('generality: invariants on generated datasets', () => {
   it('the generator itself is deterministic: one seed, one dataset', () => {
     expect(randomDataset(42)).toEqual(randomDataset(42));
     expect(randomDataset(42)).not.toEqual(randomDataset(43));
+  });
+});
+
+describe('generality: the highlight', () => {
+  const personas = [...PRESETS, customPersona('other', 'analyst', 'just exploring')];
+
+  it('is always eligible when any option is, and "best place to start" only when none is', () => {
+    let withEligible = 0;
+    let withoutEligible = 0;
+    for (const d of datasets) {
+      const options = buildOptions(profileDataset(d.columns, d.rows), d.rows, d.roles);
+      const eligible = options.filter(isEligible).map((o) => o.id);
+      eligible.length > 0 ? withEligible++ : options.length > 0 && withoutEligible++;
+      for (const p of personas) {
+        const h = rulesHighlight(options, p, d.roles);
+        if (options.length === 0) expect(h, d.name).toBeNull();
+        else if (eligible.length > 0) expect([h!.label, eligible.includes(h!.id)], `${d.name}, ${p.purpose}`).toEqual(['highlight', true]);
+        else expect(h!.label, d.name).toBe('best-place-to-start');
+      }
+    }
+    // Not vacuous: both branches happen.
+    expect(withEligible).toBeGreaterThan(0);
+    expect(withoutEligible).toBeGreaterThan(0);
+  });
+
+  it('stays eligible whatever the AI answers: random ids from the whole menu, eligible or not', async () => {
+    const rand = mulberry32(7);
+    for (const d of datasets) {
+      const profile = profileDataset(d.columns, d.rows);
+      const options = buildOptions(profile, d.rows, d.roles);
+      const eligible = options.filter(isEligible).map((o) => o.id);
+      if (eligible.length === 0) continue;
+      const id = options[Math.floor(rand() * options.length)].id;
+      const fetcher = async () => new Response(JSON.stringify({ ok: true, id, reason: 'A fine place to start.' }));
+      const h = await loadHighlight(options, profile, personas[0], d.roles, { fetcher });
+      expect(eligible, `${d.name}: AI said ${id}, got ${h!.id}`).toContain(h!.id);
+    }
   });
 });
