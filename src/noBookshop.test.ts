@@ -20,7 +20,6 @@ const ALLOWED: { file: string; literal: string; reason: string }[] = [
   { file: 'src/profile.ts', literal: 'price', reason: 'measure classifier word list (D-054): generic vocabulary, used only without roles' },
   { file: 'src/profile.ts', literal: 'discount', reason: 'measure classifier word list (D-054): generic vocabulary, used only without roles' },
   { file: 'src/roles.ts', literal: 'price', reason: 'the role named "price" in the contract vocabulary, not the column' },
-  { file: 'src/components/StoryCard.tsx', literal: 'title', reason: "the story card's own title field, not the column" },
 ];
 
 const SRC = fileURLToPath(new URL('.', import.meta.url));

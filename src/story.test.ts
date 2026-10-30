@@ -3,11 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Fetcher } from './aiRequest';
 import { computeFacts } from './facts';
 import { parseCsv } from './loadCsv';
-import { finishPaths, type PathDraft } from './paths';
+import type { Path, PathDraft } from './paths';
 import { PRESETS } from './personas';
 import { profileDataset } from './profile';
 import { STORY_NOTICES, loadStory } from './story';
-import { storyCandidates } from './useStory';
 
 // Level 3 in the browser, with the network faked: no real request is ever made.
 
@@ -21,7 +20,7 @@ const drafts: PathDraft[] = [
   { question: 'How has revenue changed?', kind: 'trend', fields: ['sale date', 'revenue'], aggregate: 'sum', filters: [] },
   { question: 'Which format earns most?', kind: 'comparison', fields: ['format', 'revenue'], aggregate: 'sum', filters: [] },
 ];
-const paths = finishPaths(drafts, ['ai', 'rules'], null);
+const paths: Path[] = drafts.map((d, i) => ({ ...d, id: `p${i + 1}`, parent: null, source: i === 0 ? 'ai' : 'rules' }));
 const answer = (body: object, status = 200): Fetcher => vi.fn(async () => Response.json(body, { status }));
 const opts = (fetcher: Fetcher) => ({ fetcher, retryDelayMs: 0 });
 
@@ -93,21 +92,5 @@ describe('loadStory', () => {
 
   it('has nothing to draft from without candidates', async () => {
     expect(await loadStory([], false, bp, books, PRESETS[0], opts(answer({})))).toBeNull();
-  });
-});
-
-describe('storyCandidates (which path Level 3 drafts from)', () => {
-  const [p1, p2] = paths;
-  const p3 = { ...p1, id: 'p3', question: 'Third?' };
-
-  it('drafts the active path first, then the others, skipping ones already used', () => {
-    expect(storyCandidates(p2, [p1, p2, p3], [])).toEqual({ candidates: [p2], forced: true });
-    expect(storyCandidates(p2, [p1, p2, p3], ['p2'])).toEqual({ candidates: [p1, p3], forced: false });
-    expect(storyCandidates(p2, [p1, p2, p3], ['p2', 'p1'])).toEqual({ candidates: [p3], forced: false });
-  });
-
-  it('lets the AI pick among the shown paths when nothing is active, and starts over when all were used', () => {
-    expect(storyCandidates(null, [p1, p2], [])).toEqual({ candidates: [p1, p2], forced: false });
-    expect(storyCandidates(null, [p1, p2], ['p1', 'p2'])).toEqual({ candidates: [p1, p2], forced: false });
   });
 });

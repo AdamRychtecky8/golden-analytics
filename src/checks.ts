@@ -8,7 +8,7 @@ import { roleOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
 // apply as findings, labeled as a check (never as AI). They catch the common ways a ranking
 // misleads: a few expensive items outranking many cheap ones, a group too small to trust,
 // one group dwarfing the rest, and a group whose lead is really one author or title.
-// Level 3 reads them as facts.
+// The card lists them under "Don't say this"; story facts (facts.ts) read them too.
 //
 // Each check is registered with its preconditions and a run function. A check whose
 // preconditions aren't met is skipped with a reason; the reasons are for tests and logs,

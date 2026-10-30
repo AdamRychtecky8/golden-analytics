@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * Loads a value once per key and remembers it. Level 2's suggestions and Level 3's drafts
- * both use it: back/forward and the slider land on keys already loaded, so the AI is never
- * asked twice for the same thing. `retry()` forgets the current key's value and loads it
- * again. A null key loads nothing (e.g. Level 3 while it isn't on screen).
+ * Loads a value once per key and remembers it. The highlight uses it (useHighlight.ts):
+ * back/forward and jumps in the map land on keys already loaded, so the AI is never asked
+ * twice for the same thing. `retry()` forgets the current key's value and loads it again.
+ * A null key loads nothing.
  *
  * <T> is a generic: the hook works for any kind of value, and TypeScript keeps track of
  * which one each caller gets back.

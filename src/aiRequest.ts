@@ -1,4 +1,4 @@
-// One way for the browser to ask a server-side AI handler (/api/suggest, /api/story):
+// One way for the browser to ask a server-side AI handler (/api/highlight, /api/story):
 // post JSON, wait with a timeout, retry once if the AI couldn't be reached. It never
 // throws, so callers only decide what to show for each outcome.
 

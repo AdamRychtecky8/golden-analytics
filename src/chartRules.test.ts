@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Row } from './aggregate';
-import { ACCENT, GREY, buildChart, canSum, chartIdeas, chartTitle, chooseRule, effectiveAggregate, usesAggregate } from './chartRules';
+import { ACCENT, GREY, buildChart, canSum, chartTitle, chooseRule, effectiveAggregate, usesAggregate } from './chartRules';
 import { profileDataset, type ColumnProfile } from './profile';
 
 const rows: Row[] = [
@@ -176,31 +176,6 @@ describe('highlight', () => {
   });
 });
 
-describe('chartIdeas', () => {
-  it('offers one idea per field when nothing is selected', () => {
-    expect(chartIdeas([], profile.columns, 'sum')).toHaveLength(5);
-  });
-
-  it('offers the field alone plus each pairing when one is selected', () => {
-    const ideas = chartIdeas([col('region')], profile.columns, 'sum').map((i) => i.title);
-    expect(ideas).toEqual([
-      'Records by region',
-      'Records by month, by region',
-      'Records by region and category',
-      'Sum of units by region',
-      'Sum of revenue by region',
-    ]);
-  });
-
-  it('offers the pair plus each field alone when two are selected', () => {
-    expect(chartIdeas([col('date'), col('revenue')], profile.columns, 'sum').map((i) => i.title)).toEqual([
-      'Sum of revenue by month',
-      'Records by month',
-      'Distribution of revenue',
-    ]);
-  });
-});
-
 describe('every rule renders in Vega', () => {
   // Compiles each spec and draws it to SVG in Node, so a spec Vega rejects fails here
   // rather than only in the browser. Width is fixed because there's no container in Node.
@@ -260,12 +235,6 @@ describe('average-only measures are never summed', () => {
     expect(canSum([format, revenue])).toBe(true);
     expect(canSum([format, price])).toBe(false);
     expect(effectiveAggregate([format, price], 'sum')).toBe('mean');
-  });
-
-  it('never offers a sum of price in Level 1 chart ideas', () => {
-    const titles = chartIdeas([], p.columns, 'sum').map((i) => i.title).concat(chartIdeas([format], p.columns, 'sum').map((i) => i.title));
-    expect(titles.some((t) => /sum of price/i.test(t))).toBe(false);
-    expect(titles).toContain('Mean of price by format');
   });
 });
 

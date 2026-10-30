@@ -538,27 +538,3 @@ const BUILDERS: Record<RuleId, Builder> = {
     };
   },
 };
-
-export interface ChartIdea {
-  fields: string[];
-  title: string;
-}
-
-/**
- * Level 1 chart ideas: every chart the rules can make from the current selection.
- * Nothing selected → one idea per field. One field → that field alone, plus that field
- * paired with each other field. Two fields → the pair, plus each field alone.
- */
-export function chartIdeas(selected: ColumnProfile[], all: ColumnProfile[], how: Aggregate): ChartIdea[] {
-  const combos: ColumnProfile[][] = [];
-  if (selected.length === 0) all.forEach((f) => combos.push([f]));
-  if (selected.length === 1) {
-    combos.push(selected);
-    all.filter((f) => f.name !== selected[0].name).forEach((f) => combos.push([selected[0], f]));
-  }
-  if (selected.length === 2) combos.push(selected, [selected[0]], [selected[1]]);
-
-  return combos
-    .map((fields) => ({ fields: fields.map((f) => f.name), title: chartTitle(fields, how) }))
-    .filter((idea): idea is ChartIdea => idea.title !== null);
-}

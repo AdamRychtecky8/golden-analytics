@@ -15,7 +15,8 @@ import {
   type AiEnv,
 } from './_shared.ts';
 
-// Level 3's AI call: the same server-side pattern as api/suggest.ts. It sends the data
+// Level 3's AI call (kept for Phase 5 to decide on), using the shared helpers in
+// api/_shared.ts. It sends the data
 // profile, the persona, and for each candidate path its facts (computed in the browser
 // from the rows), never the rows themselves. The AI picks a path and writes a title and
 // takeaway as templates with {fact_id} slots; the browser checks and fills them (D-052).
