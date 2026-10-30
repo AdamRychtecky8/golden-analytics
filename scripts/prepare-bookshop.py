@@ -45,8 +45,11 @@ Steps:
     price, discount, revenue, author, award winner, series, book id), print row counts per
     quarter and in total, and check the total against the expected 56,350. Empty series
     values are reported on their own line, since they mean "not in a series".
- 6. Write the roles file: one role per CSV column (money, price, rate, date, category,
-    entity, flag, id). The script stops if its keys aren't exactly the CSV's columns.
+ 6. Write the roles file (the dataset contract): what one row is called, in both forms
+    ("item sold" / "items sold"), and for every CSV column a role (money, price, rate, date,
+    category, entity, flag, id) and, for category and entity columns, an optional facet
+    (offering, source, place). The script stops if the columns aren't exactly the CSV's, or
+    a facet is unknown or on a column that can't have one.
 """
 
 import csv
@@ -85,6 +88,19 @@ ROLES = {
     "series": "category",
     "book id": "id",
 }
+# What kind of thing each category is: what the shop offers, who supplies or creates it,
+# or where. Only category and entity columns can have one.
+FACETS = {
+    "genre": "offering",
+    "format": "offering",
+    "series": "offering",
+    "publisher": "source",
+    "author": "source",
+    "author country": "place",
+}
+KNOWN_FACETS = {"offering", "source", "place"}
+FACET_ROLES = {"category", "entity"}
+ROW_NOUN = {"one": "item sold", "many": "items sold"}
 
 # Not included: Publisher."Marketing Spend" and the Ratings sheet.
 #   Marketing Spend is one value per publisher (4 values, 48,000 to 2,320,000), with no
@@ -310,7 +326,18 @@ def main() -> None:
 
     if list(ROLES) != COLUMNS:
         fail(f"The roles must name exactly the CSV's columns, in order. Roles: {list(ROLES)}")
-    ROLES_OUTPUT.write_text(json.dumps(ROLES, indent=2) + "\n", encoding="utf-8")
+    for column, facet in FACETS.items():
+        if column not in ROLES:
+            fail(f'Facet for "{column}", which is not a column.')
+        if facet not in KNOWN_FACETS:
+            fail(f'"{column}" has an unknown facet "{facet}". Known facets: {", ".join(sorted(KNOWN_FACETS))}.')
+        if ROLES[column] not in FACET_ROLES:
+            fail(f'"{column}" has a facet, but its role is {ROLES[column]}; only category and entity columns can have one.')
+    contract = {
+        "rowNoun": ROW_NOUN,
+        "columns": {c: {"role": ROLES[c], **({"facet": FACETS[c]} if c in FACETS else {})} for c in COLUMNS},
+    }
+    ROLES_OUTPUT.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
 
     print("\nSales rows per sheet:")
     for sheet, count in per_sheet.items():

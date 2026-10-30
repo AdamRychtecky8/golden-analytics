@@ -1,4 +1,10 @@
 {
-  "team": "category",
-  "revenue": "money"
+  "columns": {
+    "team": {
+      "role": "category"
+    },
+    "revenue": {
+      "role": "money"
+    }
+  }
 }

@@ -1,15 +1,53 @@
 {
-  "sale date": "date",
-  "title": "entity",
-  "genre": "category",
-  "format": "category",
-  "publisher": "category",
-  "author country": "category",
-  "price": "price",
-  "discount": "rate",
-  "revenue": "money",
-  "author": "entity",
-  "award winner": "flag",
-  "series": "category",
-  "book id": "id"
+  "rowNoun": {
+    "one": "item sold",
+    "many": "items sold"
+  },
+  "columns": {
+    "sale date": {
+      "role": "date"
+    },
+    "title": {
+      "role": "entity"
+    },
+    "genre": {
+      "role": "category",
+      "facet": "offering"
+    },
+    "format": {
+      "role": "category",
+      "facet": "offering"
+    },
+    "publisher": {
+      "role": "category",
+      "facet": "source"
+    },
+    "author country": {
+      "role": "category",
+      "facet": "place"
+    },
+    "price": {
+      "role": "price"
+    },
+    "discount": {
+      "role": "rate"
+    },
+    "revenue": {
+      "role": "money"
+    },
+    "author": {
+      "role": "entity",
+      "facet": "source"
+    },
+    "award winner": {
+      "role": "flag"
+    },
+    "series": {
+      "role": "category",
+      "facet": "offering"
+    },
+    "book id": {
+      "role": "id"
+    }
+  }
 }

@@ -151,7 +151,8 @@ describe('severity and skips on the Bookshop data', () => {
 
   it('uses the money role, not the name, when roles are known', () => {
     // "price" sounds like money by name, but its role is price; summed, it is still not money.
-    const pr = parseRoles({ ...Object.fromEntries(loaded.dataset.columns.map((c) => [c, 'category'])), revenue: 'price' }, loaded.dataset.columns);
+    const cols = Object.fromEntries(loaded.dataset.columns.map((c) => [c, { role: 'category' }]));
+    const pr = parseRoles({ columns: { ...cols, revenue: { role: 'price' } } }, loaded.dataset.columns);
     if (!pr.ok) throw new Error();
     expect(runChecks(view(['format', 'revenue']), bp, books, pr.roles).skipped).toContainEqual({ id: 'mix', reason: '"revenue" doesn\'t have the money role' });
   });

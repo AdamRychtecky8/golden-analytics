@@ -1,4 +1,10 @@
 {
-  "format": "category",
-  "revenue": "money"
+  "columns": {
+    "format": {
+      "role": "category"
+    },
+    "revenue": {
+      "role": "money"
+    }
+  }
 }

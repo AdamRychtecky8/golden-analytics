@@ -186,10 +186,13 @@ describe('the Bookshop demo data (made by scripts/prepare-bookshop.py)', () => {
   });
 
   it('has a roles file that covers exactly the CSV columns', () => {
-    const roles = JSON.parse(readFileSync(new URL('./data/bookshop-sales.roles.json', import.meta.url), 'utf8'));
-    expect(Object.keys(roles)).toEqual(columns);
-    expect(roles['discount']).toBe('rate');
-    expect(roles['book id']).toBe('id');
+    const contract = JSON.parse(readFileSync(new URL('./data/bookshop-sales.roles.json', import.meta.url), 'utf8'));
+    expect(Object.keys(contract.columns)).toEqual(columns);
+    expect(contract.columns['discount']).toEqual({ role: 'rate' });
+    expect(contract.columns['book id']).toEqual({ role: 'id' });
+    expect(contract.columns['genre']).toEqual({ role: 'category', facet: 'offering' });
+    expect(contract.columns['award winner']).toEqual({ role: 'flag' }); // a flag, no facet
+    expect(contract.rowNoun).toEqual({ one: 'item sold', many: 'items sold' });
   });
 
   it('parses its year-2193 dates in UTC and buckets them by month', () => {

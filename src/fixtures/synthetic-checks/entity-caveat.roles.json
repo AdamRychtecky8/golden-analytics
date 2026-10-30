@@ -1,5 +1,13 @@
 {
-  "genre": "category",
-  "author": "entity",
-  "revenue": "money"
+  "columns": {
+    "genre": {
+      "role": "category"
+    },
+    "author": {
+      "role": "entity"
+    },
+    "revenue": {
+      "role": "money"
+    }
+  }
 }
