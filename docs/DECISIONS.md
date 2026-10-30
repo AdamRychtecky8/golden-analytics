@@ -289,6 +289,16 @@ Decision: The prep script adds four columns after the existing nine, which stay 
 Why: TODO(adam)
 Status: decided
 
+## D-059 — 2026-10-30 — Check engine: registry, severity, evidence, roles
+Decision: Each check declares an id, its preconditions (a skip reason or null), and a run function (a finding or null). runChecks returns { findings, skipped }; skipped is for tests and logs only, never the UI. Findings carry a severity: mix is misleading when the #1 changes, caveat when only a lower group moves; small is misleading when the group ranked first is small (for time charts, the highest-value period counts as ranked first), caveat otherwise; concentration is a caveat. Findings carry structured evidence next to their text; existing text strings are unchanged. Roles come from a validated roles file (every column exactly one known role); with roles, mix uses the "money" role, and the name guess is only the fallback for a CSV without roles. Charts on an "id" column are never checked. The app keeps unknown roles in this phase, so the UI is unchanged.
+Why: TODO(adam)
+Status: decided
+
+## D-060 — 2026-10-30 — The "driven by one entity" check
+Decision: For category charts summed or counted, with roles known: within the top group, find the single entity (any "entity" column except the chart's own field) with the largest share of the group's value. Misleading when removing that entity's rows everywhere and re-ranking drops the group out of first place; caveat when it stays first but the entity holds at least 50% (ENTITY_SHARE). Text: "{entity} accounts for {share} of {measure} in {group}." plus, when misleading, "Without that {column}, {group} ranks {rank}." Entity columns the chart field already determines (each group has one value, e.g. author on a chart of titles) are left out; that guard was Claude Code's catch, kept by Adam.
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)

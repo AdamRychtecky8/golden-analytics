@@ -97,13 +97,18 @@ One function enforces it everywhere: `effectiveAggregate` ([chartRules.ts:105](.
 
 ### "Is this really an insight?" checks
 
-A ranking can be true and still mislead. [checks.ts](../src/checks.ts) runs three checks on every path's chart and shows them as notes labeled **Check**, never as AI:
+A ranking can be true and still mislead. [checks.ts](../src/checks.ts) runs four checks on every path's chart and returns what they find as **findings**. The app shows them as notes labeled **Check**, never as AI:
 
 | Check | Fires when | Why it matters |
 |---|---|---|
 | Price/mix | categories are ranked by a sum of money, and the #1 by money isn't the #1 by records (or a top group moves 2+ places) | Hardcover tops revenue with 11,720 sales; mass-market paperback sells 26,881. Price, not volume, made the ranking. "View by count" shows the other view. |
 | Small group | a shown group has fewer than 30 records | A mean or share of a handful of records swings with each new one. |
 | Concentration | the top group holds 40% or more of the total | The chart is mostly about one group; "the rest" may deserve its own look. |
+| Driven by one entity | one author or title holds 50% or more of the top group, or the group loses first place without it | SciFi/Fantasy leads revenue, but Bianca Thompson is 79% of it; without her rows, SciFi/Fantasy ranks 4th. Needs a roles file (D-060). |
+
+Every finding has a **severity**. *Misleading* means the naive reading is wrong: the #1 changes under mix, the top group is small, or the top group's lead is one entity. *Caveat* means it's true but worth saying. Each finding also carries **evidence**, the numbers behind its sentence (ranks, shares, record counts), so later phases can phrase it with facts and slots. A check whose preconditions aren't met is **skipped** with a reason, which tests and logs can read but the user never sees (D-059).
+
+The roles file ([roles.ts](../src/roles.ts)) says what each column is. With roles, mix only runs on a column with the `money` role, the entity check knows which columns are authors or titles, and `id` columns are never checked. An uploaded CSV has no roles, so mix falls back to guessing money from the column name and the entity check skips. The app passes no roles yet (D-059).
 
 The thresholds are named constants with their reasoning ([checks.ts:14](../src/checks.ts#L14)). The numbers behind both the checks and Level 3's facts come from one place, `groupView` ([groups.ts:32](../src/groups.ts#L32)), which groups rows exactly the way the chart does.
 
@@ -167,7 +172,8 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 | [src/aiRequest.ts](../src/aiRequest.ts) | `askAi`: post to an AI handler, with a timeout and one automatic retry. Never throws. | Shared by Levels 2 and 3 (D-051). |
 | [src/useAsyncCache.ts](../src/useAsyncCache.ts) | A generic hook: load a value once per key, remember it, `retry()` on demand. | The cache behind both Level 2 and Level 3. |
 | [src/groups.ts](../src/groups.ts) | `groupView`: a chart's groups (bars or periods) with record counts and values. | One source of the numbers checks and facts use. |
-| [src/checks.ts](../src/checks.ts) | The three insight checks and their thresholds. | Quiet notes on path cards; facts for Level 3 (D-051, D-055). |
+| [src/roles.ts](../src/roles.ts) | `parseRoles`: validates a roles file against the columns (each column exactly one known role); `bookshopRoles`; `UNKNOWN_ROLES` for uploads. | Lets checks use what a column *is* instead of guessing from its name (D-058, D-059). |
+| [src/checks.ts](../src/checks.ts) | The check registry: four checks (mix, small, concentration, driven by one entity), each with preconditions and a run function; `runChecks` returns findings with severity and evidence, plus skip reasons. | Quiet notes on path cards; facts for Level 3; the "Don't say this" section later (D-051, D-055, D-059, D-060). |
 | [src/facts.ts](../src/facts.ts) | `computeFacts`: every fact a story may use, with ids and display values; `strength` for the rules' pick. | The only source of numbers in a story (D-052). |
 | [src/templates.ts](../src/templates.ts) | `fillTemplate` (slots must exist, no digits outside them), `ruleStory` (the no-AI templates). | Where an AI draft is accepted or rejected. |
 | [src/story.ts](../src/story.ts) | `loadStory`: facts per candidate, ask `/api/story`, check the pick and the templates, fall back to rules. | The browser half of Level 3. |
@@ -204,7 +210,10 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 | [src/fallbackPaths.test.ts](../src/fallbackPaths.test.ts) | Rule paths for every persona, the order by purpose, the outlier finder, go deeper two levels down. |
 | [src/suggest.test.ts](../src/suggest.test.ts) | AI + rules mixing and the notices, with a fake network. |
 | [api/suggest.test.ts](../api/suggest.test.ts) | The handler with a fake Anthropic client: no key, bad requests, success, errors, what is sent. |
-| [src/checks.test.ts](../src/checks.test.ts) | Each check, including hardcover vs mass-market paperback; groups match the chart. |
+| [src/checks.test.ts](../src/checks.test.ts) | Each check on the Bookshop data, including hardcover vs mass-market paperback, severities, skip reasons, the id rule, and the entity check (Bianca Thompson: genre and award winner); groups match the chart. |
+| [src/checks.fixtures.test.ts](../src/checks.fixtures.test.ts) | Every check fires with the expected severity on its planted synthetic fixture and stays quiet on its control; a CSV without roles skips the entity check and says why. |
+| [src/roles.test.ts](../src/roles.test.ts) | Roles files: accepted, rejected for missing/extra/unknown roles, Bookshop's loaded against its columns. |
+| [src/fixtures/synthetic-checks/](../src/fixtures/synthetic-checks/) | Synthetic CSV + roles pairs, one planted and one control per check, with the hand arithmetic in its README. Invented numbers, never shown in the app. |
 | [src/facts.test.ts](../src/facts.test.ts) | Facts computed from rows, the template filler (unknown slots, digits), rule stories. |
 | [src/story.test.ts](../src/story.test.ts) | Level 3 with a fake network: AI templates filled, every fallback, the candidate order. |
 | [api/story.test.ts](../api/story.test.ts) | The story handler with a fake client. |
@@ -365,6 +374,18 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **`Intl.NumberFormat`.** The browser's built-in number formatter: `new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(261964)` → "261,964". Facts use it so the same number always looks the same. *First seen:* [facts.ts](../src/facts.ts).
 
+### Check engine patterns
+
+**A registry of objects with functions in them.** Each check is a plain object: `{ id, preconditions, run }`, where the last two are functions. `CHECKS` is a list of them, and `runChecks` loops over it the same way for every check. Adding a check means adding one object to the list, not another `if` in `runChecks`. It's the same idea as a lookup object instead of if/else, but the values are behaviour, not text. *First seen:* `CheckDef` and `CHECKS` in [checks.ts](../src/checks.ts).
+
+**Skipped is not the same as quiet.** `preconditions` returns a reason string (skip) or `null` (run). `run` returns a finding or `null` (ran, found nothing). Keeping the two apart is what lets a test say "the entity check didn't run *because roles are unknown*" instead of only "there was no entity finding", which could mean either.
+
+**A default parameter.** `roles: Roles = UNKNOWN_ROLES` in `runChecks` means a caller that passes nothing gets unknown roles. That's why the app's two callers didn't have to change except to read `.findings`, and why the app behaves exactly as before. *First seen:* [checks.ts](../src/checks.ts).
+
+**Importing JSON.** `import bookshopRolesJson from './data/bookshop-sales.roles.json'` makes Vite (and Vitest) include the parsed object at build time, like `?raw` does for the CSV. TypeScript types it from the file's contents, but `parseRoles` still treats it as `unknown` and checks it, because the file is data a script wrote, not code. *First seen:* [roles.ts](../src/roles.ts).
+
+**Removing one entity and ranking again.** The entity check doesn't only ask "is Bianca a big share?". It also deletes her rows from the chart's rows and re-ranks every group the same way the chart does (largest first, ties by name). That's a counterfactual you can verify by hand: filter the CSV, re-sum, re-sort. *First seen:* the `entity` check in [checks.ts](../src/checks.ts).
+
 ### The prep script (Python)
 
 **Reading .xlsx without a library.** An .xlsx file is a zip archive of XML files: `xl/workbook.xml` lists the sheets, each sheet is `xl/worksheets/sheetN.xml`, and text cells hold an index into `xl/sharedStrings.xml`. The script opens the zip with `zipfile` and walks the rows with `xml.etree.ElementTree.iterparse`, which reads one row at a time instead of the whole 9 MB sheet. *See:* `Workbook` in [prepare-bookshop.py](../scripts/prepare-bookshop.py).
@@ -457,3 +478,11 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 37. **Could the library workbook be joined to sales by ISBN?** → each ISBN has 1 to 5 Catalog rows. What does that do to the row count and to total revenue?
 38. **Why write the roles in a separate file instead of letting the app guess from column names?** → compare D-054 (name-based measures). Who knows that `book id` is an identifier, the prep script or the app?
 
+**Check engine**
+
+39. **What's the difference between a misleading finding and a caveat, and why does it matter?** → `Severity` in [checks.ts](../src/checks.ts), the spec's "Check severity". Which one disqualifies a highlight?
+40. **Revenue by genre: SciFi/Fantasy is first. Is it your best genre?** → the entity check, D-060. Why remove Bianca Thompson's rows everywhere instead of only from SciFi/Fantasy, and what changes for revenue by format?
+41. **Why doesn't a chart of titles say "driven by one author"?** → `entityColumns` in [checks.ts](../src/checks.ts). What would happen on every title chart without that guard?
+42. **Why 50% for the entity caveat?** → `ENTITY_SHARE` and its comment. Which Bookshop chart sits just under it, and which just over?
+43. **An uploaded CSV has a column called "revenue". Which checks run?** → `measureIsMoney` and the no-roles test in [checks.fixtures.test.ts](../src/checks.fixtures.test.ts). What does "skipped" record, and who sees it?
+44. **How do you know a check works, not just that it ran?** → the fixtures README: a planted effect where it must fire, a control where it must stay quiet, and arithmetic you can redo by hand.
