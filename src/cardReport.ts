@@ -8,18 +8,10 @@ import type { ChartView } from './paths';
 import { profileDataset } from './profile';
 import { bookshopRoles } from './roles';
 
-// Bookshop cards as plain text, for reading the wording (npm run cards:bookshop). Code
-// text only, as with no API key. Not part of the app.
-
-const VIEWS: ChartView[] = [
-  { fields: ['format', 'revenue'], aggregate: 'sum', filters: [] },
-  { fields: ['genre', 'revenue'], aggregate: 'sum', filters: [] },
-  { fields: ['publisher', 'revenue'], aggregate: 'sum', filters: [] },
-  { fields: ['sale date', 'revenue'], aggregate: 'sum', filters: [] },
-  { fields: ['format'], aggregate: 'sum', filters: [] },
-  { fields: ['award winner'], aggregate: 'sum', filters: [] },
-  { fields: ['format', 'revenue'], aggregate: 'sum', filters: [{ field: 'genre', value: 'Mystery' }] },
-];
+// Bookshop cards as plain text, for reading the wording (npm run cards:bookshop): one card
+// per menu option, then one inside a slice (the first comparison's top group). Code text
+// only, as with no API key. Not part of the app. No column is named here, so the generality
+// test (no Bookshop names in app code) still holds.
 
 export function cardsReport(): string {
   const loaded = parseCsv(demoText, 'bookshop-sales.csv', true);
@@ -27,8 +19,15 @@ export function cardsReport(): string {
   const { columns, rows } = loaded.dataset;
   const profile = profileDataset(columns, rows);
   const roles = bookshopRoles(columns);
-  const dataset = datasetFindings(buildOptions(profile, rows, roles).map((o) => o.view), profile, rows, roles);
-  return VIEWS.map((v) => render(v, buildCard(v, profile, rows, roles, dataset))).join('\n\n');
+  const menu = buildOptions(profile, rows, roles);
+  const dataset = datasetFindings(menu.map((o) => o.view), profile, rows, roles);
+  const views = menu.map((o) => o.view);
+  // A slice: the first comparison narrowed to its top group, seen through the next comparison.
+  const first = menu.find((o) => o.kind === 'comparison');
+  const top = first ? buildCard(first.view, profile, rows, roles, dataset).highlight : null;
+  const next = menu.find((o) => o.kind === 'comparison' && first !== undefined && o.column !== first.column && !o.repairs);
+  if (first && top && next) views.push({ ...next.view, filters: [{ field: first.column, value: top }] });
+  return views.map((v) => render(v, buildCard(v, profile, rows, roles, dataset))).join('\n\n');
 }
 
 function render(view: ChartView, card: Card): string {
