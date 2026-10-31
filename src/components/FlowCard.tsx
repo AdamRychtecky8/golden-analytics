@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { isMissing, type Row } from '../aggregate';
+import { describeSpec } from '../ask';
+import { ASK_TEXT } from '../askText';
 import { buildCard, type Block } from '../card';
 import { shownText } from '../cardAi';
 import { SECTION_TITLES } from '../cardText';
@@ -40,9 +42,15 @@ export function FlowCard(props: FlowCardProps) {
 }
 
 function Answer({ node, dataset, options, datasetFindings, profile, rows, roles, onDeeper, onEdit }: FlowCardProps) {
-  const card = useMemo(() => buildCard(node.view, profile, rows, roles, datasetFindings), [node.view, profile, rows, roles, datasetFindings]);
+  const card = useMemo(
+    () => buildCard(node.view, profile, rows, roles, datasetFindings, node.asked ? { reframe: node.asked.reframe } : null),
+    [node.view, profile, rows, roles, datasetFindings, node.asked],
+  );
   const chart = useMemo(() => chartForView(node.view, profile, rows, { highlight: card.highlight }), [node.view, profile, rows, card.highlight]);
-  const question = options.find((o) => o.id === node.optionId)?.question ?? chart?.title ?? node.view.fields.join(' + ');
+  // A typed question is titled by the chart it became, in plain words; the user's words follow.
+  const question = node.asked
+    ? describeSpec(node.view, profile, roles)
+    : (options.find((o) => o.id === node.optionId)?.question ?? chart?.title ?? node.view.fields.join(' + '));
   const phrasing = useCardPhrasing(dataset, node.view, node.persona, card, question, profile);
   const ai = phrasing?.texts ?? {};
   const deeper = barColumn(node.view, profile);
@@ -64,6 +72,7 @@ function Answer({ node, dataset, options, datasetFindings, profile, rows, roles,
   return (
     <article className="card" aria-label="Question">
       <h1 className="card-title">{question}</h1>
+      {node.asked && <p className="card-asked">{ASK_TEXT.youAsked.replace('{text}', node.asked.text)}</p>}
       {deeper && (
         <p className="card-sub">{full ? `This is ${MAX_FILTERS} filters deep, the most a question can narrow.` : 'Click a bar to go deeper into that group.'}</p>
       )}

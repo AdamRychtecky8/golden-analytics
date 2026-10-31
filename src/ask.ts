@@ -1,4 +1,5 @@
 import { isMissing, type Row } from './aggregate';
+import { askAi, type AskOptions } from './aiRequest';
 import { ASK_TEXT } from './askText';
 import { canSum, chooseRule, usesAggregate } from './chartRules';
 import { MAX_FILTERS, summarizeProfile, type AiContext, type ChartView, type PathFilter } from './paths';
@@ -259,3 +260,14 @@ export function describeSpec(spec: ChartView, profile: DataProfile, roles: Roles
   const sentence = where ? `${text}, where ${where}` : text;
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }
+
+/** Sends the question and lets code decide (resolveAsk). Never throws. */
+export async function loadAsk(text: string, profile: DataProfile, rows: Row[], roles: Roles, persona: Persona, scope: PathFilter[], options: AskOptions = {}): Promise<AskResult> {
+  const reply = await askAi('/api/ask', buildAskRequest(text, profile, rows, roles, persona, scope), options);
+  if (!reply.ok) return refuse('unreachable', ASK_TEXT.unreachable);
+  return resolveAsk(reply.body.result, { text, profile, rows, roles });
+}
+
+/** Whether a confirmed result should make the card echo the question (causal or forecasting). */
+export const reframeOf = (r: AskResult): 'causal' | 'forecast' | null =>
+  r.kind === 'reframe' && (r.category === 'causal' || r.category === 'forecast') ? r.category : null;

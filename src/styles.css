@@ -624,3 +624,60 @@ textarea {
   font-weight: 600;
 }
 
+/* ---------- Ask your own question ---------- */
+
+.ask-box {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.ask-form {
+  display: flex;
+  gap: 6px;
+}
+.ask-form input {
+  flex: 1;
+  min-width: 0;
+}
+.ask-form input:disabled {
+  background: var(--warm);
+}
+.ask-result {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+.ask-message {
+  margin: 0;
+  font-size: 13px;
+}
+.ask-spec {
+  margin: 0;
+  font-weight: 600;
+}
+.ask-choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.ask-choices li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.ask-actions {
+  display: flex;
+  gap: 8px;
+}
+.card-asked {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--navy-soft);
+}
+

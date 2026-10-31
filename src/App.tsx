@@ -1,5 +1,7 @@
 import { useMemo, useReducer, useState } from 'react';
 import demoText from './data/bookshop-sales.csv?raw';
+import { loadAsk } from './ask';
+import { AskBox } from './components/AskBox';
 import { FlowCard } from './components/FlowCard';
 import { FlowMap } from './components/FlowMap';
 import { MenuRail } from './components/MenuRail';
@@ -10,6 +12,7 @@ import { parseCsv, type Dataset } from './loadCsv';
 import { buildOptions } from './options';
 import { profileDataset } from './profile';
 import { UNKNOWN_ROLES, bookshopRoles, rowNounOf } from './roles';
+import { useAiStatus } from './useAiStatus';
 import { useHighlight } from './useHighlight';
 
 // The bundled demo data (fictional Bookshop sales, made by scripts/prepare-bookshop.py)
@@ -33,6 +36,7 @@ export default function App() {
   // highlight picked for the old one.
   const [datasetId, setDatasetId] = useState(0);
   const [loadErrors, setLoadErrors] = useState<string[]>([]);
+  const ai = useAiStatus();
 
   const profile = useMemo(() => profileDataset(dataset.columns, dataset.rows), [dataset]);
   // The demo data comes with its contract; an uploaded CSV has none, so checks that need a
@@ -102,6 +106,15 @@ export default function App() {
           profile={profile}
           onPick={(o) => dispatch({ type: 'pick', optionId: o.id, view: o.view })}
           onCustom={(fields) => dispatch({ type: 'custom', fields })}
+          ask={
+            <AskBox
+              ai={ai}
+              profile={profile}
+              roles={roles}
+              ask={(text) => loadAsk(text, profile, dataset.rows, roles, node.persona, filters)}
+              onUse={(view, asked) => dispatch({ type: 'ask', view, asked })}
+            />
+          }
         />
         <FlowCard
           node={node}

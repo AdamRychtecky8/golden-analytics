@@ -150,3 +150,21 @@ describe('a small group on a chart over time', () => {
     expect(c.cautions[0].claim.text).toBe('Mar 2025 was our best month.');
   });
 });
+
+describe('an asked question that code reframed', () => {
+  it('causal: the can’t-tell line answers the question that was asked', () => {
+    const c = buildCard(view(['award winner', 'revenue']), profile, rows, roles, dataset, { reframe: 'causal' });
+    expect(c.cannot[0].text).toBe(
+      'You asked whether award winner affects revenue. This shows that revenue differs by award winner, not that award winner causes the difference: other differences between the groups could explain it.',
+    );
+  });
+
+  it('forecast: its line sits beside the single-cycle line, which still applies', () => {
+    const c = buildCard(view(['sale date', 'revenue']), profile, rows, roles, dataset, { reframe: 'forecast' });
+    expect(c.cannot.map((b) => b.text)).toEqual([
+      "These dates cover one year or less (Jan 2, 2193 to Dec 31, 2193), so seasonal swings can't be told apart from growth or decline.",
+      "This shows how revenue has changed so far; it can't say what comes next.",
+    ]);
+  });
+});
+

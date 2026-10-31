@@ -1,4 +1,5 @@
 import type { Row } from './aggregate';
+import { ASKED_CANNOT } from './askText';
 import { CAUTIONS, CANNOT, DATASET_LINE, ASK, TALK } from './cardText';
 import { chooseRule } from './chartRules';
 import { CHECK_IDS, SEVERITIES, runChecks, type CheckId, type Evidence, type Finding, type Severity } from './checks';
@@ -87,7 +88,15 @@ const whole = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
  * top-level menu): when this view's findings name one of those entities, the card says so
  * once above the sections, and the entity caution refers to it rather than repeat it.
  */
-export function buildCard(view: ChartView, profile: DataProfile, rows: Row[], roles: Roles, dataset: DatasetFinding[] = []): Card {
+export function buildCard(
+  view: ChartView,
+  profile: DataProfile,
+  rows: Row[],
+  roles: Roles,
+  dataset: DatasetFinding[] = [],
+  // A typed question code reframed: the can't-tell line answers what was asked.
+  asked: { reframe: 'causal' | 'forecast' | null } | null = null,
+): Card {
   const noun = rowNounOf(roles);
   const base = computeFacts(view, profile, rows, roles);
   const extra: Fact[] = [
@@ -174,9 +183,14 @@ export function buildCard(view: ChartView, profile: DataProfile, rows: Row[], ro
             : rule === 'count-heatmap'
               ? CANNOT.heatmap
               : CANNOT.general;
-  const cannotLine = block('cannot', cannotTemplate, { locked: true });
+  // An asked causal question: its line replaces the general one. An asked forecast: its line
+  // replaces the general trend line, and sits beside the single-cycle line when both apply.
+  const echo = asked?.reframe === 'causal' ? ASKED_CANNOT.causal : asked?.reframe === 'forecast' ? ASKED_CANNOT.forecast : null;
+  const keepCycle = cycle && asked?.reframe === 'forecast';
+  const cannotLine = block('cannot', echo && !keepCycle ? echo : cannotTemplate, { locked: true });
   if (cycle && !cannotLine) unrendered.push('cycle');
-  const cannot = [cannotLine, view.filters.length > 0 ? block('cannot.scope', CANNOT.scope, { locked: true }) : null].filter(
+  const echoLine = keepCycle ? block('cannot.asked', echo!, { locked: true }) : null;
+  const cannot = [cannotLine, echoLine, view.filters.length > 0 ? block('cannot.scope', CANNOT.scope, { locked: true }) : null].filter(
     (b): b is Block => b !== null,
   );
   if (cannot.length === 0) cannot.push({ id: 'cannot', template: CANNOT.general, text: CANNOT.general, slots: [], locked: true, rephrasable: false });

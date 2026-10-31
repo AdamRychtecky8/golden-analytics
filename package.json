@@ -12,7 +12,8 @@
     "sample": "node scripts/make-sample.mjs",
     "prep:bookshop": "python3 scripts/prepare-bookshop.py",
     "options:bookshop": "node scripts/options-bookshop.mjs",
-    "cards:bookshop": "node scripts/cards-bookshop.mjs"
+    "cards:bookshop": "node scripts/cards-bookshop.mjs",
+    "eval:ask": "node scripts/eval-ask.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

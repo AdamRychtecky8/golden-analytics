@@ -12,6 +12,7 @@ interface MenuRailProps {
   profile: DataProfile;
   onPick: (option: Option) => void;
   onCustom: (fields: string[]) => void;
+  ask: React.ReactNode; // the "Ask your own question" box, placed above Build my own chart
 }
 
 /**
@@ -20,7 +21,7 @@ interface MenuRailProps {
  * item, and a repair sits right after the option it repairs), any notice, and "Build my own
  * chart" at the bottom.
  */
-export function MenuRail({ options, highlight, filters, currentOptionId, profile, onPick, onCustom }: MenuRailProps) {
+export function MenuRail({ options, highlight, filters, currentOptionId, profile, onPick, onCustom, ask }: MenuRailProps) {
   const top = highlight ? options.find((o) => o.id === highlight.id) : undefined;
   const rest = options.filter((o) => o !== top);
 
@@ -56,6 +57,7 @@ export function MenuRail({ options, highlight, filters, currentOptionId, profile
 
       {highlight?.notice && <p className="notice">{highlight.notice}</p>}
       <div className="rail-build">
+        {ask}
         <BuildChart profile={profile} onShow={onCustom} />
       </div>
     </aside>
