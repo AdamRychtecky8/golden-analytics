@@ -157,3 +157,28 @@ describe('labels and paths', () => {
     expect(label(['price'])).toBe('price');
   });
 });
+
+describe('editing the card', () => {
+  const editHeadline = (text: string): FlowAction => ({ type: 'edit', block: 'headline', text });
+
+  it('stores the edit on the current node, in place: no new node, no visit', () => {
+    const s0 = run([pick('a', ['genre', 'revenue'])]);
+    const s = flowReducer(s0, editHeadline('My headline'));
+    expect(currentNode(s).edits).toEqual({ headline: 'My headline' });
+    expect(s.nodes).toHaveLength(s0.nodes.length);
+    expect(s.visits).toEqual(s0.visits);
+  });
+
+  it('survives a persona switch: the new node shows the same chart with the same wording', () => {
+    const s = run([pick('a', ['genre', 'revenue']), editHeadline('My headline'), { type: 'persona', persona: PRESETS[2] }]);
+    expect(currentNode(s).how).toBe('persona');
+    expect(currentNode(s).edits).toEqual({ headline: 'My headline' });
+  });
+
+  it('survives leaving and revisiting the node', () => {
+    const s = run([pick('a', ['genre', 'revenue']), editHeadline('My headline'), { type: 'jump', id: 'n0' }, pick('b', ['format']), { type: 'back' }, { type: 'back' }]);
+    expect(here(s)).toBe('n1');
+    expect(currentNode(s).edits).toEqual({ headline: 'My headline' });
+  });
+});
+

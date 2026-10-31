@@ -23,6 +23,9 @@ export interface FlowNode {
   view: ChartView;
   persona: Persona;
   optionId: string | null; // the menu option it came from, if any
+  // The user's own wording for card blocks, by block id. User input is part of the spec: it
+  // is never recomputed, and never replaced by the AI or a later rebuild (D-008).
+  edits: Record<string, string>;
 }
 
 export interface FlowState {
@@ -36,6 +39,7 @@ export type FlowAction =
   | { type: 'deeper'; filter: PathFilter }
   | { type: 'persona'; persona: Persona }
   | { type: 'custom'; fields: string[] }
+  | { type: 'edit'; block: string; text: string }
   | { type: 'jump'; id: string }
   | { type: 'back' }
   | { type: 'forward' }
@@ -46,7 +50,7 @@ export const MAX_CUSTOM_FIELDS = 2;
 const NO_VIEW = (filters: PathFilter[] = []): ChartView => ({ fields: [], aggregate: 'sum', filters });
 
 export function initialFlow(persona: Persona = DEFAULT_PERSONA): FlowState {
-  const root: FlowNode = { id: 'n0', parentId: null, how: 'root', view: NO_VIEW(), persona, optionId: null };
+  const root: FlowNode = { id: 'n0', parentId: null, how: 'root', view: NO_VIEW(), persona, optionId: null, edits: {} };
   return { nodes: [root], visits: ['n0'], cursor: 0 };
 }
 
@@ -135,23 +139,30 @@ export function flowReducer(s: FlowState, action: FlowAction): FlowState {
   switch (action.type) {
     case 'pick':
       // A new question in the current scope: a child of the node that set the scope.
-      return addChild(s, scopeAnchor(s, current.id), { how: 'pick', view: action.view, persona: current.persona, optionId: action.optionId });
+      return addChild(s, scopeAnchor(s, current.id), { how: 'pick', view: action.view, persona: current.persona, optionId: action.optionId, edits: {} });
     case 'deeper': {
       // One more filter, at most MAX_FILTERS, never the same column twice.
       const { filters } = current.view;
       if (filters.length >= MAX_FILTERS || filters.some((f) => f.field === action.filter.field)) return s;
-      return addChild(s, current, { how: 'deeper', view: NO_VIEW([...filters, action.filter]), persona: current.persona, optionId: null });
+      return addChild(s, current, { how: 'deeper', view: NO_VIEW([...filters, action.filter]), persona: current.persona, optionId: null, edits: {} });
     }
     case 'persona': {
       const same = action.persona.id === current.persona.id && JSON.stringify(action.persona) === JSON.stringify(current.persona);
       if (same) return s;
-      // Same question, seen by someone else: the menu is highlighted for them.
-      return addChild(s, current, { how: 'persona', view: current.view, persona: action.persona, optionId: current.optionId });
+      // Same question, seen by someone else: the menu is highlighted for them. The card is
+      // the same chart, so the user's wording for it comes along.
+      return addChild(s, current, { how: 'persona', view: current.view, persona: action.persona, optionId: current.optionId, edits: current.edits });
     }
     case 'custom': {
       const fields = action.fields.slice(0, MAX_CUSTOM_FIELDS);
       if (fields.length === 0) return s;
-      return addChild(s, current, { how: 'custom', view: { fields, aggregate: 'sum', filters: current.view.filters }, persona: current.persona, optionId: null });
+      return addChild(s, current, { how: 'custom', view: { fields, aggregate: 'sum', filters: current.view.filters }, persona: current.persona, optionId: null, edits: {} });
+    }
+    case 'edit': {
+      // Changes the current node in place: not a new node, not a visit.
+      if (current.edits[action.block] === action.text) return s;
+      const node = { ...current, edits: { ...current.edits, [action.block]: action.text } };
+      return { ...s, nodes: s.nodes.map((n) => (n.id === current.id ? node : n)) };
     }
     case 'jump':
       return s.nodes.some((n) => n.id === action.id) ? visit(s, action.id) : s;
