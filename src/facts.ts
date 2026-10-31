@@ -3,11 +3,12 @@ import { chooseRule, effectiveAggregate } from './chartRules';
 import { groupView, periodLabel } from './groups';
 import { filterRows, type ChartView } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
+import { currencyOf, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
 
-// Facts: the numbers a story may use, computed in code from the same rows as the chart.
-// Level 3's AI never writes a number. It writes templates with slots like {top_share},
-// and code fills each slot from this list (story.ts), so every number in a story is one
-// of these, traceable to how it was computed.
+// Facts: the numbers a card may use, computed in code from the same rows as the chart.
+// Card text is written as templates with slots like {top_share}, and code fills each slot
+// from this list (card.ts), so every number on a card is one of these, traceable to how it
+// was computed. The AI, when it rephrases, may only use the same slots (D-052).
 
 export interface Fact {
   id: string; // the slot name: top_item, top_share, change_pct, ...
@@ -21,10 +22,17 @@ const twoPlaces = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, max
 /** Big totals as whole numbers (261,964); small values and means with cents (13.59). */
 const amount = (x: number, mean: boolean) => (mean || Math.abs(x) < 100 ? twoPlaces.format(x) : whole.format(x));
 const percent = (x: number) => `${Math.round(x * 100)}%`;
+export const percentText = percent;
 const signedPercent = (x: number) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(Math.round(x * 100))}%`;
 
-/** Every fact code can state about a view's chart. Charts that compare nothing give only the basics. */
-export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[]): Fact[] {
+/**
+ * Every fact code can state about a view's chart. Charts that compare nothing give only the
+ * basics. With roles, a count is in the row noun ("items sold"), a yes/no group reads
+ * "award winner: no", and a money amount carries the currency, or reads "261,964 in revenue"
+ * without one (the *_amount facts).
+ */
+export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[], roles: Roles = UNKNOWN_ROLES): Fact[] {
+  profile = withRoleMeasures(profile, roles);
   const facts: Fact[] = [];
   const add = (id: string, label: string, display: string, value?: number) =>
     facts.push(value === undefined ? { id, label, display } : { id, label, display, value });
@@ -39,30 +47,39 @@ export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[])
   const g = groupView(view, profile, rows);
   if (g && g.groups.length > 0) {
     const mean = g.aggregate === 'mean';
-    const measure = g.measure ? (mean ? `average ${g.measure.name}` : g.measure.name) : 'records';
+    const many = rowNounOf(roles).many;
+    const measure = g.measure ? (mean ? `average ${g.measure.name}` : g.measure.name) : many;
     add('measure', 'what is compared', measure);
     const fmt = (x: number | null) => (x === null ? 'no value' : g.measure ? amount(x, mean) : whole.format(x));
+    // An amount that says what it is: "$261,964", "261,964 in revenue", or "26,881 items sold".
+    const currency = g.measure && roleOf(roles, g.measure.name) === 'money' ? currencyOf(roles) : null;
+    const amountText = (x: number | null) =>
+      x === null ? 'no value' : !g.measure ? `${fmt(x)} ${many}` : currency ? `${currency}${fmt(x)}` : `${fmt(x)} in ${measure}`;
+    // A yes/no group can't stand alone as a subject ("no holds 53%"), so it carries its column.
+    const label = (x: string) => (roleOf(roles, g.field.name) === 'flag' ? `${g.field.name}: ${x}` : x);
 
     if (g.by === 'category') {
       const [top, second] = g.groups;
       const bottom = g.groups[g.groups.length - 1];
       add('group_field', 'what the groups are', g.field.name);
       add('group_count', 'number of groups', whole.format(g.groups.length));
-      add('top_item', 'the group with the highest value', top.label);
+      add('top_item', 'the group with the highest value', label(top.label));
       add('top_value', `${top.label}'s ${measure}`, fmt(top.value));
+      add('top_amount', `${top.label}'s ${measure}, with its unit`, amountText(top.value));
       add('top_records', `records in ${top.label}`, whole.format(top.records));
       if (g.total !== null && g.total > 0 && top.value !== null) add('top_share', `${top.label}'s share of all ${measure}`, percent(top.value / g.total), top.value / g.total);
       if (g.total !== null) add('total', `total ${measure}`, fmt(g.total));
       if (second) {
-        add('second_item', 'the group in second place', second.label);
+        add('second_item', 'the group in second place', label(second.label));
         add('second_value', `${second.label}'s ${measure}`, fmt(second.value));
+        add('second_amount', `${second.label}'s ${measure}, with its unit`, amountText(second.value));
         if (top.value !== null && second.value !== null) {
           add('gap_to_second', `how far ${top.label} is ahead of ${second.label}`, fmt(top.value - second.value));
           if (second.value > 0) add('gap_pct', `how much more ${top.label} has than ${second.label}`, percent(top.value / second.value - 1), top.value / second.value - 1);
         }
       }
       if (bottom !== top) {
-        add('bottom_item', 'the group with the lowest value', bottom.label);
+        add('bottom_item', 'the group with the lowest value', label(bottom.label));
         add('bottom_value', `${bottom.label}'s ${measure}`, fmt(bottom.value));
       }
     } else {
@@ -84,8 +101,10 @@ export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[])
         add('direction', 'whether it went up or down', change > 0 ? 'rose' : change < 0 ? 'fell' : 'held steady');
         add('peak_period', 'the period with the highest value', periodLabel(peak.label, unit));
         add('peak_value', `${measure} in the peak period`, fmt(peak.value));
+        add('peak_amount', `${measure} in the peak period, with its unit`, amountText(peak.value));
         add('low_period', 'the period with the lowest value', periodLabel(low.label, unit));
         add('low_value', `${measure} in the lowest period`, fmt(low.value));
+        add('low_amount', `${measure} in the lowest period, with its unit`, amountText(low.value));
         add('period_count', `number of ${unit}s`, whole.format(g.groups.length));
       }
     }

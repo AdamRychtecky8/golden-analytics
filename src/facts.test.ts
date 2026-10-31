@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Row } from './aggregate';
 import { computeFacts, pearson, type Fact } from './facts';
+import { bookshopRoles, parseRoles } from './roles';
 import { parseCsv } from './loadCsv';
 import { profileDataset } from './profile';
 import { fillTemplate } from './templates';
@@ -125,3 +126,28 @@ describe('fillTemplate', () => {
     expect(r.ok && r.text).toBe('Revenue is led by Hardcover');
   });
 });
+
+describe('computeFacts with the dataset contract', () => {
+  const roles = bookshopRoles(loaded.dataset.columns);
+
+  it('names counts with the row noun and money amounts by their measure (no currency in the Bookshop contract)', () => {
+    const counts = byId(computeFacts(view(['format']), bp, books, roles));
+    expect(counts.measure).toBe('items sold');
+    expect(counts.top_amount).toBe('26,881 items sold');
+    const money = byId(computeFacts(view(['format', 'revenue']), bp, books, roles));
+    expect(money.top_amount).toMatch(/^[\d,]+ in revenue$/);
+  });
+
+  it('puts the currency first when the contract has one', () => {
+    const cols = Object.fromEntries(loaded.dataset.columns.map((c) => [c, { role: c === 'revenue' ? 'money' : 'category' }]));
+    const r = parseRoles({ currency: '$', columns: { ...cols, 'sale date': { role: 'date' }, price: { role: 'price' }, discount: { role: 'rate' } } }, loaded.dataset.columns);
+    if (!r.ok) throw new Error(r.errors.join('; '));
+    expect(byId(computeFacts(view(['format', 'revenue']), bp, books, r.roles)).top_amount).toMatch(/^\$[\d,]+$/);
+  });
+
+  it('gives a yes/no group its column, so it reads as a subject', () => {
+    const f = byId(computeFacts(view(['award winner']), bp, books, roles));
+    expect(f.top_item).toBe('award winner: no');
+  });
+});
+

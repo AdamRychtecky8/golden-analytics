@@ -49,10 +49,12 @@ export const SINGLE_CYCLE_DAYS = 366;
 // count. Only used when the data has no roles file; with roles, the "money" role decides.
 const MONEY_WORDS = ['revenue', 'sales', 'amount', 'cost', 'costs', 'spend', 'spending', 'profit', 'income', 'price', 'value'];
 
-export type CheckId = 'mix' | 'small' | 'concentration' | 'entity' | 'fragile' | 'cycle';
+export const CHECK_IDS = ['mix', 'small', 'concentration', 'entity', 'fragile', 'cycle'] as const;
+export type CheckId = (typeof CHECK_IDS)[number];
 
 // Misleading: the naive reading of the chart is wrong. Caveat: true, but worth saying.
-export type Severity = 'misleading' | 'caveat';
+export const SEVERITIES = ['misleading', 'caveat'] as const;
+export type Severity = (typeof SEVERITIES)[number];
 
 /** A group's place by the chart's value and by its record count (1 = first). */
 export interface RankedGroup {

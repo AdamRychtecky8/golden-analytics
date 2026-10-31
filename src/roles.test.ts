@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './loadCsv';
 import { profileDataset } from './profile';
-import { bookshopRoles, facetOf, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
+import { bookshopRoles, currencyOf, facetOf, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
 
 describe('parseRoles', () => {
   const columns = ['date', 'store', 'revenue'];
@@ -53,6 +53,18 @@ describe('parseRoles', () => {
         '"store" has an unknown facet "attribute". Known facets: offering, source, place.',
       ]);
     }
+  });
+
+  it('takes an optional currency symbol, and rejects one with digits or that is too long', () => {
+    const cols = { date: { role: 'date' }, store: { role: 'category' }, revenue: { role: 'money' } };
+    const r = parseRoles({ currency: '$', columns: cols }, columns);
+    if (!r.ok) throw new Error();
+    expect(currencyOf(r.roles)).toBe('$');
+    const none = parseRoles({ columns: cols }, columns);
+    if (!none.ok) throw new Error();
+    expect(currencyOf(none.roles)).toBeNull();
+    expect(parseRoles({ currency: '1$', columns: cols }, columns).ok).toBe(false);
+    expect(parseRoles({ currency: 'dollars', columns: cols }, columns).ok).toBe(false);
   });
 
   it('rejects a row noun without both forms', () => {

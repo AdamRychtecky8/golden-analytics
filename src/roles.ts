@@ -8,6 +8,7 @@ import type { DataProfile } from './profile';
 //
 // File shape:
 //   { "rowNoun": { "one": "item sold", "many": "items sold" },   (optional)
+//     "currency": "$",                                          (optional)
 //     "columns": { "genre": { "role": "category", "facet": "offering" }, "price": { "role": "price" }, … } }
 
 export const ROLES = ['money', 'price', 'rate', 'date', 'category', 'entity', 'flag', 'id'] as const;
@@ -25,9 +26,10 @@ export interface RowNoun {
   many: string;
 }
 export const DEFAULT_ROW_NOUN: RowNoun = { one: 'record', many: 'records' };
+const MAX_CURRENCY_CHARS = 3;
 
 export type Roles =
-  | { known: true; byColumn: Record<string, Role>; facets: Record<string, Facet>; rowNoun: RowNoun }
+  | { known: true; byColumn: Record<string, Role>; facets: Record<string, Facet>; rowNoun: RowNoun; currency: string | null }
   | { known: false };
 
 export const UNKNOWN_ROLES: Roles = { known: false };
@@ -82,8 +84,17 @@ export function parseRoles(json: unknown, columns: string[]): RolesResult {
     else errors.push('"rowNoun" must be { "one": "…", "many": "…" } with both forms filled in.');
   }
 
+  // The symbol written before money amounts ("$" → "$261,964"). Without one, amounts read
+  // "261,964 in revenue", so no currency is ever guessed.
+  let currency: string | null = null;
+  if (json.currency !== undefined) {
+    const c = json.currency;
+    if (typeof c === 'string' && c.trim() !== '' && c.length <= MAX_CURRENCY_CHARS && !/\d/.test(c)) currency = c;
+    else errors.push(`"currency" must be a short symbol with no digits, like "$" (at most ${MAX_CURRENCY_CHARS} characters).`);
+  }
+
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, roles: { known: true, byColumn, facets, rowNoun } };
+  return { ok: true, roles: { known: true, byColumn, facets, rowNoun, currency } };
 }
 
 /** A column's role, or null when roles are unknown. */
@@ -94,6 +105,11 @@ export function roleOf(roles: Roles, column: string): Role | null {
 /** A column's facet, or null when it has none or roles are unknown. */
 export function facetOf(roles: Roles, column: string): Facet | null {
   return roles.known ? (roles.facets[column] ?? null) : null;
+}
+
+/** The currency symbol for money columns, or null when the contract gives none. */
+export function currencyOf(roles: Roles): string | null {
+  return roles.known ? roles.currency : null;
 }
 
 /** What one row is called: the contract's noun, or record/records without one. */
