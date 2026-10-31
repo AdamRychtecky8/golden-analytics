@@ -14,11 +14,11 @@ Smart, motivated business users with real questions and no data training. They m
 1. **Choose.** Code generates basic options from the data's columns and roles. The AI highlights one as most important for the user's persona, with a one-line reason. The user can pick any option, the highlight, or prompt a different path.
 2. **Check (invisible).** Checks run in the background on every flow. The user sees nothing unless a check catches something.
 3. **Build.** Code picks the chart (existing rules) and computes every number.
-4. **Present (the main screen).** One card, the chart as hero:
-   - **Say this:** headline (AI-phrased, numbers from code) + 2–3 verified talking points
-   - **Don't say this:** the tempting claims a check caught, each with a one-line reason and its evidence
+4. **Present (the main screen).** One card, the chart as hero (Phase 5, D-073 to D-076; see "The present card"):
+   - **Key talking points:** a headline + 2–3 points, from facts
+   - **Caution around these:** the tempting claims a check caught, each as claim → why to be careful → what to say instead
    - **If they ask:** 1–2 anticipated questions with answers
-   - **What this data can't tell you:** always present, one line (e.g., cause)
+   - **What this data can't tell you:** always present (e.g., cause; a single year can't show growth)
    All text editable; AI-written text marked as AI.
 5. **Explore.** Every flow is kept as a node in a tree. The user can go back to any earlier idea and branch from it without losing anything.
 
@@ -28,7 +28,7 @@ The screen follows `docs/wireframe-phase4.svg`: the map on top, the menu rail on
 - **Map:** collapsed by default to one line: the path to the current node as colored dots with short labels, plus "N questions explored". Expanded: the whole tree left to right, one column per depth; solid lines for a pick, go deeper, or build-your-own; dashed lines for a persona switch; a dashed box for a slice (no chart of its own); the current node outlined in the accent. Click any node to jump there. When the tree needs more rows than fit, branches off the current path fold into a "+N" marker that opens on click; the current path is never folded. The layout is a pure, tested function (`mapLayout.ts`).
 - **Persona colors:** fixed muted tints for the presets (Store owner slate blue, Marketing analyst plum, Researcher sand, Program manager muted teal), neutral grey for a built-your-own persona; never the accent orange, red, or green. Only in the map and the persona chip, never in charts, and always with the persona's initial.
 - **Menu rail:** the options for the current node's scope, the highlight first with its label ("Highlighted" or "Best place to start") and reason, any notice, and "Build my own chart" (up to 2 fields) at the bottom.
-- **Card:** the question as the title, the chart (click a bar to go deeper), then Say this, Don't say this, If they ask, What this data can't tell you. Until Phase 5, "Don't say this" lists the view's findings in their existing text, marked Draft; the other three say Phase 5.
+- **Card:** the question as the title, the chart (click a bar to go deeper), then the four sections of the present card (Phase 5, below).
 - **Preview:** on the root, and on a slice just made by going deeper, the card shows the scope's highlighted question's chart labeled Preview, with "Use this question"; the four sections stay hidden, and it becomes a node only when picked.
 
 **Node rules.** A node stores only its spec: id, parent, how it was made (pick | deeper | persona | custom), the view (fields, sum or mean, filters), the persona, and the option id if it came from the menu. Charts, findings, menus, and highlights are recomputed from it.
@@ -38,6 +38,39 @@ The screen follows `docs/wireframe-phase4.svg`: the map on top, the menu rail on
 - Doing the same thing again from the same node revisits the existing child instead of copying it. Nothing is ever deleted.
 - **Back/forward** follow the visit order, like a browser, not the tree. Jumping to a node in the map is a visit. A new visit after going back drops the forward visits, never nodes.
 - The AI highlight is cached per dataset, persona, and slice (the filters are in the key).
+
+## The present card (Phase 5, D-073 to D-076)
+Four sections, in this order: **Key talking points**, **Caution around these**, **If they ask**, **What this data can't tell you**. Code builds every block from facts and slots (D-052), so the card works with no AI and every number traces to a fact. All wording lives in `src/cardText.ts`.
+
+**Principle.** A caution is a non-trivial problem: a claim that would be wrong or misleading, usually something the chart hides. A true fact the chart shows is a talking point, not a caution.
+
+**Routing** (one table in `card.ts`; a test fails if any check or severity has no route). *Routing to be revisited after testing real cards.*
+| Finding | Section |
+|---|---|
+| mix when the #1 changes; entity (misleading); small group ranked first (misleading) | Caution |
+| fragile lead | Caution, softer wording ("neck and neck") |
+| mix when only a lower group moves | If they ask ("Why does {group} rank higher/lower by {measure} than by {rows}?") |
+| concentration; entity (caveat) | Key talking points |
+| small groups in the tail | If they ask |
+| single cycle | What this data can't tell you |
+
+**Cautions** have one shape: "Tempting to say" (the claim, in muted quotes) → "Why to be careful" → "Say instead". Cautions about the same group merge into one entry: one claim, up to three "why" lines in priority order, one "instead" from the highest-priority check. "Say instead" is hidden when it is the same sentence as the headline.
+
+**The headline** may never assert what a caution warns against, or what the can't-tell line says can't be known. With a caution, the headline is that caution's "instead"; for a single-cycle trend, it describes shape (peak and low), never change from first to last period. Either way it is locked: the AI may not reword it. Property tests check both rules on generated datasets.
+
+**Key talking points:** the headline plus up to three points: routed findings first (concentration, an entity caveat), then facts (the top group's share and value, the runner-up; for trends, the peak and low). A point never repeats the headline or a caution's claim.
+
+**If they ask:** at most two, from repairs ("What about items sold?") and routed findings. The entity question is dropped when the dataset line already says it; a question whose answer a point already gives is dropped.
+
+**What this data can't tell you:** always shown. The single-cycle line when it applies (human-readable dates), otherwise a per-kind line (a comparison shows which group has the most, not why), plus the slice when there is one.
+
+**Dataset line:** when this chart is one that an entity shaping several charts affects, one line above the sections names it ("One author, Bianca Thompson, accounts for 33% of all revenue in this data and shapes several of these charts."), and that chart's entity caution refers to it ("the author noted above") instead of repeating it.
+
+**Wording rules** (Adam's review): no possessives on group names ("of {measure} in {group}"); "accounts for"; never a pluralized column name; "a few more {rows}", not "sales"; "leads in {measure}"; money with the contract's currency, or "{value} in {measure}" without one; a flag's group by its contract label, or "{column}: {value}"; on a chart over time, a period is named with its unit ("Mar 2025 was our best month").
+
+**AI phrasing (optional).** With a key, `/api/card` may reword only Key talking points (not a locked headline) and If they ask, for the persona. It sees the code's templates and the facts they use, never rows. Each block must use exactly the same slots as the code's version, no digits of its own, and at most 60 words, or it keeps the code wording. AI-worded blocks are marked AI. Cautions, the can't-tell line, and the dataset line are never sent.
+
+**Chart and editing.** The chart highlights the group the headline is about (or the peak period) in the accent; everything else is grey. Every block is editable; the edit is stored on the node, copied to a persona-switch child, and always wins over AI or code text (D-008).
 
 ## The boundary (enforced in code)
 Code decides what is true and how it is drawn. The AI decides what is relevant and how it is said.
@@ -94,7 +127,7 @@ Each check is a pure function: (view, data, roles) → finding | null. Each decl
 | Single cycle | yes (D-067) | "Sales are growing" from a trend whose dates span one year or less (366 days): each season appears once, so seasonality can't be separated from growth. Caveat, on any chart over time |
 | Can't verify | always | cause, trend vs. season in one year of data |
 
-**Dataset-level findings:** when the same entity drives findings in several options, the engine reports it once as a fact about the whole dataset ("One author drives a third of all revenue"), so the UI can say it once instead of on every card. Detected in Phase 3a (D-063); displayed in Phase 5.
+**Dataset-level findings:** when the same entity drives findings in several options, the engine reports it once as a fact about the whole dataset ("One author drives a third of all revenue"), so the UI can say it once instead of on every card. Detected in Phase 3a (D-063); shown once above the card's sections in Phase 5 (D-074).
 
 ## Prompt-a-path (the most regulated AI piece)
 1. AI sees the user's text + the profile. Returns only structure: a path spec, or a refusal with a category. Never prose answers or numbers.
@@ -122,6 +155,7 @@ Bookshop reveals failure modes; every fix must work on any dataset. Rule: **app 
 
 ## Data
 Bookshop sales (fictional, 2193), one row per item sold, joined by `scripts/prepare-bookshop.py`, with a roles file declaring each column's role (date, money, price, rate, category, entity, flag, id), facet (offering: genre, format, series; source: publisher, author; place: author country; award winner is a flag with no facet), and rowNoun ("item sold" / "items sold"). Real values only: planted effects exist only in test fixtures.
+The contract may also give a currency symbol (Bookshop has none, so amounts read "261,964 in revenue") and names for a flag's groups (Bookshop: award winner → "award winners" / "non-winners").
 Excluded: marketing spend and ratings (reason: TODO(adam)); BookshopLibraries (holdings, not sales; future work).
 
 ## Out of scope (future work)
@@ -134,6 +168,6 @@ Arbitrary datasets (needs an upstream semantic classifier to write the roles fil
 3a. Generality: contract with facets + rowNoun, fragile-lead check, entity share rule, dataset-level findings, property tests, no-Bookshop test. No UI. (done, D-061 to D-063)
 3b. Options + highlight: one comparison per readable category (by the money measure, or by count with none) plus one trend; code-written questions; AI picks an eligible ID + no-digit reason; rules fallback. (done, D-064 to D-068)
 4. Flow tree + remove slider and levels. (done, D-069 to D-072; the old concept is tagged `slider-concept`)
-5. Present card. Note: the card's chart auto-highlights the group the headline is about (replacing click-to-highlight, which Phase 4 removed; bar clicks now go deeper).
+5. Present card. The card's chart auto-highlights the group the headline is about (replacing click-to-highlight, which Phase 4 removed; bar clicks now go deeper). (done, D-073 to D-076)
 6. Prompt-a-path + eval set.
 7. User testing, video, README (README by Adam).

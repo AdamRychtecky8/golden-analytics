@@ -359,6 +359,26 @@ Decision: Removed: the slider, the scrolling level panels, Levels 0/1 as screens
 Why: TODO(adam)
 Status: decided
 
+## D-073 — 2026-10-30 — The present card's sections and routing
+Decision: Four sections: Key talking points, Caution around these, If they ask, What this data can't tell you (always shown; the others hide when empty). A caution is a non-trivial problem, usually something the chart hides; a true fact the chart shows is a talking point. One table routes every check and severity, with a test that fails if any has no route: mix when the #1 changes, entity (misleading), small group ranked first → Caution; fragile lead → Caution, softer wording; mix when only a lower group moves → If they ask; concentration and entity (caveat) → Key talking points; small groups in the tail → If they ask; single cycle → can't tell. Routing to be revisited after testing real cards. Cautions about the same group merge (one claim, up to three "why" lines in priority order, one "instead" from the highest-priority check).
+Why: TODO(adam)
+Status: decided
+
+## D-074 — 2026-10-30 — Card wording, the headline rule, and the dataset line
+Decision: Every block is a template filled from facts (D-052); all wording is in src/cardText.ts, approved by Adam with his rules (no possessives on group names, "accounts for", no pluralized column names, "a few more {rows}", "leads in {measure}", "{value} in {measure}" without a currency, flags as "{column}: {value}" unless the contract labels them, "{period} was our best {unit}" on trends, human-readable dates). Caution labels: "Tempting to say" (claim in muted quotes), "Why to be careful", "Say instead" (hidden when it equals the headline). The headline never asserts what a caution warns against or what "can't tell" says is unknowable: with a caution it is the first entry's "instead"; for a single-cycle trend it describes peak and low only; either way it is locked; property tests check both. The dataset line shows once above the sections when the view's findings name an entity that shapes several charts; that caution's "why" refers to it, and the entity question is dropped.
+Why: TODO(adam)
+Status: decided
+
+## D-075 — 2026-10-30 — AI phrasing on the card
+Decision: A new handler, /api/card, replaces Level 3's story drafting: story.ts, api/story.ts, ruleStory, fillStory and their tests are deleted; fillTemplate and computeFacts are reused. With a key, the AI may reword only Key talking points (not a locked headline) and If they ask, for the persona; cautions, the can't-tell line, and the dataset line are never sent. It sees templates and the facts they use, never rows. A reworded block must keep exactly the same slots, have no digits of its own, and be at most 60 words, or the code wording stays. AI-worded blocks are marked AI; results are cached per dataset, view, and persona.
+Why: TODO(adam)
+Status: decided
+
+## D-076 — 2026-10-30 — Editing, the chart highlight, and contract additions
+Decision: Every card block is editable. Edits are stored on the node (user input is spec), copied to a persona-switch child, and always win over AI or code text, so a late AI reply never replaces them (D-008). The chart highlights the headline's group, or the peak period on a trend, in the accent; the rest grey. The dataset contract gains an optional currency symbol and optional names for a flag's groups (Bookshop: award winner → "award winners" / "non-winners"; no currency).
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)

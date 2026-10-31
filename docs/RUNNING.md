@@ -20,7 +20,7 @@ The layout follows `docs/wireframe-phase4.svg`:
 - **Top bar:** the dataset, the persona chip (its color and initial; click to switch or build your own), Load CSV, Use demo data (after loading your own file), and back/forward.
 - **Map**, under the top bar: collapsed to one line showing the path to the current question and how many questions you've explored. "Expand" shows the whole tree; click any box to go back to it.
 - **Menu rail**, on the left: the questions for the current slice of the data, the highlighted one first with its reason, and "Build my own chart" at the bottom.
-- **Card**, on the right: the question, its chart (click a bar to go deeper into that group), and four sections. Only "Don't say this" has content yet (the checks' findings, marked Draft); the other three say Phase 5.
+- **Card**, on the right: the question, its chart (the group the headline is about in orange; click a bar to go deeper into that group), then Key talking points, Caution around these, If they ask, and What this data can't tell you. Every line is editable: click it, type, click away. Your words stay, even if you switch persona or come back later.
 
 On the first screen, and right after going deeper, no question is picked yet: the card shows a **Preview** of the highlighted question with "Use this question".
 
@@ -28,7 +28,7 @@ On the first screen, and right after going deeper, no question is picked yet: th
 
 The app works either way.
 
-**Without a key** (the default): rules pick the highlighted question, and one quiet line under the menu says "AI highlighting is off (no API key), so rules picked this."
+**Without a key** (the default): rules pick the highlighted question, and one quiet line under the menu says "AI highlighting is off (no API key), so rules picked this." The card uses its standard wording, with a similar line at the bottom.
 
 **With a key:**
 
@@ -40,11 +40,11 @@ The app works either way.
 3. Open `.env` and replace `your-anthropic-api-key-here` with your key. Optionally set `ANTHROPIC_MODEL` (default: `claude-haiku-5-5`).
 4. Restart `npm run dev`. The dev server reads `.env` only when it starts.
 
-The AI then picks the highlight among the questions that passed the checks and writes the one-line reason, marked **AI**. If its answer fails a check (a question that isn't eligible, a digit in the reason, a reason over 140 characters), or the call fails, rules pick and the notice says why.
+The AI then picks the highlight among the questions that passed the checks and writes the one-line reason, marked **AI**. It may also reword the card's talking points and questions for your persona, marked **AI**; the cautions and the can't-tell line always keep their standard wording. If its answer fails a check (a question that isn't eligible, a digit in the reason, a reason over 140 characters), or the call fails, rules pick and the notice says why.
 
-**Where the key lives:** only in `.env` (gitignored, never committed) and in the server-side handlers in `api/`. The browser never sees it: it calls `/api/highlight` on the dev server, which calls Anthropic. Each request sends only the data profile (column names, types, ranges, top values, missing counts), the persona, and the eligible questions with their caveats. It never sends rows.
+**Where the key lives:** only in `.env` (gitignored, never committed) and in the server-side handlers in `api/`. The browser never sees it: it calls `/api/highlight` and `/api/card` on the dev server, which call Anthropic. Each request sends only the data profile (column names, types, ranges, top values, missing counts), the persona, and either the eligible questions with their caveats or the card's wording templates and the facts they use. It never sends rows.
 
-**Cost:** one small request per dataset, persona, and slice: when the app opens, when you switch persona, and when you go deeper into a new group. Going back, jumping in the map, and revisiting a slice reuse the cached answer.
+**Cost:** one small highlight request per dataset, persona, and slice, and one small card request per question you open (per persona). Going back, jumping in the map, and revisiting reuse the cached answers.
 
 `npm run preview` and the plain `dist/` build have no server behind `/api`, so they always use the rules. The handlers are written as Vercel serverless functions (`api/`), but nothing is deployed yet.
 
@@ -63,7 +63,8 @@ This runs every `*.test.ts` file once with Vitest. The main ones:
 - `src/generality.test.ts`: invariants on 200 generated datasets plus degenerate ones.
 - `src/noBookshop.test.ts`: no Bookshop column names or values in app code.
 - `src/profile.test.ts`, `src/chartRules.test.ts`, `src/paths.test.ts`: parsing, chart rules, filtered charts.
-- `api/highlight.test.ts`, `api/story.test.ts`: the server handlers, with the Anthropic API faked.
+- `src/card.test.ts`, `src/cardAi.test.ts`: the card's routing, the four Bookshop cards, the headline rule on generated datasets, and every AI fallback.
+- `api/highlight.test.ts`, `api/card.test.ts`: the server handlers, with the Anthropic API faked.
 
 No test calls the real API.
 
@@ -77,6 +78,7 @@ No test calls the real API.
 | `npm run preview` | Serves the `dist/` build locally, to check the production version |
 | `npm run prep:bookshop` | Rebuilds `src/data/bookshop-sales.csv` from `data/raw/Bookshop.xlsx` (see below) |
 | `npm run options:bookshop` | Prints the Bookshop options menu (each option's question, findings, and whether it is eligible) and each persona's highlight and reason, using the rules (no API key needed), then every sentence the rules can produce (each purpose × kind × facet, the repair lines, and "best place to start") filled in with Bookshop values |
+| `npm run cards:bookshop` | Prints Bookshop cards as text (every menu question, plus one inside a slice), with the standard wording, for reading it all at once |
 | `npm run sample` | Regenerates `src/data/sample-sales-synthetic.csv` from `scripts/make-sample.mjs`. It's seeded, so the output is identical every time. The tests use this file; the app no longer shows it |
 
 The build warns that one file is larger than 500 kB. That's the Vega charting library; it's expected and harmless for now.
