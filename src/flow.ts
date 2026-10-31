@@ -12,7 +12,13 @@ import { DEFAULT_PERSONA, type Persona } from './personas';
 // browser: back goes to the previous node you looked at, not to the parent.
 
 /** How a node was made. Root is the dataset itself. */
-export type NodeHow = 'root' | 'pick' | 'deeper' | 'persona' | 'custom';
+export type NodeHow = 'root' | 'pick' | 'deeper' | 'persona' | 'custom' | 'asked';
+
+/** A typed question that became a node, and whether code reframed it as causal or forecasting. */
+export interface Asked {
+  text: string; // exactly what the user typed
+  reframe: 'causal' | 'forecast' | null; // the card's can't-tell line echoes these
+}
 
 export interface FlowNode {
   id: string; // "n0" is the root; then n1, n2, … in creation order
@@ -26,6 +32,7 @@ export interface FlowNode {
   // The user's own wording for card blocks, by block id. User input is part of the spec: it
   // is never recomputed, and never replaced by the AI or a later rebuild (D-008).
   edits: Record<string, string>;
+  asked?: Asked; // set on how = asked
 }
 
 export interface FlowState {
@@ -40,6 +47,7 @@ export type FlowAction =
   | { type: 'persona'; persona: Persona }
   | { type: 'custom'; fields: string[] }
   | { type: 'edit'; block: string; text: string }
+  | { type: 'ask'; view: ChartView; asked: Asked }
   | { type: 'jump'; id: string }
   | { type: 'back' }
   | { type: 'forward' }
@@ -127,7 +135,12 @@ function visit(s: FlowState, id: string): FlowState {
  */
 function addChild(s: FlowState, parent: FlowNode, child: Omit<FlowNode, 'id' | 'parentId'>): FlowState {
   const twin = childrenOf(s, parent.id).find(
-    (c) => c.how === child.how && c.persona.id === child.persona.id && c.persona.purpose === child.persona.purpose && sameView(c.view, child.view),
+    (c) =>
+      c.how === child.how &&
+      c.persona.id === child.persona.id &&
+      c.persona.purpose === child.persona.purpose &&
+      sameView(c.view, child.view) &&
+      c.asked?.text === child.asked?.text,
   );
   if (twin) return visit(s, twin.id);
   const node: FlowNode = { ...child, id: `n${s.nodes.length}`, parentId: parent.id };
@@ -158,6 +171,10 @@ export function flowReducer(s: FlowState, action: FlowAction): FlowState {
       if (fields.length === 0) return s;
       return addChild(s, current, { how: 'custom', view: { fields, aggregate: 'sum', filters: current.view.filters }, persona: current.persona, optionId: null, edits: {} });
     }
+    case 'ask':
+      // A typed question, confirmed with "Use this": like a pick, a child of the node that
+      // set the current scope (the AI was told the slice, so its spec carries the filters).
+      return addChild(s, scopeAnchor(s, current.id), { how: 'asked', view: action.view, persona: current.persona, optionId: null, edits: {}, asked: action.asked });
     case 'edit': {
       // Changes the current node in place: not a new node, not a visit.
       if (current.edits[action.block] === action.text) return s;

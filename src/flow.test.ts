@@ -6,6 +6,7 @@ import {
   currentNode,
   flowReducer,
   initialFlow,
+  nodeById,
   nodeLabel,
   pathTo,
   questionsExplored,
@@ -182,3 +183,22 @@ describe('editing the card', () => {
   });
 });
 
+describe('an asked question', () => {
+  const ask = (text: string, fields: string[], filters: { field: string; value: string }[] = []): FlowAction => ({
+    type: 'ask',
+    view: { fields, aggregate: 'sum', filters },
+    asked: { text, reframe: null },
+  });
+
+  it('is a child of the current scope anchor, and keeps what the user typed', () => {
+    const s = run([pick('a', ['genre', 'revenue']), deeper('genre', 'Fiction'), ask('Which format sells most here?', ['format'], [{ field: 'genre', value: 'Fiction' }])]);
+    const n = currentNode(s);
+    expect(n).toMatchObject({ how: 'asked', asked: { text: 'Which format sells most here?' } });
+    expect(nodeById(s, n.parentId!).how).toBe('deeper'); // the slice, not the question before it
+  });
+
+  it('nothing becomes a node until the ask action (the "Use this" click) is dispatched', () => {
+    const s = run([pick('a', ['genre', 'revenue'])]);
+    expect(s.nodes.some((n) => n.how === 'asked')).toBe(false);
+  });
+});

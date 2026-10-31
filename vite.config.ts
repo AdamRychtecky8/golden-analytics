@@ -1,13 +1,17 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { POST as askHandler } from './api/ask.ts';
 import { POST as cardHandler } from './api/card.ts';
 import { POST as highlightHandler } from './api/highlight.ts';
+import { POST as statusHandler } from './api/status.ts';
 
 // The same functions Vercel would run in production, one per file in api/.
 const ROUTES: Record<string, (request: Request) => Promise<Response>> = {
   '/api/highlight': highlightHandler,
   '/api/card': cardHandler,
+  '/api/ask': askHandler,
+  '/api/status': statusHandler,
 };
 
 /**
