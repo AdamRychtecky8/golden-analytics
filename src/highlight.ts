@@ -1,7 +1,7 @@
 import { askAi, type AskOptions } from './aiRequest';
 import type { CheckId, Severity } from './checks';
 import { isEligible, type Option, type OptionKind } from './options';
-import { summarizeProfile, type PathFilter, type SuggestRequest } from './paths';
+import { summarizeProfile, type AiContext, type PathFilter } from './paths';
 import type { Persona, Purpose } from './personas';
 import type { DataProfile } from './profile';
 import { rowNounOf, type Facet, type Roles } from './roles';
@@ -133,8 +133,8 @@ export interface HighlightOption {
 }
 
 export interface HighlightRequest {
-  profile: SuggestRequest['profile'];
-  persona: SuggestRequest['persona'];
+  profile: AiContext['profile'];
+  persona: AiContext['persona'];
   options: HighlightOption[];
 }
 

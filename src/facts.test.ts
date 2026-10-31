@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Row } from './aggregate';
-import { computeFacts, pearson, strength, type Fact } from './facts';
+import { computeFacts, pearson, type Fact } from './facts';
 import { parseCsv } from './loadCsv';
 import { profileDataset } from './profile';
-import { fillStory, fillTemplate, ruleStory } from './templates';
+import { fillTemplate } from './templates';
 
 const text = readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8');
 const loaded = parseCsv(text, 'bookshop', true);
@@ -31,10 +31,6 @@ describe('computeFacts: categories', () => {
     expect(facts.gap_to_second).toBe(Math.round(hard - mass).toLocaleString('en-US'));
     expect(facts.record_count).toBe('56,350');
     expect(facts.measure).toBe('revenue');
-  });
-
-  it('carries the insight checks as facts', () => {
-    expect(facts.check_mix).toMatch(/^Hardcover ranks first by revenue/);
   });
 
   it('says "average price" and gives no share for a mean', () => {
@@ -88,12 +84,6 @@ describe('computeFacts: other charts', () => {
     expect(pearson([1, 2, 3], [3, 2, 1])).toBeCloseTo(-1);
     expect(pearson([1, 1, 1], [1, 2, 3])).toBeNull();
   });
-
-  it('ranks paths with checks above paths without', () => {
-    const withCheck = computeFacts(view(['format', 'revenue']), bp, books);
-    const plain = computeFacts(view(['sale date', 'revenue']), bp, books);
-    expect(strength(withCheck)).toBeGreaterThan(strength(plain));
-  });
 });
 
 describe('fillTemplate', () => {
@@ -133,32 +123,5 @@ describe('fillTemplate', () => {
   it('capitalizes the first letter after filling', () => {
     const r = fillTemplate('{measure} is led by {top_item}', facts, 20);
     expect(r.ok && r.text).toBe('Revenue is led by Hardcover');
-  });
-});
-
-describe('rule-based stories (no AI)', () => {
-  it('writes a true card from the facts, mentioning the price/mix check', () => {
-    const story = ruleStory(computeFacts(view(['format', 'revenue']), bp, books));
-    expect(story.title).toBe('Hardcover leads revenue by format');
-    expect(story.takeaway).toMatch(/^Hardcover brings in \d+% of revenue\. Hardcover ranks first by revenue, but Mass market paperback/);
-  });
-
-  it('writes a time story and a scoped title for a filtered path', () => {
-    const t = ruleStory(computeFacts(view(['sale date', 'revenue'], [{ field: 'genre', value: 'Fiction' }]), bp, books));
-    expect(t.title).toMatch(/^Revenue (rose|fell|held steady) from Jan 2193 to Dec 2193 \(Fiction\)$/);
-  });
-
-  it('every number in a rule story comes from a fact', () => {
-    const facts = computeFacts(view(['genre', 'revenue']), bp, books);
-    const story = ruleStory(facts);
-    const fromFacts = story.slots.map((id) => facts.find((f) => f.id === id)!.display).join(' ');
-    for (const n of `${story.title} ${story.takeaway}`.match(/\d[\d,.]*/g) ?? []) expect(fromFacts).toContain(n);
-  });
-
-  it('fillStory reports which part failed', () => {
-    const facts = computeFacts(view(['format', 'revenue']), bp, books);
-    expect(fillStory('{top_item} wins', 'It made 5 times more', facts)).toEqual({
-      error: 'takeaway: a digit outside a slot (numbers must come from facts)',
-    });
   });
 });

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 // Type-only imports: erased when compiled, so this server file never pulls browser code in.
-import type { ColumnSummary, PathDraft, PathKind, SuggestRequest } from '../src/paths.ts';
+import type { AiContext, ColumnSummary } from '../src/paths.ts';
 
 // What every AI handler in api/ shares: reading the request, the one model call, and the
 // error shapes. The leading underscore keeps Vercel from serving this file as an endpoint.
@@ -11,10 +11,6 @@ import type { ColumnSummary, PathDraft, PathKind, SuggestRequest } from '../src/
 export const DEFAULT_MODEL = 'claude-haiku-5-5';
 const TIMEOUT_MS = 15_000;
 const MAX_BODY_CHARS = 50_000;
-
-// Written out again here (not imported) because this file may only import types from
-// src/. `satisfies` makes the compiler check that every entry is a real PathKind.
-const KINDS = ['trend', 'comparison', 'outlier', 'distribution', 'driver'] as const satisfies readonly PathKind[];
 
 export type ErrorBody = { ok: false; reason: 'no-key' | 'bad-request' | 'ai-error'; message: string };
 
@@ -92,7 +88,7 @@ export const str = (v: unknown, max = 200) => (typeof v === 'string' && v.length
 export const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
 /** The profile summary and persona, copied field by field. Every handler starts here. */
-export function readProfileAndPersona(body: unknown): Omit<SuggestRequest, 'parent'> | null {
+export function readProfileAndPersona(body: unknown): AiContext | null {
   if (typeof body !== 'object' || body === null) return null;
   const b = body as Record<string, unknown>;
   const profile = b.profile as Record<string, unknown> | undefined;
@@ -129,27 +125,6 @@ export function readProfileAndPersona(body: unknown): Omit<SuggestRequest, 'pare
     profile: { rowCount: num(profile.rowCount) ?? 0, columns },
     // Checked as short strings, not against the persona lists: an unknown purpose only
     // means the prompt uses the general guidance. The cast records that choice.
-    persona: { domain, role, purpose } as SuggestRequest['persona'],
-  };
-}
-
-/** A path's question and chart (a story candidate), copied field by field. */
-export function readDraft(raw: unknown): PathDraft | null {
-  if (typeof raw !== 'object' || raw === null) return null;
-  const p = raw as Record<string, unknown>;
-  const question = str(p.question, 200);
-  const fields = Array.isArray(p.fields) ? p.fields.filter((f): f is string => typeof f === 'string').slice(0, 2) : [];
-  if (!question || fields.length === 0) return null;
-  const filters = (Array.isArray(p.filters) ? (p.filters as Record<string, unknown>[]) : []).slice(0, 3).flatMap((f) => {
-    const field = str(f?.field, 100);
-    const value = str(f?.value, 100);
-    return field && value ? [{ field, value }] : [];
-  });
-  return {
-    question,
-    kind: KINDS.find((k) => k === p.kind) ?? 'comparison',
-    fields,
-    aggregate: p.aggregate === 'mean' ? 'mean' : 'sum',
-    filters,
+    persona: { domain, role, purpose } as AiContext['persona'],
   };
 }

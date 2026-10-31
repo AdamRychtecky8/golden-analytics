@@ -1,6 +1,5 @@
 import { isMissing, parseNumber, type Row } from './aggregate';
 import { chooseRule, effectiveAggregate } from './chartRules';
-import { runChecks } from './checks';
 import { groupView, periodLabel } from './groups';
 import { filterRows, type ChartView } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
@@ -129,8 +128,6 @@ export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[])
     }
   }
 
-  // The insight checks become facts too, so a story can mention them.
-  for (const check of runChecks(view, profile, rows).findings) add(`check_${check.id}`, `check: ${check.id}`, check.text);
   // The aggregate actually used, in words (a mean if the number is average only).
   if (cols.some((c) => c.type === 'quantitative')) add('aggregate', 'how values are combined', effectiveAggregate(cols, view.aggregate));
   return facts;
@@ -161,12 +158,4 @@ function strengthWord(r: number): string {
   if (a >= 0.4) return `moderate ${dir}`;
   if (a >= 0.2) return `weak ${dir}`;
   return 'little or no';
-}
-
-/** How much a path has to say: checks first, then the size of the change or gap (Level 3's rules pick). */
-export function strength(facts: Fact[]): number {
-  const weight: Record<string, number> = { check_mix: 3, check_concentration: 2, check_small: 1 };
-  const checks = facts.reduce((s, f) => s + (weight[f.id] ?? 0), 0);
-  const size = (id: string) => Math.abs(facts.find((f) => f.id === id)?.value ?? 0);
-  return checks * 10 + Math.max(size('change_pct'), size('top_share'), size('gap_pct'), size('correlation'));
 }

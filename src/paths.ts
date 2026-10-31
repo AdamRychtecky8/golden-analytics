@@ -3,15 +3,8 @@ import { buildChart, type ChartResult } from './chartRules';
 import type { ColumnProfile, DataProfile, FieldType } from './profile';
 import type { Persona } from './personas';
 
-// Views and paths: what a chart shows (fields, sum or mean, filters), filtering rows to a
-// slice, drawing a view, and the profile summary the AI is allowed to see (D-011). Path and
-// PathDraft are kept for story.ts (Level 3's drafting, which Phase 5 may reuse).
-
-export const PATH_KINDS = ['trend', 'comparison', 'outlier', 'distribution', 'driver'] as const;
-export type PathKind = (typeof PATH_KINDS)[number];
-
-/** Where a path came from, shown on every path card and on the story card. */
-export type PathSource = 'ai' | 'rules';
+// Views: what a chart shows (fields, sum or mean, filters), filtering rows to a slice,
+// drawing a view, and the profile summary an AI handler is allowed to see (D-011).
 
 /** Keep only rows where a category column equals one of its actual values. */
 export interface PathFilter {
@@ -26,20 +19,8 @@ export interface ChartView {
   filters: PathFilter[]; // all must hold; empty = every row
 }
 
-// A path narrows the data by at most this many filters. Each "go deeper" adds one, so the
-// tree is at most three levels below a top-level path with no filter (D-051).
+// A view narrows the data by at most this many filters; each "go deeper" adds one (D-051, D-069).
 export const MAX_FILTERS = 3;
-
-export interface Path extends ChartView {
-  id: string; // position in the tree: "p2" is the second top-level path, "p2.1" its first follow-up
-  question: string;
-  kind: PathKind;
-  parent: string | null; // the parent path's id, or null for top-level paths
-  source: PathSource;
-}
-
-/** A path's question and chart, without its place in a tree. */
-export type PathDraft = Pick<Path, 'question' | 'kind' | 'fields' | 'aggregate' | 'filters'>;
 
 // ---------------------------------------------------------------------------------------
 // What an AI handler is allowed to see (D-011): the profile and the persona, never raw rows.
@@ -55,16 +36,16 @@ export interface ColumnSummary {
   topValues?: { value: string; count: number }[];
 }
 
-export interface SuggestRequest {
+/** What every AI request starts with: the profile summary and who the user is. */
+export interface AiContext {
   profile: { rowCount: number; columns: ColumnSummary[] };
   persona: Pick<Persona, 'domain' | 'role' | 'purpose'>;
-  parent: PathDraft | null;
 }
 
 const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** Copies only the summary fields out of the profile. Bins and anything row-level stay home. */
-export function summarizeProfile(profile: DataProfile): SuggestRequest['profile'] {
+export function summarizeProfile(profile: DataProfile): AiContext['profile'] {
   return {
     rowCount: profile.rowCount,
     columns: profile.columns.map((c) => {
