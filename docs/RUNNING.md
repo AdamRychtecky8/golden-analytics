@@ -19,7 +19,7 @@ The layout follows `docs/wireframe-phase4.svg`:
 
 - **Top bar:** the dataset, the persona chip (its color and initial; click to switch or build your own), Load CSV, Use demo data (after loading your own file), and back/forward.
 - **Map**, under the top bar: collapsed to one line showing the path to the current question and how many questions you've explored. "Expand" shows the whole tree; click any box to go back to it.
-- **Menu rail**, on the left: the questions for the current slice of the data, the highlighted one first with its reason, and "Build my own chart" at the bottom.
+- **Menu rail**, on the left: the questions for the current slice of the data, the highlighted one first with its reason, then "Ask your own question" (needs an API key) and "Build my own chart" at the bottom.
 - **Card**, on the right: the question, its chart (the group the headline is about in orange; click a bar to go deeper into that group), then Key talking points, Caution around these, If they ask, and What this data can't tell you. Every line is editable: click it, type, click away. Your words stay, even if you switch persona or come back later.
 
 On the first screen, and right after going deeper, no question is picked yet: the card shows a **Preview** of the highlighted question with "Use this question".
@@ -44,7 +44,9 @@ The AI then picks the highlight among the questions that passed the checks and w
 
 **Where the key lives:** only in `.env` (gitignored, never committed) and in the server-side handlers in `api/`. The browser never sees it: it calls `/api/highlight` and `/api/card` on the dev server, which call Anthropic. Each request sends only the data profile (column names, types, ranges, top values, missing counts), the persona, and either the eligible questions with their caveats or the card's wording templates and the facts they use. It never sends rows.
 
-**Cost:** one small highlight request per dataset, persona, and slice, and one small card request per question you open (per persona). Going back, jumping in the map, and revisiting reuse the cached answers.
+**Ask your own question** (with a key): type a question and press Ask. The AI translates it into a chart; code checks it and shows it in plain words with Use this / Cancel. Nothing is added to the map until you click Use this. Questions about causes or the future are reframed to what the data can show; questions the data can't answer are declined with the reason.
+
+**Cost:** one small highlight request per dataset, persona, and slice, one small card request per question you open (per persona), and one small request per typed question. Going back, jumping in the map, and revisiting reuse the cached answers.
 
 `npm run preview` and the plain `dist/` build have no server behind `/api`, so they always use the rules. The handlers are written as Vercel serverless functions (`api/`), but nothing is deployed yet.
 
@@ -64,7 +66,8 @@ This runs every `*.test.ts` file once with Vitest. The main ones:
 - `src/noBookshop.test.ts`: no Bookshop column names or values in app code.
 - `src/profile.test.ts`, `src/chartRules.test.ts`, `src/paths.test.ts`: parsing, chart rules, filtered charts.
 - `src/card.test.ts`, `src/cardAi.test.ts`: the card's routing, the four Bookshop cards, the headline rule on generated datasets, and every AI fallback.
-- `api/highlight.test.ts`, `api/card.test.ts`: the server handlers, with the Anthropic API faked.
+- `src/ask.test.ts`: every eval case's faked AI reply through code's validation and guard, the guard words, every invalid chart, unreadable replies, and what the AI is sent.
+- `api/highlight.test.ts`, `api/card.test.ts`, `api/ask.test.ts`: the server handlers, with the Anthropic API faked.
 
 No test calls the real API.
 
@@ -79,6 +82,7 @@ No test calls the real API.
 | `npm run prep:bookshop` | Rebuilds `src/data/bookshop-sales.csv` from `data/raw/Bookshop.xlsx` (see below) |
 | `npm run options:bookshop` | Prints the Bookshop options menu (each option's question, findings, and whether it is eligible) and each persona's highlight and reason, using the rules (no API key needed), then every sentence the rules can produce (each purpose × kind × facet, the repair lines, and "best place to start") filled in with Bookshop values |
 | `npm run cards:bookshop` | Prints Bookshop cards as text (every menu question, plus one inside a slice), with the standard wording, for reading it all at once |
+| `npm run eval:ask` | Runs the 26 typed-question cases in `docs/eval/ask-cases.json` against the real model and prints a pass rate and every miss. Needs `ANTHROPIC_API_KEY` in `.env`; costs about 20 small calls per run, so it is not part of `npm test` |
 | `npm run sample` | Regenerates `src/data/sample-sales-synthetic.csv` from `scripts/make-sample.mjs`. It's seeded, so the output is identical every time. The tests use this file; the app no longer shows it |
 
 The build warns that one file is larger than 500 kB. That's the Vega charting library; it's expected and harmless for now.

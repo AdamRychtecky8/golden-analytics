@@ -379,6 +379,16 @@ Decision: Every card block is editable. Edits are stored on the node (user input
 Why: TODO(adam)
 Status: decided
 
+## D-077 — 2026-10-30 — Ask your own question: outcomes, categories, and what code decides
+Decision: The AI returns structured JSON only: build, clarify (2–3 candidates and the ambiguous word), reframe (causal, forecast, meaningless, loaded, with the nearest defensible spec), or refuse (not in the data, unrelated, with an optional alternative). It sees the question, the profile, the contract, category values (all of them up to 60 per column, none for ids), and the current slice; never rows. Code validates every spec (fields, chart rule, no ids, at most 2 fields and 3 filters, filters on categories with exact existing values, no sum of an average-only number); an invalid one is refused with the code's reason ("invalid"), a malformed or prose reply is "unreadable". An independent guard on the user's text turns a build into a reframe: causal words cause, because, drive/drives/driving, why, effect, affect, impact, lead to, result in; forecasting words predict, forecast, going to, future, expect, next month, next quarter, next year. Bare "will" is excluded; "why" is kept on purpose, so the guard is deliberately strict (a question like "Why does Fiction rank higher?" is reframed even when the AI understood it). Every message is a code template; the meaningless-operation reframe and the invalid-sum refusal both say a total of the column isn't meaningful. Too few cases is not a category (the small-group check handles it).
+Why: TODO(adam)
+Status: decided
+
+## D-078 — 2026-10-30 — Confirming an asked question, the node, and evaluation
+Decision: The result is shown in plain words, labeled "AI translated your request", with Use this / Cancel ("Change it" dropped for now; editing an asked question's filters in Build my own chart is on the with-more-time list). Only "Use this" creates a node (how = asked, keeping the text), a child of the current scope's anchor; the AI is told the current slice. The card adds "You asked: …"; a causal reframe's can't-tell line reads "You asked whether {column} affects {measure}. This shows that {measure} differs by {column}, not that {column} causes the difference: other differences between the groups could explain it.", a forecast's reads "This shows how {measure} has changed so far; it can't say what comes next." beside the single-cycle line (wording pending Adam's approval). /api/status says whether a key exists. docs/eval/ask-cases.json has 26 cases; unit tests run each faked reply through code; npm run eval:ask runs them against the real model (not part of npm test). A contract flag to never send a column's values is on the with-more-time list.
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)

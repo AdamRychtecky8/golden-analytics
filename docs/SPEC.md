@@ -129,12 +129,29 @@ Each check is a pure function: (view, data, roles) → finding | null. Each decl
 
 **Dataset-level findings:** when the same entity drives findings in several options, the engine reports it once as a fact about the whole dataset ("One author drives a third of all revenue"), so the UI can say it once instead of on every card. Detected in Phase 3a (D-063); shown once above the card's sections in Phase 5 (D-074).
 
-## Prompt-a-path (the most regulated AI piece)
-1. AI sees the user's text + the profile. Returns only structure: a path spec, or a refusal with a category. Never prose answers or numbers.
-2. Code validates the spec (fields exist, aggregate legal, groups large enough). The AI can't approve its own output.
-3. Undefensible requests are told back with the nearest defensible alternative. Categories: not in the data, causal, meaningless operation, too few cases, beyond the data (forecasting), loaded framing. Final list: TODO(adam)
-4. The user confirms the structured path before it's built; labeled "AI translated your request."
-5. An evaluation set of ~20 prompts with expected outcomes (build / reframe / refuse), run as tests.
+## Prompt-a-path (the most regulated AI piece; Phase 6, D-077, D-078)
+An "Ask your own question" box in the menu rail, above "Build my own chart". With no API key it is disabled, with one quiet line pointing to the menu and "Build my own chart".
+
+1. **What the AI sees:** the user's text, the profile summary, the dataset contract (roles, facets, row noun), every value of a category column with up to 60 of them (none for id columns, the top values past 60), and the current slice. Never rows.
+2. **What it returns:** structured JSON only, one of four outcomes: **build** (a chart spec: fields, sum or mean, filters), **clarify** (2–3 candidate specs for an ambiguous word), **reframe** (a category and the nearest defensible spec), **refuse** (a category, optionally an alternative spec). No prose, no numbers, no explanation.
+3. **Categories:**
+   | Category | Outcome | Bookshop example |
+   |---|---|---|
+   | not in the data | refuse | "Which customers are happiest?" |
+   | causal | reframe | "Did winning an award cause the sales?" → revenue by award winner |
+   | meaningless operation | reframe | "Total price by author" → average price by author |
+   | forecasting | reframe | "What will sell next year?" → revenue over time |
+   | loaded framing | reframe | "Prove hardcovers are best" → revenue by format |
+   | ambiguous | clarify | "Which books are best?" → revenue by title, or items sold by title |
+   | unrelated | refuse | "Write me a poem" |
+   | invalid (code only) | refuse | a value or column not in the data, a sum of price, too many columns: the reason is code's |
+
+   Too few cases is not a category: the small-group check handles it after the chart is built.
+4. **Code decides; the AI can't approve its own output.** Every spec is validated: fields exist and can be drawn together, no id column, at most 2 fields and 3 filters, filters only on category columns not also charted, filter values that exist in the data exactly, no sum of a number that can only be averaged. An invalid build or reframe becomes a refusal with the code's reason; invalid clarify candidates are dropped (one left is a plain build). A malformed or prose reply is "unreadable".
+5. **An independent guard** reads the user's text, whole words, any case. Causal: cause, because, drive/drives/driving, why, effect, affect, impact, lead to, result in. Forecasting: predict, forecast, going to, future, expect, next month, next quarter, next year (bare "will" is not a forecasting word). If it fires on a build, the build becomes a causal or forecasting reframe, whatever the AI said. "Why" is kept on purpose, so the guard is deliberately strict.
+6. **Every message is a code template** (`src/askText.ts`); the AI never writes the explanation.
+7. **Confirmation:** the chart is shown in plain words ("Revenue by genre, where format is Hardcover"), labeled "AI translated your request", with Use this / Cancel. Only "Use this" makes a node (how = asked, keeping the user's text), as a child of the current scope's anchor; checks and the present card then apply as for any node. The card adds "You asked: …", and for a causal or forecasting reframe its can't-tell line answers the question asked.
+8. **Evaluation:** `docs/eval/ask-cases.json` (26 cases: every outcome and category, plain builds, a typo, a prompt injection, a value not in the data). Unit tests run each case's faked AI reply through code, including deliberately wrong replies the code must catch. `npm run eval:ask` runs the cases against the real model and prints a pass rate and every miss (not part of `npm test`; it costs money).
 
 ## Generality: Bookshop is the test case, not the target
 Bookshop reveals failure modes; every fix must work on any dataset. Rule: **app code is keyed to roles, facets, and data shape, never to column names or values.**
@@ -161,6 +178,11 @@ Excluded: marketing spend and ratings (reason: TODO(adam)); BookshopLibraries (h
 ## Out of scope (future work)
 Arbitrary datasets (needs an upstream semantic classifier to write the roles file), learning the user over time, ratings and library tables, a drawn tree map (stretch).
 
+With more time:
+- Edit an asked question's filters in "Build my own chart" (today it chooses fields only, so "Change it" was left out of the ask confirmation).
+- A contract flag to never send a column's values to the AI (e.g. customer names).
+- Verb agreement for plural flag labels ("Non-winners leads" should read "lead").
+
 ## Build phases
 0. This spec + DECISIONS entry for the pivot. Tag `slider-concept` before removing anything.
 1. Dataset columns + roles file. (done, D-058)
@@ -169,5 +191,5 @@ Arbitrary datasets (needs an upstream semantic classifier to write the roles fil
 3b. Options + highlight: one comparison per readable category (by the money measure, or by count with none) plus one trend; code-written questions; AI picks an eligible ID + no-digit reason; rules fallback. (done, D-064 to D-068)
 4. Flow tree + remove slider and levels. (done, D-069 to D-072; the old concept is tagged `slider-concept`)
 5. Present card. The card's chart auto-highlights the group the headline is about (replacing click-to-highlight, which Phase 4 removed; bar clicks now go deeper). (done, D-073 to D-076)
-6. Prompt-a-path + eval set.
+6. Prompt-a-path + eval set. (done, D-077, D-078)
 7. User testing, video, README (README by Adam).
