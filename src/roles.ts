@@ -9,6 +9,7 @@ import type { DataProfile } from './profile';
 // File shape:
 //   { "rowNoun": { "one": "item sold", "many": "items sold" },   (optional)
 //     "currency": "$",                                          (optional)
+//     a flag column may name its groups: { "role": "flag", "labels": { "true": "open stores", "false": "closed stores" } }
 //     "columns": { "genre": { "role": "category", "facet": "offering" }, "price": { "role": "price" }, … } }
 
 export const ROLES = ['money', 'price', 'rate', 'date', 'category', 'entity', 'flag', 'id'] as const;
@@ -29,7 +30,14 @@ export const DEFAULT_ROW_NOUN: RowNoun = { one: 'record', many: 'records' };
 const MAX_CURRENCY_CHARS = 3;
 
 export type Roles =
-  | { known: true; byColumn: Record<string, Role>; facets: Record<string, Facet>; rowNoun: RowNoun; currency: string | null }
+  | {
+      known: true;
+      byColumn: Record<string, Role>;
+      facets: Record<string, Facet>;
+      rowNoun: RowNoun;
+      currency: string | null;
+      labels: Record<string, Record<string, string>>; // flag column → value → what to call that group
+    }
   | { known: false };
 
 export const UNKNOWN_ROLES: Roles = { known: false };
@@ -51,6 +59,7 @@ export function parseRoles(json: unknown, columns: string[]): RolesResult {
   const errors: string[] = [];
   const byColumn: Record<string, Role> = {};
   const facets: Record<string, Facet> = {};
+  const labels: Record<string, Record<string, string>> = {};
 
   for (const [column, entry] of Object.entries(json.columns)) {
     if (!columns.includes(column)) errors.push(`"${column}" has a role but isn't a column in the data.`);
@@ -58,12 +67,18 @@ export function parseRoles(json: unknown, columns: string[]): RolesResult {
       errors.push(`"${column}" must be an object like { "role": "category" }.`);
       continue;
     }
-    const { role, facet } = entry;
+    const { role, facet, labels: names } = entry;
     if (!ROLES.includes(role as Role)) {
       errors.push(`"${column}" has an unknown role ${JSON.stringify(role)}. Known roles: ${ROLES.join(', ')}.`);
       continue;
     }
     byColumn[column] = role as Role;
+    if (names !== undefined) {
+      const ok = isObject(names) && Object.values(names).every(isText);
+      if (role !== 'flag') errors.push(`"${column}" has labels, but only flag columns can have them (its role is ${role}).`);
+      else if (!ok) errors.push(`"${column}" labels must map each value to a name, like { "true": "open stores", "false": "closed stores" }.`);
+      else labels[column] = names as Record<string, string>;
+    }
     if (facet === undefined) continue;
     if (!FACETS.includes(facet as Facet)) {
       errors.push(`"${column}" has an unknown facet ${JSON.stringify(facet)}. Known facets: ${FACETS.join(', ')}.`);
@@ -94,7 +109,7 @@ export function parseRoles(json: unknown, columns: string[]): RolesResult {
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, roles: { known: true, byColumn, facets, rowNoun, currency } };
+  return { ok: true, roles: { known: true, byColumn, facets, rowNoun, currency, labels } };
 }
 
 /** A column's role, or null when roles are unknown. */
@@ -105,6 +120,16 @@ export function roleOf(roles: Roles, column: string): Role | null {
 /** A column's facet, or null when it has none or roles are unknown. */
 export function facetOf(roles: Roles, column: string): Facet | null {
   return roles.known ? (roles.facets[column] ?? null) : null;
+}
+
+/**
+ * What to call one group of a column in a sentence. A flag's group uses the contract's label
+ * ("award winners") or falls back to "{column}: {value}" ("award winner: no"), since a bare
+ * "yes" or "no" can't stand as a subject. Other columns' groups are their values.
+ */
+export function groupLabel(roles: Roles, column: string, value: string): string {
+  if (roleOf(roles, column) !== 'flag') return value;
+  return (roles.known ? roles.labels[column]?.[value] : undefined) ?? `${column}: ${value}`;
 }
 
 /** The currency symbol for money columns, or null when the contract gives none. */

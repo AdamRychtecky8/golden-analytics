@@ -191,7 +191,7 @@ describe('the Bookshop demo data (made by scripts/prepare-bookshop.py)', () => {
     expect(contract.columns['discount']).toEqual({ role: 'rate' });
     expect(contract.columns['book id']).toEqual({ role: 'id' });
     expect(contract.columns['genre']).toEqual({ role: 'category', facet: 'offering' });
-    expect(contract.columns['award winner']).toEqual({ role: 'flag' }); // a flag, no facet
+    expect(contract.columns['award winner']).toEqual({ role: 'flag', labels: { yes: 'award winners', no: 'non-winners' } }); // a flag: labels, no facet
     expect(contract.rowNoun).toEqual({ one: 'item sold', many: 'items sold' });
   });
 

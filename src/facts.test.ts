@@ -145,9 +145,9 @@ describe('computeFacts with the dataset contract', () => {
     expect(byId(computeFacts(view(['format', 'revenue']), bp, books, r.roles)).top_amount).toMatch(/^\$[\d,]+$/);
   });
 
-  it('gives a yes/no group its column, so it reads as a subject', () => {
+  it('names a yes/no group as the contract labels it, so it reads as a subject', () => {
     const f = byId(computeFacts(view(['award winner']), bp, books, roles));
-    expect(f.top_item).toBe('award winner: no');
+    expect(f.top_item).toBe('non-winners');
   });
 });
 

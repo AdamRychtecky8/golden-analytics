@@ -72,7 +72,7 @@ export interface LabeledCount {
 // The numbers behind each finding, so later phases can phrase it from facts and slots.
 export type Evidence =
   | { check: 'mix'; measure: string; groups: RankedGroup[] } // #1 change: the #1 by value, then the #1 by count
-  | { check: 'small'; threshold: number; small: LabeledCount[]; smallest: LabeledCount; top: LabeledCount; topIsSmall: boolean }
+  | { check: 'small'; threshold: number; small: LabeledCount[]; smallest: LabeledCount; top: LabeledCount; topIsSmall: boolean; period: boolean }
   | { check: 'concentration'; measure: string | null; group: string; value: number; total: number; share: number; threshold: number }
   | {
       check: 'entity';
@@ -229,7 +229,7 @@ const small: CheckDef = {
       // A small group at the top is the chart's headline resting on too few records.
       severity: topIsSmall ? 'misleading' : 'caveat',
       text,
-      evidence: { check: 'small', threshold: SMALL_GROUP, small: smallGroups.map(labeled), smallest: labeled(smallest), top: labeled(top), topIsSmall },
+      evidence: { check: 'small', threshold: SMALL_GROUP, small: smallGroups.map(labeled), smallest: labeled(smallest), top: labeled(top), topIsSmall, period: g.by === 'period' },
     };
   },
 };

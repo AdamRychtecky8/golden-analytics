@@ -101,6 +101,8 @@ FACETS = {
 KNOWN_FACETS = {"offering", "source", "place"}
 FACET_ROLES = {"category", "entity"}
 ROW_NOUN = {"one": "item sold", "many": "items sold"}
+# What to call each group of a yes/no column in a sentence.
+FLAG_LABELS = {"award winner": {"yes": "award winners", "no": "non-winners"}}
 
 # Not included: Publisher."Marketing Spend" and the Ratings sheet.
 #   Marketing Spend is one value per publisher (4 values, 48,000 to 2,320,000), with no
@@ -326,6 +328,9 @@ def main() -> None:
 
     if list(ROLES) != COLUMNS:
         fail(f"The roles must name exactly the CSV's columns, in order. Roles: {list(ROLES)}")
+    for column in FLAG_LABELS:
+        if ROLES.get(column) != "flag":
+            fail(f'"{column}" has labels, but only flag columns can have them.')
     for column, facet in FACETS.items():
         if column not in ROLES:
             fail(f'Facet for "{column}", which is not a column.')
@@ -335,7 +340,10 @@ def main() -> None:
             fail(f'"{column}" has a facet, but its role is {ROLES[column]}; only category and entity columns can have one.')
     contract = {
         "rowNoun": ROW_NOUN,
-        "columns": {c: {"role": ROLES[c], **({"facet": FACETS[c]} if c in FACETS else {})} for c in COLUMNS},
+        "columns": {
+            c: {"role": ROLES[c], **({"facet": FACETS[c]} if c in FACETS else {}), **({"labels": FLAG_LABELS[c]} if c in FLAG_LABELS else {})}
+            for c in COLUMNS
+        },
     }
     ROLES_OUTPUT.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
 

@@ -8,7 +8,7 @@ import { parseCsv } from './loadCsv';
 import { buildOptions } from './options';
 import type { ChartView } from './paths';
 import { profileDataset } from './profile';
-import { bookshopRoles } from './roles';
+import { UNKNOWN_ROLES, bookshopRoles } from './roles';
 
 const loaded = parseCsv(readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8'), 'bookshop', true);
 if (!loaded.ok) throw new Error('bookshop failed to parse');
@@ -30,7 +30,7 @@ describe('routing', () => {
   });
 
   it('follows the approved table', () => {
-    expect(ROUTES.mix).toEqual({ misleading: 'caution', caveat: 'caution' });
+    expect(ROUTES.mix).toEqual({ misleading: 'caution', caveat: 'ask' });
     expect(ROUTES.entity).toEqual({ misleading: 'caution', caveat: 'talk' });
     expect(ROUTES.small).toEqual({ misleading: 'caution', caveat: 'ask' });
     expect(ROUTES.fragile.caveat).toBe('caution');
@@ -70,14 +70,20 @@ describe('Bookshop cards', () => {
 
   it('revenue over time: single cycle under "can\'t tell you", and a headline about shape, not change', () => {
     const c = card(['sale date', 'revenue']);
-    expect(c.cannot[0].text).toBe("These dates cover one year or less (2193-01-02 to 2193-12-31), so seasonal swings can't be told apart from growth or decline.");
+    expect(c.cannot[0].text).toBe("These dates cover one year or less (Jan 2, 2193 to Dec 31, 2193), so seasonal swings can't be told apart from growth or decline.");
     expect(c.headline.text).toBe('Revenue peaked in Aug 2193 and was lowest in Feb 2193.');
     expect(c.headline.locked).toBe(true);
     expect(allText(c).join(' ')).not.toMatch(/rose|fell|\+\d/);
   });
 
-  it('a yes/no group reads "{column}: {value}"', () => {
-    expect(card(['award winner']).headline.text).toMatch(/^Award winner: no /);
+  it('a yes/no group reads as the contract labels it', () => {
+    expect(card(['award winner']).headline.text).toMatch(/^Non-winners /);
+  });
+
+  it('revenue by genre: a lower group moving (Fiction) is a question, not a caution; no entity question under the dataset line', () => {
+    const c = card(['genre', 'revenue']);
+    expect(c.cautions.map((e) => e.group)).toEqual(['SciFi/Fantasy']);
+    expect(c.asks.map((a) => a.question.text)).toEqual(['Why does Fiction rank higher by revenue than by items sold?']);
   });
 
   it('every check routed to a section shows up in it (nothing unrendered)', () => {
@@ -130,5 +136,17 @@ describe('the headline rule, on generated datasets', () => {
     // Not vacuous: both rules were exercised.
     expect(cautioned).toBeGreaterThan(0);
     expect(cycles).toBeGreaterThan(0);
+  });
+});
+
+describe('a small group on a chart over time', () => {
+  it('names the period with its unit: "{period} was our best {unit}"', () => {
+    // Synthetic: 5 sales in March 2025 and 3 in June; every month is under 30 records.
+    const data = [
+      ...Array.from({ length: 5 }, () => ({ day: '2025-03-10', sales: '100' })),
+      ...Array.from({ length: 3 }, () => ({ day: '2025-06-10', sales: '10' })),
+    ];
+    const c = buildCard({ fields: ['day', 'sales'], aggregate: 'sum', filters: [] }, profileDataset(['day', 'sales'], data), data, UNKNOWN_ROLES);
+    expect(c.cautions[0].claim.text).toBe('Mar 2025 was our best month.');
   });
 });

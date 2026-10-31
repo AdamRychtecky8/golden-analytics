@@ -4,10 +4,10 @@ import { chooseRule } from './chartRules';
 import { CHECK_IDS, SEVERITIES, runChecks, type CheckId, type Evidence, type Finding, type Severity } from './checks';
 import type { DatasetFinding } from './datasetFindings';
 import { computeFacts, type Fact } from './facts';
-import { groupView } from './groups';
+import { groupView, periodLabel } from './groups';
 import type { ChartView } from './paths';
 import type { DataProfile } from './profile';
-import { roleOf, rowNounOf, type Roles } from './roles';
+import { groupLabel, rowNounOf, type Roles } from './roles';
 import { fillTemplate } from './templates';
 
 // The present card (SPEC "The flow", step 4): Key talking points, Caution around these, If
@@ -23,7 +23,7 @@ export type SectionId = 'talk' | 'caution' | 'ask' | 'cannot';
  * the chart shows is a talking point. Routing to be revisited after testing real cards.
  */
 export const ROUTES: Record<CheckId, Record<Severity, SectionId>> = {
-  mix: { misleading: 'caution', caveat: 'caution' },
+  mix: { misleading: 'caution', caveat: 'ask' }, // a lower group moving is a question, not a trap
   entity: { misleading: 'caution', caveat: 'talk' },
   small: { misleading: 'caution', caveat: 'ask' },
   fragile: { misleading: 'caution', caveat: 'caution' },
@@ -32,7 +32,7 @@ export const ROUTES: Record<CheckId, Record<Severity, SectionId>> = {
 };
 
 // Order of cautions, and so of the headline's source: the misleading ones first.
-const CAUTION_PRIORITY = ['mixTop', 'entity', 'small', 'fragile', 'mixMover'] as const;
+const CAUTION_PRIORITY = ['mixTop', 'entity', 'small', 'fragile'] as const;
 type CautionKind = (typeof CAUTION_PRIORITY)[number];
 const MAX_WHYS = 3;
 const MAX_POINTS = 3;
@@ -98,8 +98,9 @@ export function buildCard(view: ChartView, profile: DataProfile, rows: Row[], ro
   const g = groupView(view, profile, rows);
   const field = g?.field.name ?? view.fields[0];
   add('field', 'what the groups are', field);
-  // A yes/no group reads "award winner: no" (same rule as facts.ts).
-  const label = (x: string) => (roleOf(roles, field) === 'flag' ? `${field}: ${x}` : x);
+  if (g?.timeUnit) add('unit', 'the length of one period', g.timeUnit);
+  // A yes/no group reads as the contract names it, or "award winner: no" (same as facts.ts).
+  const label = (x: string) => groupLabel(roles, field, x);
   if (view.filters.length > 0) add('scope_where', 'the slice', view.filters.map((f) => `${f.field} is ${f.value}`).join(' and '));
 
   const findings = runChecks(view, profile, rows, roles).findings;
@@ -248,7 +249,10 @@ export function buildCard(view: ChartView, profile: DataProfile, rows: Row[], ro
     return true;
   };
   if (findings.some((f) => f.id === 'mix' && f.severity === 'misleading' && f.countView)) ask(ASK.repairQ, ASK.repairA);
-  if (findings.some((f) => f.id === 'entity')) ask(ASK.entityQ, ds ? ASK.entityDatasetA : ASK.entityA);
+  // The entity question only when the dataset line isn't already saying it.
+  if (findings.some((f) => f.id === 'entity') && !ds) ask(ASK.entityQ, ASK.entityA);
+  const mover = routed('ask').find((f) => f.id === 'mix');
+  if (mover && asks.length < MAX_ASKS && !ask(ASK.moverQ, ASK.moverA)) unrendered.push('mix');
   const smallTail = routed('ask').find((f) => f.id === 'small');
   if (smallTail && asks.length < MAX_ASKS && !ask(ASK.smallQ, (smallTail.evidence as { small: unknown[] }).small.length === 1 ? ASK.smallOneA : ASK.smallManyA)) {
     unrendered.push('small');
@@ -261,7 +265,7 @@ export function buildCard(view: ChartView, profile: DataProfile, rows: Row[], ro
 
 /** Which caution text a finding uses. */
 function cautionKind(f: Finding): CautionKind | null {
-  if (f.id === 'mix') return f.severity === 'misleading' ? 'mixTop' : 'mixMover';
+  if (f.id === 'mix') return f.severity === 'misleading' ? 'mixTop' : null;
   if (f.id === 'entity') return 'entity';
   if (f.id === 'small') return 'small';
   if (f.id === 'fragile') return 'fragile';
@@ -269,6 +273,7 @@ function cautionKind(f: Finding): CautionKind | null {
 }
 
 function cautionText(kind: CautionKind, f: Finding, datasetLine: boolean): { claim: string; why: string; instead: string } {
+  if (kind === 'small' && (f.evidence as { period?: boolean }).period) return CAUTIONS.smallPeriod;
   if (kind === 'entity') return { ...CAUTIONS.entity, why: datasetLine ? CAUTIONS.entity.whyDataset : CAUTIONS.entity.why };
   if (kind === 'fragile') return (f.evidence as { narrow: boolean }).narrow ? CAUTIONS.fragileNarrow : CAUTIONS.fragileFlip;
   return CAUTIONS[kind];
@@ -312,6 +317,7 @@ function addEvidenceFacts(
       add('mover_value_rank', 'its rank by value', ordinal(m.valueRank));
       add('mover_count_rank', 'its rank by count', ordinal(m.countRank));
       add('mover_prices', 'whether its prices are higher or lower', m.valueRank < m.countRank ? 'higher' : 'lower');
+      add('mover_direction', 'whether it ranks higher or lower by value than by count', m.valueRank < m.countRank ? 'higher' : 'lower');
     }
   } else if (e.check === 'entity') {
     add('entity_group', 'the group one entity drives', label(e.group));
@@ -341,8 +347,8 @@ function addEvidenceFacts(
     add('conc_others', 'how many other groups there are', whole.format(groupCount - 1));
     if (other !== null) add('conc_other', 'the only other group', label(other));
   } else if (e.check === 'cycle') {
-    add('cycle_first', 'the first date', e.first);
-    add('cycle_last', 'the last date', e.last);
+    add('cycle_first', 'the first date', periodLabel(e.first, 'day'));
+    add('cycle_last', 'the last date', periodLabel(e.last, 'day'));
   }
 }
 

@@ -20,12 +20,6 @@ export const CAUTIONS = {
     why: 'It leads in {measure} because each {one} is worth more; {mix_most} has more {many} ({mix_most_records} vs {mix_top_records}).',
     instead: '{mix_top} brings in the most {measure}, but {mix_most} has the most {many}.',
   },
-  // Price/mix, when only a lower group moves.
-  mixMover: {
-    claim: '{mover} is our {mover_value_rank}-best-selling {field}.',
-    why: 'It ranks {mover_value_rank} by {measure} but {mover_count_rank} by {many}: its {mover_prices} prices move it.',
-    instead: '{mover} ranks {mover_value_rank} by {measure} and {mover_count_rank} by {many}.',
-  },
   // Driven by one entity.
   entity: {
     claim: '{entity_group} is our strongest {field}.',
@@ -37,6 +31,12 @@ export const CAUTIONS = {
   // Small group, when it's the one ranked first.
   small: {
     claim: '{small_top} is our top {field}.',
+    why: 'It has only {small_records} {many}; a few more {many} could change the order.',
+    instead: '{small_top} is on top for now, from only {small_records} {many}.',
+  },
+  // The same, on a chart over time: the group is a period, so the claim names its unit.
+  smallPeriod: {
+    claim: '{small_top} was our best {unit}.',
     why: 'It has only {small_records} {many}; a few more {many} could change the order.',
     instead: '{small_top} is on top for now, from only {small_records} {many}.',
   },
@@ -61,7 +61,7 @@ export const TALK = {
   headlineTrend: '{measure} {direction} from {first_period} to {last_period} ({change_pct}).',
   // A single-cycle trend can't show growth, so its headline describes shape only.
   headlineTrendShape: '{measure} peaked in {peak_period} and was lowest in {low_period}.',
-  pointTop: '{top_item}: {top_amount}, {top_share} of all {measure}.',
+  pointTop: '{top_item}: {top_share} of all {measure} ({top_value}).',
   pointTopMean: '{top_item}: {top_value}; next is {second_item} at {second_value}.',
   pointRunnerUp: 'Next is {second_item} at {second_amount}.',
   pointConcentration: '{conc_group} alone accounts for {conc_share} of {measure}; the other {conc_others} share the rest.',
@@ -86,6 +86,9 @@ export const ASK = {
   entityQ: 'How much of this is {entity_name}?',
   entityA: '{entity_name} accounts for {entity_share} of {measure} in {entity_group}.',
   entityDatasetA: '{entity_name} accounts for {entity_share} of {measure} in {entity_group} and {ds_share} of all {ds_measure}.',
+  // Price/mix when only a lower group moves: true, but worth explaining if asked.
+  moverQ: 'Why does {mover} rank {mover_direction} by {measure} than by {many}?',
+  moverA: 'It ranks {mover_value_rank} by {measure} but {mover_count_rank} by {many}: its {mover_prices} prices move it.',
   smallQ: 'Can we compare {smallest}?',
   smallOneA: 'Not reliably: {smallest} has only {smallest_records} {many}.',
   smallManyA: 'Not reliably: {small_count} groups have fewer than {small_threshold} {many}; the smallest is {smallest}, with {smallest_records}.',

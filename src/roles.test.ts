@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './loadCsv';
 import { profileDataset } from './profile';
-import { bookshopRoles, currencyOf, facetOf, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
+import { bookshopRoles, currencyOf, facetOf, groupLabel, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
 
 describe('parseRoles', () => {
   const columns = ['date', 'store', 'revenue'];
@@ -65,6 +65,16 @@ describe('parseRoles', () => {
     expect(currencyOf(none.roles)).toBeNull();
     expect(parseRoles({ currency: '1$', columns: cols }, columns).ok).toBe(false);
     expect(parseRoles({ currency: 'dollars', columns: cols }, columns).ok).toBe(false);
+  });
+
+  it('names a flag column\'s groups when the contract gives labels, and falls back to "{column}: {value}"', () => {
+    const cols = { date: { role: 'date' }, store: { role: 'flag', labels: { yes: 'open stores' } }, revenue: { role: 'money' } };
+    const r = parseRoles({ columns: cols }, columns);
+    if (!r.ok) throw new Error(r.errors.join('; '));
+    expect(groupLabel(r.roles, 'store', 'yes')).toBe('open stores');
+    expect(groupLabel(r.roles, 'store', 'no')).toBe('store: no');
+    expect(groupLabel(r.roles, 'date', 'x')).toBe('x');
+    expect(parseRoles({ columns: { ...cols, revenue: { role: 'money', labels: { a: 'b' } } } }, columns).ok).toBe(false);
   });
 
   it('rejects a row noun without both forms', () => {

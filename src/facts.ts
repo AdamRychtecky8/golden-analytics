@@ -3,7 +3,7 @@ import { chooseRule, effectiveAggregate } from './chartRules';
 import { groupView, periodLabel } from './groups';
 import { filterRows, type ChartView } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
-import { currencyOf, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
+import { currencyOf, groupLabel, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
 
 // Facts: the numbers a card may use, computed in code from the same rows as the chart.
 // Card text is written as templates with slots like {top_share}, and code fills each slot
@@ -55,8 +55,8 @@ export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[],
     const currency = g.measure && roleOf(roles, g.measure.name) === 'money' ? currencyOf(roles) : null;
     const amountText = (x: number | null) =>
       x === null ? 'no value' : !g.measure ? `${fmt(x)} ${many}` : currency ? `${currency}${fmt(x)}` : `${fmt(x)} in ${measure}`;
-    // A yes/no group can't stand alone as a subject ("no holds 53%"), so it carries its column.
-    const label = (x: string) => (roleOf(roles, g.field.name) === 'flag' ? `${g.field.name}: ${x}` : x);
+    // A yes/no group can't stand alone as a subject ("no holds 53%"): see groupLabel.
+    const label = (x: string) => groupLabel(roles, g.field.name, x);
 
     if (g.by === 'category') {
       const [top, second] = g.groups;

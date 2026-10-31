@@ -40,7 +40,11 @@
       "facet": "source"
     },
     "award winner": {
-      "role": "flag"
+      "role": "flag",
+      "labels": {
+        "yes": "award winners",
+        "no": "non-winners"
+      }
     },
     "series": {
       "role": "category",
