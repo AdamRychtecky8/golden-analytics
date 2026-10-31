@@ -4,6 +4,7 @@ import { FlowCard } from './components/FlowCard';
 import { FlowMap } from './components/FlowMap';
 import { MenuRail } from './components/MenuRail';
 import { TopBar } from './components/TopBar';
+import { datasetFindings } from './datasetFindings';
 import { canBack, canForward, currentNode, flowReducer, initialFlow, type LabelContext } from './flow';
 import { parseCsv, type Dataset } from './loadCsv';
 import { buildOptions } from './options';
@@ -50,6 +51,8 @@ export default function App() {
   const filterKey = JSON.stringify(filters);
   const options = useMemo(() => buildOptions(profile, dataset.rows, roles, JSON.parse(filterKey)), [profile, dataset.rows, roles, filterKey]);
   const highlight = useHighlight(datasetId, profile, roles, node.persona, filters, options);
+  // Entities that shape several charts, found once over the top-level menu (the whole data).
+  const shared = useMemo(() => datasetFindings(buildOptions(profile, dataset.rows, roles).map((o) => o.view), profile, dataset.rows, roles), [profile, dataset.rows, roles]);
 
   function switchDataset(next: Dataset) {
     setDataset(next);
@@ -102,13 +105,16 @@ export default function App() {
         />
         <FlowCard
           node={node}
+          dataset={datasetId}
           options={options}
           highlight={highlight}
+          datasetFindings={shared}
           profile={profile}
           rows={dataset.rows}
           roles={roles}
           onDeeper={(filter) => dispatch({ type: 'deeper', filter })}
           onPick={(o) => dispatch({ type: 'pick', optionId: o.id, view: o.view })}
+          onEdit={(block, text) => dispatch({ type: 'edit', block, text })}
         />
       </div>
     </div>

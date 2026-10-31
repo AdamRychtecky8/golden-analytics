@@ -544,3 +544,83 @@ textarea {
 .chart {
   width: 100%;
 }
+
+/* ---------- The present card's text ---------- */
+
+/* Every block is editable: a textarea that reads as plain text until focused. */
+.editable {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.editable textarea {
+  flex: 1;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  resize: none;
+  font: inherit;
+  line-height: 1.45;
+  overflow: hidden;
+}
+.editable textarea:hover {
+  border-color: var(--line);
+}
+.editable textarea:focus {
+  border-color: var(--blue);
+  background: var(--surface);
+  outline: none;
+}
+.card-headline textarea {
+  font-weight: 600;
+  font-size: 16px;
+}
+.card-points,
+.caution-whys {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.card-dataset {
+  margin-top: 16px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--navy);
+  background: var(--warm);
+}
+.caution {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+}
+.caution + .caution {
+  border-top: 1px dashed var(--line);
+}
+.caution .label {
+  margin-top: 6px;
+}
+/* The tempting claim: in quotes, muted, so it reads as something someone might say. */
+.caution-claim {
+  color: var(--navy-soft);
+  font-style: italic;
+}
+.caution-claim textarea {
+  color: var(--navy-soft);
+  font-style: italic;
+  /* As wide as its text, so the closing quote sits right after it. Browsers without
+     field-sizing show a default-width box; the quotes still frame it. */
+  flex: 0 1 auto;
+  field-sizing: content;
+  max-width: 100%;
+}
+.caution-claim {
+  gap: 2px;
+}
+.ask {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.ask-question textarea {
+  font-weight: 600;
+}
+
