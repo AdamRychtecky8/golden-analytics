@@ -9,7 +9,8 @@ import type { DataProfile } from './profile';
 // File shape:
 //   { "rowNoun": { "one": "item sold", "many": "items sold" },   (optional)
 //     "currency": "$",                                          (optional)
-//     a flag column may name its groups: { "role": "flag", "labels": { "true": "open stores", "false": "closed stores" } }
+//     a flag column may name its groups: { "role": "flag", "labels": { "true": "open stores", "false": "closed stores", "plural": true } }
+//     ("plural": the names are plural, so sentences use "are", not "is")
 //     "columns": { "genre": { "role": "category", "facet": "offering" }, "price": { "role": "price" }, … } }
 
 export const ROLES = ['money', 'price', 'rate', 'date', 'category', 'entity', 'flag', 'id'] as const;
@@ -37,6 +38,7 @@ export type Roles =
       rowNoun: RowNoun;
       currency: string | null;
       labels: Record<string, Record<string, string>>; // flag column → value → what to call that group
+      pluralLabels: string[]; // flag columns whose names are plural ("award winners")
     }
   | { known: false };
 
@@ -60,6 +62,7 @@ export function parseRoles(json: unknown, columns: string[]): RolesResult {
   const byColumn: Record<string, Role> = {};
   const facets: Record<string, Facet> = {};
   const labels: Record<string, Record<string, string>> = {};
+  const pluralLabels: string[] = [];
 
   for (const [column, entry] of Object.entries(json.columns)) {
     if (!columns.includes(column)) errors.push(`"${column}" has a role but isn't a column in the data.`);
@@ -74,10 +77,15 @@ export function parseRoles(json: unknown, columns: string[]): RolesResult {
     }
     byColumn[column] = role as Role;
     if (names !== undefined) {
-      const ok = isObject(names) && Object.values(names).every(isText);
+      // Every entry names a group, except an optional "plural": true.
+      const ok = isObject(names) && Object.entries(names).every(([k, v]) => (k === 'plural' ? typeof v === 'boolean' : isText(v)));
       if (role !== 'flag') errors.push(`"${column}" has labels, but only flag columns can have them (its role is ${role}).`);
       else if (!ok) errors.push(`"${column}" labels must map each value to a name, like { "true": "open stores", "false": "closed stores" }.`);
-      else labels[column] = names as Record<string, string>;
+      else {
+        const { plural, ...groups } = names as Record<string, string | boolean>;
+        labels[column] = groups as Record<string, string>;
+        if (plural === true) pluralLabels.push(column);
+      }
     }
     if (facet === undefined) continue;
     if (!FACETS.includes(facet as Facet)) {
@@ -109,7 +117,7 @@ export function parseRoles(json: unknown, columns: string[]): RolesResult {
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, roles: { known: true, byColumn, facets, rowNoun, currency, labels } };
+  return { ok: true, roles: { known: true, byColumn, facets, rowNoun, currency, labels, pluralLabels } };
 }
 
 /** A column's role, or null when roles are unknown. */
@@ -130,6 +138,11 @@ export function facetOf(roles: Roles, column: string): Facet | null {
 export function groupLabel(roles: Roles, column: string, value: string): string {
   if (roleOf(roles, column) !== 'flag') return value;
   return (roles.known ? roles.labels[column]?.[value] : undefined) ?? `${column}: ${value}`;
+}
+
+/** Whether a group's name is plural ("award winners"), so a sentence says "are", not "is". */
+export function groupIsPlural(roles: Roles, column: string, value: string): boolean {
+  return roles.known && roles.pluralLabels.includes(column) && roles.labels[column]?.[value] !== undefined;
 }
 
 /** The currency symbol for money columns, or null when the contract gives none. */

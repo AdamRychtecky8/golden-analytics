@@ -237,7 +237,8 @@ const small: CheckDef = {
     return {
       id: 'small',
       // A small group at the top is the chart's headline resting on too few records.
-      severity: topIsSmall ? 'misleading' : 'caveat',
+      // "Ranked first" needs something to rank against: with one group it is only a caveat.
+      severity: topIsSmall && g.groups.length > 1 ? 'misleading' : 'caveat',
       text,
       evidence: { check: 'small', threshold: SMALL_GROUP, small: smallGroups.map(labeled), smallest: labeled(smallest), top: labeled(top), topIsSmall, period: g.by === 'period' },
     };

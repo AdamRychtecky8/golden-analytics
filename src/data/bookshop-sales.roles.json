@@ -43,7 +43,8 @@
       "role": "flag",
       "labels": {
         "yes": "award winners",
-        "no": "non-winners"
+        "no": "non-winners",
+        "plural": true
       }
     },
     "series": {

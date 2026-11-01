@@ -15,6 +15,7 @@ export interface Fact {
   label: string; // what it means, for the AI and for the "facts used" list
   display: string; // the formatted value that goes into the text: "Hardcover", "38%", "+12%"
   value?: number; // the unformatted number, for facts that are numbers (0.377 for "38%")
+  plural?: boolean; // a group whose name is plural ("award winners"): templates say "are"
 }
 
 const whole = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });

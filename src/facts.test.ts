@@ -151,3 +151,20 @@ describe('computeFacts with the dataset contract', () => {
   });
 });
 
+describe('verb agreement in templates', () => {
+  const facts: Fact[] = [
+    { id: 'top_item', label: 'the top group', display: 'award winners', plural: true },
+    { id: 'second_item', label: 'the second group', display: 'Hardcover' },
+  ];
+  it('picks the plural form for a plural group and the singular form otherwise', () => {
+    expect(fillTemplate('{top_item} [is|are:top_item] ahead; {second_item} [is|are:second_item] behind.', facts, 40)).toMatchObject({
+      ok: true,
+      text: 'Award winners are ahead; Hardcover is behind.',
+    });
+  });
+  it('rejects agreement with an unknown slot, and a stray bracket', () => {
+    expect(fillTemplate('{top_item} [is|are:nope] ahead.', facts, 40)).toMatchObject({ ok: false });
+    expect(fillTemplate('{top_item} [is ahead.', facts, 40)).toMatchObject({ ok: false });
+  });
+});
+

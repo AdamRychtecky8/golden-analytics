@@ -101,8 +101,8 @@ FACETS = {
 KNOWN_FACETS = {"offering", "source", "place"}
 FACET_ROLES = {"category", "entity"}
 ROW_NOUN = {"one": "item sold", "many": "items sold"}
-# What to call each group of a yes/no column in a sentence.
-FLAG_LABELS = {"award winner": {"yes": "award winners", "no": "non-winners"}}
+# What to call each group of a yes/no column in a sentence ("plural": the names are plural).
+FLAG_LABELS = {"award winner": {"yes": "award winners", "no": "non-winners", "plural": True}}
 
 # Not included: Publisher."Marketing Spend" and the Ratings sheet.
 #   Marketing Spend is one value per publisher (4 values, 48,000 to 2,320,000), with no

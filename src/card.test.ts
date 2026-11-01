@@ -4,6 +4,7 @@ import { ALL_ROUTES, ROUTES, buildCard, type Card } from './card';
 import { CHECK_IDS, SEVERITIES, runChecks } from './checks';
 import { datasetFindings } from './datasetFindings';
 import { degenerateDatasets, randomDataset, type Generated } from './fixtures/generateDataset';
+import { groupView } from './groups';
 import { parseCsv } from './loadCsv';
 import { buildOptions } from './options';
 import type { ChartView } from './paths';
@@ -168,3 +169,72 @@ describe('an asked question that code reframed', () => {
   });
 });
 
+
+describe('plural group names (the contract marks award winner\'s names as plural)', () => {
+  it('verbs agree, and the claim does not repeat the column after the name', () => {
+    const c = card(['award winner', 'revenue']);
+    expect(c.headline.text).toBe('Award winners bring in the most revenue, but non-winners have the most items sold.');
+    // Two groups: the concentration point names the other one, so there is no runner-up point.
+    expect(c.points.map((p) => p.text)).toEqual(['Award winners alone account for 51% of revenue; non-winners have the rest.']);
+    expect(c.cautions[0].claim.text).toBe('Award winners sell the most.');
+    expect(c.cannot[0].text).toBe('This shows the split of revenue by award winner, not why.');
+  });
+
+  it('a singular group still reads singular', () => {
+    expect(card(['format', 'revenue']).points[1].text).toBe('Next is Mass market paperback at 244,408 in revenue.');
+  });
+});
+
+describe('a comparison with only one group', () => {
+  // Never offered by the menu (every slice's menu needs 2 to 12 groups); reachable through
+  // Build my own chart or a typed question inside a slice.
+  const RANKING = /(most|highest|lowest|top|leads?|ahead|next|ranks?|best|stronger|second)|100%/i;
+
+  it('items sold by award winner inside Mystery: no ranking, no share, no runner-up', () => {
+    expect(buildOptions(profile, rows, roles, [{ field: 'genre', value: 'Mystery' }]).map((o) => o.column)).not.toContain('award winner');
+    const c = buildCard(view(['award winner'], [{ field: 'genre', value: 'Mystery' }]), profile, rows, roles, dataset);
+    expect(c.headline.text).toBe('All items sold here are non-winners.');
+    expect(c.points.map((p) => p.text)).toEqual(['Carolyn Segal accounts for 84% of items sold in non-winners.']);
+    expect(c.cannot[0].text).toBe('This shows what the data contains, not why.');
+  });
+
+  it('property: no card on a one-group chart states a ranking or a 100% share (Bookshop slices and generated data)', () => {
+    let seen = 0;
+    const assertNoRanking = (c: Card, where: string) => {
+      seen++;
+      for (const t of allText(c).filter((x) => x !== c.datasetLine?.text)) expect(t, where).not.toMatch(RANKING);
+    };
+    // Bookshop: every category chart inside every single-filter slice where it has one group,
+    // for filter columns of up to 12 values (the slices a bar click can make; titles would add
+    // hundreds of near-identical cards). One pass per column pair finds those slices.
+    const categories = profile.columns.filter((c) => c.type === 'nominal').map((c) => c.name);
+    const sliceable = profile.columns.filter((c) => c.type === 'nominal' && c.distinct <= 12).map((c) => c.name);
+    for (const field of categories) {
+      for (const filterField of sliceable) {
+        if (field === filterField) continue;
+        const groupsIn = new Map<string, Set<string>>();
+        for (const r of rows) {
+          if (!r[field] || !r[filterField]) continue;
+          if (!groupsIn.has(r[filterField])) groupsIn.set(r[filterField], new Set());
+          groupsIn.get(r[filterField])!.add(r[field]);
+        }
+        for (const [value, groups] of groupsIn) {
+          if (groups.size !== 1) continue;
+          const v = view([field], [{ field: filterField, value }]);
+          const g = groupView(v, profile, rows);
+          if (g?.by === 'category' && g.groups.length === 1) assertNoRanking(buildCard(v, profile, rows, roles, dataset), `${field} where ${filterField}=${value}`);
+        }
+      }
+    }
+    // Generated data: the degenerate "one group" case, and any one-group chart in the seeds.
+    for (const d of [...Array.from({ length: 80 }, (_, i) => randomDataset(i + 1)), ...degenerateDatasets()]) {
+      const p = profileDataset(d.columns, d.rows);
+      for (const fields of d.columns.flatMap((a, i) => [[a], ...d.columns.slice(i + 1).map((b) => [a, b])])) {
+        const v = view(fields);
+        const g = groupView(v, p, d.rows);
+        if (g?.by === 'category' && g.groups.length === 1) assertNoRanking(buildCard(v, p, d.rows, d.roles), `${d.name}, ${fields.join(' + ')}`);
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  }, 30_000);
+});

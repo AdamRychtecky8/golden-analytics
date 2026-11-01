@@ -8,7 +8,7 @@ import { computeFacts, type Fact } from './facts';
 import { groupView, periodLabel } from './groups';
 import type { ChartView } from './paths';
 import type { DataProfile } from './profile';
-import { groupLabel, rowNounOf, type Roles } from './roles';
+import { groupIsPlural, groupLabel, roleOf, rowNounOf, type Roles } from './roles';
 import { fillTemplate } from './templates';
 
 // The present card (SPEC "The flow", step 4): Key talking points, Caution around these, If
@@ -31,6 +31,9 @@ export const ROUTES: Record<CheckId, Record<Severity, SectionId>> = {
   concentration: { misleading: 'caution', caveat: 'talk' }, // never misleading today
   cycle: { misleading: 'cannot', caveat: 'cannot' }, // never misleading today
 };
+
+// Facts that name a group: a plural group name ("award winners") makes their verbs plural.
+const GROUP_SLOTS = new Set(['top_item', 'second_item', 'bottom_item', 'mix_top', 'mix_most', 'mover', 'entity_group', 'small_top', 'smallest', 'fragile_top', 'fragile_second', 'conc_group', 'conc_other']);
 
 // Order of cautions, and so of the headline's source: the misleading ones first.
 const CAUTION_PRIORITY = ['mixTop', 'entity', 'small', 'fragile'] as const;
@@ -129,7 +132,12 @@ export function buildCard(
   // Slot facts from each finding's evidence.
   for (const f of findings) addEvidenceFacts(f, add, label, g?.groups.length ?? 0, g?.groups.length === 2 ? g.groups[1].label : null);
   const unrendered: CheckId[] = [];
-  const facts = [...base, ...extra];
+  // A group whose contract name is plural ("award winners") makes its verbs plural.
+  const pluralNames = new Set((g?.groups ?? []).filter((x) => groupIsPlural(roles, field, x.label)).map((x) => label(x.label)));
+  const facts = [...base, ...extra].map((f) => (GROUP_SLOTS.has(f.id) && pluralNames.has(f.display) ? { ...f, plural: true } : f));
+  const flag = roleOf(roles, field) === 'flag';
+  // A comparison of one group can't rank anything: it gets no ranking language at all.
+  const oneGroup = g?.by === 'category' && g.groups.length === 1;
 
   const block = (id: string, template: string, opts: { locked?: boolean; rephrasable?: boolean } = {}): Block | null => {
     const filled = fillTemplate(template, facts, MAX_WORDS);
@@ -142,7 +150,7 @@ export function buildCard(
   for (const kind of CAUTION_PRIORITY) {
     const f = routed('caution').find((x) => cautionKind(x) === kind);
     if (!f) continue;
-    const text = cautionText(kind, f, ds !== undefined);
+    const text = cautionText(kind, f, ds !== undefined, flag);
     const group = subjectOf(kind, f.evidence);
     let entry = entries.find((e) => e.group === group);
     const key = `caution.${group}`;
@@ -174,8 +182,14 @@ export function buildCard(
       ? CANNOT.trend
       : g?.by === 'category'
         ? mean
-          ? CANNOT.comparisonMean
-          : CANNOT.comparison
+          ? flag
+            ? CANNOT.comparisonMeanFlag
+            : CANNOT.comparisonMean
+          : oneGroup
+            ? CANNOT.general
+            : flag
+              ? CANNOT.comparisonFlag
+              : CANNOT.comparison
         : rule === 'histogram'
           ? CANNOT.spread
           : rule === 'scatter'
@@ -199,7 +213,9 @@ export function buildCard(
   // can't-tell line says can't be known: with a caution, it is that caution's "instead";
   // for a single-cycle trend, it describes shape only. Either way it is locked.
   const kindHeadline = () =>
-    g?.by === 'period'
+    oneGroup
+      ? TALK.headlineOneGroup
+      : g?.by === 'period'
       ? cycle
         ? TALK.headlineTrendShape
         : TALK.headlineTrend
@@ -230,12 +246,15 @@ export function buildCard(
   const concentration = routed('talk').find((f) => f.id === 'concentration');
   const concentrationTemplate = g?.groups.length === 2 ? TALK.pointConcentrationTwo : TALK.pointConcentration;
   for (const f of routed('talk')) pointTemplates.push({ template: f.id === 'concentration' ? concentrationTemplate : TALK.pointEntity, from: f.id });
-  if (g?.by === 'category') {
+  if (g?.by === 'category' && !oneGroup) {
     if (mean) pointTemplates.push({ template: TALK.pointTopMean });
     else {
       if (!concentration) pointTemplates.push({ template: TALK.pointTop }); // the concentration point already says the top share
-      pointTemplates.push({ template: TALK.pointRunnerUp });
+      // With two groups, the concentration point already names the other one.
+      if (!(concentration && concentrationTemplate === TALK.pointConcentrationTwo)) pointTemplates.push({ template: TALK.pointRunnerUp });
     }
+  } else if (g?.by === 'category') {
+    // One group: no top share or runner-up (routed points, like an entity's share, stay).
   } else if (g?.by === 'period') {
     pointTemplates.push({ template: TALK.pointPeak }, { template: TALK.pointLow });
   } else if (rule === 'histogram') pointTemplates.push({ template: TALK.pointSpread });
@@ -268,7 +287,8 @@ export function buildCard(
   const mover = routed('ask').find((f) => f.id === 'mix');
   if (mover && asks.length < MAX_ASKS && !ask(ASK.moverQ, ASK.moverA)) unrendered.push('mix');
   const smallTail = routed('ask').find((f) => f.id === 'small');
-  if (smallTail && asks.length < MAX_ASKS && !ask(ASK.smallQ, (smallTail.evidence as { small: unknown[] }).small.length === 1 ? ASK.smallOneA : ASK.smallManyA)) {
+  // "Can we compare …?" needs something to compare against.
+  if (smallTail && !oneGroup && asks.length < MAX_ASKS && !ask(ASK.smallQ, (smallTail.evidence as { small: unknown[] }).small.length === 1 ? ASK.smallOneA : ASK.smallManyA)) {
     unrendered.push('small');
   }
 
@@ -286,11 +306,13 @@ function cautionKind(f: Finding): CautionKind | null {
   return null;
 }
 
-function cautionText(kind: CautionKind, f: Finding, datasetLine: boolean): { claim: string; why: string; instead: string } {
+function cautionText(kind: CautionKind, f: Finding, datasetLine: boolean, flag: boolean): { claim: string; why: string; instead: string } {
   if (kind === 'small' && (f.evidence as { period?: boolean }).period) return CAUTIONS.smallPeriod;
-  if (kind === 'entity') return { ...CAUTIONS.entity, why: datasetLine ? CAUTIONS.entity.whyDataset : CAUTIONS.entity.why };
+  // On a yes/no chart, the claim names the group without repeating the column after it.
+  const claimed = <T extends { claim: string; claimFlag?: string }>(t: T) => (flag && t.claimFlag ? { ...t, claim: t.claimFlag } : t);
+  if (kind === 'entity') return claimed({ ...CAUTIONS.entity, why: datasetLine ? CAUTIONS.entity.whyDataset : CAUTIONS.entity.why });
   if (kind === 'fragile') return (f.evidence as { narrow: boolean }).narrow ? CAUTIONS.fragileNarrow : CAUTIONS.fragileFlip;
-  return CAUTIONS[kind];
+  return claimed(CAUTIONS[kind]);
 }
 
 /** The group a caution is about, so cautions about the same group merge into one entry. */

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './loadCsv';
 import { profileDataset } from './profile';
-import { bookshopRoles, currencyOf, facetOf, groupLabel, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
+import { bookshopRoles, currencyOf, facetOf, groupIsPlural, groupLabel, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
 
 describe('parseRoles', () => {
   const columns = ['date', 'store', 'revenue'];
@@ -75,6 +75,16 @@ describe('parseRoles', () => {
     expect(groupLabel(r.roles, 'store', 'no')).toBe('store: no');
     expect(groupLabel(r.roles, 'date', 'x')).toBe('x');
     expect(parseRoles({ columns: { ...cols, revenue: { role: 'money', labels: { a: 'b' } } } }, columns).ok).toBe(false);
+  });
+
+  it('marks a flag\'s names as plural when the contract says so; the fallback is singular', () => {
+    const cols = { date: { role: 'date' }, store: { role: 'flag', labels: { yes: 'open stores', plural: true } }, revenue: { role: 'money' } };
+    const r = parseRoles({ columns: cols }, columns);
+    if (!r.ok) throw new Error(r.errors.join('; '));
+    expect(groupLabel(r.roles, 'store', 'yes')).toBe('open stores');
+    expect(groupIsPlural(r.roles, 'store', 'yes')).toBe(true);
+    expect(groupIsPlural(r.roles, 'store', 'no')).toBe(false); // "store: no" is singular
+    expect(parseRoles({ columns: { ...cols, store: { role: 'flag', labels: { yes: 'x', plural: 'yes' } } } }, columns).ok).toBe(false);
   });
 
   it('rejects a row noun without both forms', () => {
