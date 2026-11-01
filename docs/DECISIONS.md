@@ -389,6 +389,11 @@ Decision: The result is shown in plain words, labeled "AI translated your reques
 Why: TODO(adam)
 Status: decided
 
+## D-079 — 2026-11-01 — A finding must be able to have been otherwise
+Decision: The entity check and the fragile lead's flip (largestEntity) only use an entity column when the top group has at least two different entities in it; otherwise that column is left out for the chart (with a skip reason when no column remains). They never report a "without it" that leaves the top group with no records, nor (Claude Code's extension, found by the property test with negative values) one that leaves it holding zero or less, where the "share" would be 100% or more. Bookshop: series by revenue and series by items sold lose their entity cautions (one author per series); Bianca Thompson's dataset-level finding spans 6 charts instead of 8. A property test checks every entity finding on Bookshop and generated datasets: share below 100%, a non-zero "without it", at least two entities.
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)

@@ -117,6 +117,8 @@ If the denominator is zero or missing, the option gets no effect size and sorts 
 
 ## Checks
 Each check is a pure function: (view, data, roles) → finding | null. Each declares its preconditions and skips visibly in logs (not UI) when unmet. Each has a planted-bias fixture where it must fire and a clean control where it must not.
+
+**A finding must be able to have been otherwise** (D-079). A finding that is true by definition says nothing: "one author is 100% of a series she alone wrote". So an entity finding needs the top group to have at least two different entities in that column, and a "without it" that leaves the group with records and a positive value (never "would rank 6th" for a group that would be empty). A property test checks this on Bookshop and generated datasets.
 | Check | Exists? | Catches |
 |---|---|---|
 | Mix (totals vs. units) | yes (checks.ts) | "Hardcover is our top format" (38% of revenue, 21% of units) |
