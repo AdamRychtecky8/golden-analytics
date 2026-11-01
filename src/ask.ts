@@ -14,7 +14,6 @@ import { roleOf, rowNounOf, withRoleMeasures, type Facet, type Role, type Roles 
 // text, and picks every message from askText.ts. The AI can't approve its own output.
 
 export const MAX_ASK_CHARS = 300;
-export const MAX_FIELDS = 2;
 // Values of a category column the AI may see, so a filter can name a real value. Past this,
 // only the top values go (a profile, never rows).
 export const MAX_VALUES_SENT = 60;
@@ -75,38 +74,82 @@ export function guard(text: string): 'causal' | 'forecast' | null {
 // ---------------------------------------------------------------------------------------
 // Validating one chart the AI proposed.
 
+/**
+ * What the AI returns for a chart (D-081). The measure is its own required key, so the AI
+ * can't leave it out by accident: "count" counts rows; anything else names a number column.
+ * Code turns this into a view. "" in both keys means no chart was given.
+ */
+export interface AskSpec {
+  group_by: string; // a category or date column, or "" for none (the spread of one number)
+  measure: string; // a number column, or "count"
+  aggregate: 'sum' | 'mean' | 'count'; // "count" exactly when measure is "count"
+  filters: PathFilter[];
+}
+
 type Problem =
   | { code: 'tooMany' }
   | { code: 'unknownField'; name: string }
   | { code: 'idField'; field: string }
   | { code: 'noChart' }
+  | { code: 'notNumber'; field: string }
+  | { code: 'aggregateWithoutMeasure'; aggregate: 'sum' | 'mean' }
+  | { code: 'countWithMeasure'; field: string }
   | { code: 'filterNotCategory'; field: string }
   | { code: 'unknownValue'; field: string; value: string }
   | { code: 'sumAverage'; field: string };
 
 export type Validated = { ok: true; spec: ChartView } | { ok: false; problem: Problem };
 
+/** Whether a reply's spec names any chart at all ("" in both keys means none). */
+export const specGiven = (raw: unknown) => {
+  const s = raw as Partial<AskSpec> | null;
+  return typeof s?.measure === 'string' && (s.measure.trim() !== '' || (typeof s.group_by === 'string' && s.group_by.trim() !== ''));
+};
+
 /**
- * Checks a chart spec against the data: 1 or 2 fields that exist and can be drawn together,
- * no id column, at most MAX_FILTERS filters, each on a category column not also charted with
- * a value the data really has (exactly, after trimming), and no sum of a number that can
- * only be averaged (by role, or by name without roles). The first problem found is returned.
+ * Checks a spec against the data and turns it into a view. The measure and aggregate must
+ * agree: a sum or mean needs a number column, and "count" needs measure "count". A mismatch
+ * is a contradiction, refused with the code's reason, never quietly built as a count. Then:
+ * columns that exist and can be drawn together, no id column, a group that is a category or
+ * a date, at most MAX_FILTERS filters, each on a category column not also charted with a
+ * value the data really has (exactly, after trimming), and no sum of a number that can only
+ * be averaged (by role, or by name without roles). The first problem found is returned.
  */
 export function validateSpec(raw: unknown, profile: DataProfile, rows: Row[], roles: Roles): Validated {
-  const s = raw as Partial<ChartView> | null;
-  const fields = Array.isArray(s?.fields) ? s!.fields.filter((f): f is string => typeof f === 'string') : [];
+  const s = raw as Partial<AskSpec> | null;
+  const groupBy = typeof s?.group_by === 'string' ? s.group_by.trim() : '';
+  const measure = typeof s?.measure === 'string' ? s.measure.trim() : '';
+  const aggregate = s?.aggregate;
   const filters = Array.isArray(s?.filters) ? (s!.filters as unknown[]) : [];
-  if (fields.length === 0 || fields.length > MAX_FIELDS || filters.length > MAX_FILTERS || new Set(fields).size !== fields.length) return { ok: false, problem: { code: 'tooMany' } };
+  if (filters.length > MAX_FILTERS) return { ok: false, problem: { code: 'tooMany' } };
+  if (aggregate !== 'sum' && aggregate !== 'mean' && aggregate !== 'count') return { ok: false, problem: { code: 'noChart' } };
+
+  if (measure === '') return { ok: false, problem: { code: 'noChart' } }; // the "no spec" placeholder
 
   const effective = withRoleMeasures(profile, roles);
   const col = (name: string) => effective.columns.find((c) => c.name === name);
+  const counting = measure === 'count';
+  // The contradiction this shape exists to catch: a total or average of nothing.
+  if (counting && aggregate !== 'count') return { ok: false, problem: { code: 'aggregateWithoutMeasure', aggregate } };
+  if (!counting && aggregate === 'count') return { ok: false, problem: { code: 'countWithMeasure', field: measure } };
+
   const cols: ColumnProfile[] = [];
-  for (const f of fields) {
-    const c = col(f);
-    if (!c) return { ok: false, problem: { code: 'unknownField', name: f } };
-    if (roleOf(roles, f) === 'id') return { ok: false, problem: { code: 'idField', field: f } };
+  if (groupBy !== '') {
+    const c = col(groupBy);
+    if (!c) return { ok: false, problem: { code: 'unknownField', name: groupBy } };
+    if (roleOf(roles, groupBy) === 'id') return { ok: false, problem: { code: 'idField', field: groupBy } };
+    if (c.type === 'quantitative') return { ok: false, problem: { code: 'noChart' } }; // groups are categories or dates
     cols.push(c);
   }
+  if (!counting) {
+    const c = col(measure);
+    if (!c) return { ok: false, problem: { code: 'unknownField', name: measure } };
+    if (roleOf(roles, measure) === 'id') return { ok: false, problem: { code: 'idField', field: measure } };
+    if (c.type !== 'quantitative') return { ok: false, problem: { code: 'notNumber', field: measure } };
+    cols.push(c);
+  }
+  if (cols.length === 0) return { ok: false, problem: { code: 'noChart' } }; // a count of nothing
+  const fields = cols.map((c) => c.name);
   const rule = chooseRule(cols.map((c) => c.type));
   if (!rule) return { ok: false, problem: { code: 'noChart' } };
 
@@ -122,13 +165,13 @@ export function validateSpec(raw: unknown, profile: DataProfile, rows: Row[], ro
     clean.push({ field, value });
   }
 
-  const aggregate = s?.aggregate === 'mean' ? 'mean' : 'sum';
+  const how = aggregate === 'mean' ? 'mean' : 'sum'; // a count chart's aggregate is unused; 'sum' by convention
   // A sum only matters where the chart combines numbers; there it must be summable.
-  if (aggregate === 'sum' && usesAggregate(rule) && !canSum(cols)) {
+  if (how === 'sum' && usesAggregate(rule) && !canSum(cols)) {
     const avg = cols.find((c) => c.type === 'quantitative' && c.measure !== 'additive')!;
     return { ok: false, problem: { code: 'sumAverage', field: avg.name } };
   }
-  return { ok: true, spec: { fields, aggregate, filters: clean } };
+  return { ok: true, spec: { fields, aggregate: how, filters: clean } };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -156,7 +199,7 @@ function slotsFor(spec: ChartView, ctx: AskContext): Record<string, string> {
   };
 }
 
-function problemMessage(p: Problem): string {
+function problemMessage(p: Problem, many: string): string {
   switch (p.code) {
     case 'tooMany':
       return ASK_TEXT.tooMany;
@@ -172,6 +215,12 @@ function problemMessage(p: Problem): string {
       return fill(ASK_TEXT.unknownValue, { field: p.field, value: p.value });
     case 'sumAverage':
       return fill(ASK_TEXT.sumAverage, { field: p.field });
+    case 'notNumber':
+      return fill(ASK_TEXT.notNumber, { field: p.field });
+    case 'aggregateWithoutMeasure':
+      return p.aggregate === 'sum' ? ASK_TEXT.totalOfNothing : ASK_TEXT.averageOfNothing;
+    case 'countWithMeasure':
+      return fill(ASK_TEXT.countWithMeasure, { field: p.field, many });
   }
 }
 
@@ -190,10 +239,11 @@ export function resolveAsk(reply: unknown, ctx: AskContext): AskResult {
   const outcome = r.outcome;
   const category = r.category;
   const check = (spec: unknown) => validateSpec(spec, ctx.profile, ctx.rows, ctx.roles);
+  const why = (p: Problem) => problemMessage(p, rowNounOf(ctx.roles).many);
 
   if (outcome === 'build') {
     const v = check(r.spec);
-    if (!v.ok) return refuse('invalid', problemMessage(v.problem));
+    if (!v.ok) return refuse('invalid', why(v.problem));
     const fired = guard(ctx.text);
     if (fired) return reframe(fired, v.spec, ctx);
     return { kind: 'build', spec: v.spec };
@@ -217,15 +267,14 @@ export function resolveAsk(reply: unknown, ctx: AskContext): AskResult {
   if (outcome === 'reframe') {
     if (!REFRAME_CATEGORIES.includes(category as ReframeCategory)) return refuse('unreadable', ASK_TEXT.unreadable);
     const v = check(r.spec);
-    if (!v.ok) return refuse('invalid', problemMessage(v.problem));
+    if (!v.ok) return refuse('invalid', why(v.problem));
     return reframe(category as ReframeCategory, v.spec, ctx);
   }
 
   if (outcome === 'refuse') {
     if (!REFUSE_CATEGORIES.includes(category as (typeof REFUSE_CATEGORIES)[number])) return refuse('unreadable', ASK_TEXT.unreadable);
-    // An alternative is optional: a spec with no fields means none was given.
-    const given = Array.isArray((r.spec as { fields?: unknown } | null)?.fields) && (r.spec as { fields: unknown[] }).fields.length > 0;
-    const alt = given ? check(r.spec) : null;
+    // An alternative is optional: "" in both keys means none was given.
+    const alt = specGiven(r.spec) ? check(r.spec) : null;
     const message =
       category === 'unrelated'
         ? ASK_TEXT.unrelated

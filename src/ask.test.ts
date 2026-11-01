@@ -30,6 +30,41 @@ describe('the evaluation set, against faked AI replies (no network)', () => {
   });
 });
 
+describe('the measure left out (the first live run\'s three misses, D-081)', () => {
+  it.each([
+    ['first-run-filter-no-measure', ASK_TEXT.noChart],
+    ['first-run-meaningless-no-measure', ASK_TEXT.noChart],
+    ['first-run-loaded-no-measure', ASK_TEXT.noChart],
+    ['new-format-filter-total-of-count', ASK_TEXT.totalOfNothing],
+    ['new-format-meaningless-average-of-count', ASK_TEXT.averageOfNothing],
+    ['new-format-loaded-total-of-count', ASK_TEXT.totalOfNothing],
+  ])('%s is refused with the code\'s reason, never built as a count', (id, message) => {
+    const c = cases.find((x) => x.id === id)!;
+    expect(resolveAsk(c.fake, ctx(c.prompt))).toEqual({ kind: 'refuse', category: 'invalid', message, spec: null });
+  });
+
+  it('a count that names a number says what would have been counted', () => {
+    const r = resolveAsk({ outcome: 'build', category: 'none', spec: { group_by: 'genre', measure: 'revenue', aggregate: 'count', filters: [] }, candidates: [], term: '' }, ctx('q'));
+    expect(r).toMatchObject({ message: "The translation asked to count items sold but also named revenue, so it wasn't built." });
+  });
+});
+
+describe('cases with more than one right answer', () => {
+  const inSlice = cases.find((c) => c.id === 'build-in-slice')!;
+  const fiction = [{ field: 'genre', value: 'Fiction' }];
+  const clarify = (candidates: { fields: string[] }[]) =>
+    missReason(inSlice, { kind: 'clarify', message: '', candidates: candidates.map((c) => ({ ...c, aggregate: 'sum' as const, filters: fiction })) });
+  it('accepts a clarify only with exactly the accepted charts', () => {
+    expect(clarify([{ fields: ['format'] }, { fields: ['format', 'revenue'] }])).toBeNull();
+    expect(clarify([{ fields: ['format', 'revenue'] }])).not.toBeNull();
+    expect(clarify([{ fields: ['format'] }, { fields: ['format', 'price'] }])).not.toBeNull();
+  });
+  it('still misses an answer outside the list, with the main expectation\'s reason', () => {
+    const r = missReason(inSlice, { kind: 'build', spec: { fields: ['genre'], aggregate: 'sum', filters: fiction } });
+    expect(r).toMatch(/^chart .* \(or one of 1 other accepted answers\)$/);
+  });
+});
+
 describe('the guard reads the user\'s text, independently of the AI', () => {
   it.each([
     ['Did the award cause more sales?', 'causal'],
@@ -56,19 +91,33 @@ describe('the guard reads the user\'s text, independently of the AI', () => {
 describe('validating a chart the AI proposed', () => {
   const v = (spec: object) => validateSpec(spec, profile, rows, roles);
   it('accepts a real chart, and trims a filter value', () => {
-    expect(v({ fields: ['genre', 'revenue'], aggregate: 'sum', filters: [{ field: 'format', value: ' Hardcover ' }] })).toEqual({
+    expect(v({ group_by: 'genre', measure: 'revenue', aggregate: 'sum', filters: [{ field: 'format', value: ' Hardcover ' }] })).toEqual({
       ok: true,
       spec: { fields: ['genre', 'revenue'], aggregate: 'sum', filters: [{ field: 'format', value: 'Hardcover' }] },
     });
   });
 
+  it('turns each shape into a view: a count by group, the spread of one number, a trend', () => {
+    expect(v({ group_by: 'format', measure: 'count', aggregate: 'count', filters: [] })).toMatchObject({ ok: true, spec: { fields: ['format'] } });
+    expect(v({ group_by: '', measure: 'price', aggregate: 'mean', filters: [] })).toMatchObject({ ok: true, spec: { fields: ['price'], aggregate: 'mean' } });
+    expect(v({ group_by: 'sale date', measure: 'revenue', aggregate: 'sum', filters: [] })).toMatchObject({ ok: true, spec: { fields: ['sale date', 'revenue'] } });
+  });
+
   it.each([
-    ['an unknown field', { fields: ['profit'], aggregate: 'sum', filters: [] }, 'This data has no column called “profit”.'],
-    ['a fake filter value', { fields: ['genre'], aggregate: 'sum', filters: [{ field: 'format', value: 'Scroll' }] }, 'There\'s no format called “Scroll” in this data.'],
-    ['a sum of price', { fields: ['format', 'price'], aggregate: 'sum', filters: [] }, "A total of price isn't meaningful, so it can only be averaged."],
-    ['an id column', { fields: ['book id'], aggregate: 'sum', filters: [] }, 'book id is an identifier; it can be counted, not charted.'],
-    ['three fields', { fields: ['genre', 'format', 'revenue'], aggregate: 'sum', filters: [] }, ASK_TEXT.tooMany],
-    ['a filter on a number', { fields: ['genre'], aggregate: 'sum', filters: [{ field: 'price', value: '9.99' }] }, "price can't be used as a filter here; only categories can."],
+    ['an unknown field', { group_by: 'genre', measure: 'profit', aggregate: 'sum', filters: [] }, 'This data has no column called “profit”.'],
+    ['a fake filter value', { group_by: 'genre', measure: 'count', aggregate: 'count', filters: [{ field: 'format', value: 'Scroll' }] }, 'There\'s no format called “Scroll” in this data.'],
+    ['a sum of price', { group_by: 'format', measure: 'price', aggregate: 'sum', filters: [] }, "A total of price isn't meaningful, so it can only be averaged."],
+    ['an id column', { group_by: 'book id', measure: 'count', aggregate: 'count', filters: [] }, 'book id is an identifier; it can be counted, not charted.'],
+    ['four filters', { group_by: 'genre', measure: 'count', aggregate: 'count', filters: [1, 2, 3, 4].map(() => ({ field: 'format', value: 'Hardcover' })) }, ASK_TEXT.tooMany],
+    ['a filter on a number', { group_by: 'genre', measure: 'count', aggregate: 'count', filters: [{ field: 'price', value: '9.99' }] }, "price can't be used as a filter here; only categories can."],
+    ['a category as the measure', { group_by: 'genre', measure: 'format', aggregate: 'sum', filters: [] }, ASK_TEXT.notNumber.replace('{field}', 'format')],
+    ['a number as the group', { group_by: 'price', measure: 'count', aggregate: 'count', filters: [] }, ASK_TEXT.noChart],
+    ['a count of nothing', { group_by: '', measure: 'count', aggregate: 'count', filters: [] }, ASK_TEXT.noChart],
+    // D-081: the measure and the aggregate must agree. Never quietly built as a count.
+    ['a total with measure "count"', { group_by: 'genre', measure: 'count', aggregate: 'sum', filters: [] }, ASK_TEXT.totalOfNothing],
+    ['an average with measure "count"', { group_by: 'genre', measure: 'count', aggregate: 'mean', filters: [] }, ASK_TEXT.averageOfNothing],
+    ['a count that names a number', { group_by: 'genre', measure: 'revenue', aggregate: 'count', filters: [] }, ASK_TEXT.countWithMeasure.replace('{many}', 'items sold').replace('{field}', 'revenue')],
+    ['the old shape, with no measure', { fields: ['genre'], aggregate: 'sum', filters: [] }, ASK_TEXT.noChart],
   ])('refuses %s, with the code\'s reason', (_, spec, message) => {
     const r = resolveAsk({ outcome: 'build', category: 'none', spec, candidates: [], term: '' }, ctx('q'));
     expect(r).toMatchObject({ kind: 'refuse', category: 'invalid', message });
@@ -80,7 +129,7 @@ describe('replies that are not usable', () => {
     ['malformed (not an object)', 'Revenue by genre'],
     ['prose instead of a result', { answer: 'SciFi sells most.' }],
     ['an outcome that does not exist', { outcome: 'answer', category: 'none' }],
-    ['a reframe with a refusal category', { outcome: 'reframe', category: 'unrelated', spec: { fields: ['genre'], aggregate: 'sum', filters: [] } }],
+    ['a reframe with a refusal category', { outcome: 'reframe', category: 'unrelated', spec: { group_by: 'genre', measure: 'count', aggregate: 'count', filters: [] } }],
     ['null', null],
   ])('%s → unreadable', (_, reply) => {
     expect(resolveAsk(reply, ctx('q'))).toMatchObject({ kind: 'refuse', category: 'unreadable', message: ASK_TEXT.unreadable });
@@ -89,7 +138,7 @@ describe('replies that are not usable', () => {
 
 describe('messages are code templates', () => {
   it('a causal reframe uses the chart\'s measure', () => {
-    const r = resolveAsk({ outcome: 'build', category: 'none', spec: { fields: ['award winner', 'revenue'], aggregate: 'sum', filters: [] }, candidates: [], term: '' }, ctx('Did awards cause sales?'));
+    const r = resolveAsk({ outcome: 'build', category: 'none', spec: { group_by: 'award winner', measure: 'revenue', aggregate: 'sum', filters: [] }, candidates: [], term: '' }, ctx('Did awards cause sales?'));
     expect(r).toMatchObject({ kind: 'reframe', category: 'causal', message: "This data can show how revenue differs between groups, not what causes it. Here's the comparison it can show:" });
   });
 
@@ -97,10 +146,10 @@ describe('messages are code templates', () => {
     const reply = (term: string) => ({
       outcome: 'clarify',
       category: 'none',
-      spec: { fields: [], aggregate: 'sum', filters: [] },
+      spec: { group_by: '', measure: '', aggregate: 'count', filters: [] },
       candidates: [
-        { fields: ['title', 'revenue'], aggregate: 'sum', filters: [] },
-        { fields: ['title'], aggregate: 'sum', filters: [] },
+        { group_by: 'title', measure: 'revenue', aggregate: 'sum', filters: [] },
+        { group_by: 'title', measure: 'count', aggregate: 'count', filters: [] },
       ],
       term,
     });

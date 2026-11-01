@@ -28,7 +28,12 @@ export const ASK_TEXT = {
   sumAverage: "A total of {field} isn't meaningful, so it can only be averaged.",
   idField: '{field} is an identifier; it can be counted, not charted.',
   noChart: "These columns can't be drawn together in one chart.",
-  tooMany: 'A question here can use at most 2 columns and 3 filters.',
+  tooMany: 'A question here can use at most 3 filters.',
+  // The measure and the aggregate disagree (D-081).
+  totalOfNothing: "The translation asked for a total but didn't say of what, so it wasn't built. Try naming the number, like revenue.",
+  averageOfNothing: "The translation asked for an average but didn't say of what, so it wasn't built. Try naming the number, like price.",
+  countWithMeasure: 'The translation asked to count {many} but also named {field}, so it wasn\'t built.',
+  notNumber: '{field} isn\'t a number, so it can\'t be added up or averaged.',
   filterNotCategory: '{field} can\'t be used as a filter here; only categories can.',
 };
 
