@@ -6,9 +6,11 @@ import { groupView } from './groups';
 import { loadHighlight, rulesHighlight } from './highlight';
 import { buildOptions, isEligible } from './options';
 import type { ChartView } from './paths';
+import { readFileSync } from 'node:fs';
+import { parseCsv } from './loadCsv';
 import { PRESETS, customPersona } from './personas';
 import { profileDataset } from './profile';
-import { withRoleMeasures } from './roles';
+import { bookshopRoles, withRoleMeasures } from './roles';
 
 // Property tests: invariants that must hold on any dataset, not just Bookshop. The datasets
 // are generated from seeds (src/fixtures/generateDataset.ts); a failure names the seed and
@@ -16,6 +18,12 @@ import { withRoleMeasures } from './roles';
 
 const SEEDS = Array.from({ length: 200 }, (_, i) => i + 1);
 const datasets: Generated[] = [...SEEDS.map(randomDataset), ...degenerateDatasets()];
+
+const bookshop = (() => {
+  const r = parseCsv(readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8'), 'bookshop', true);
+  if (!r.ok) throw new Error('bookshop failed to parse');
+  return { columns: r.dataset.columns, rows: r.dataset.rows, profile: profileDataset(r.dataset.columns, r.dataset.rows), roles: bookshopRoles(r.dataset.columns) };
+})();
 
 /** Every chart of one or two columns, summed and averaged, unfiltered and filtered to one value. */
 function viewsFor(d: Generated): ChartView[] {
@@ -132,5 +140,38 @@ describe('generality: the highlight', () => {
       const h = await loadHighlight(options, profile, personas[0], d.roles, { fetcher });
       expect(eligible, `${d.name}: AI said ${id}, got ${h!.id}`).toContain(h!.id);
     }
+  });
+});
+
+describe('generality: a finding must be able to have been otherwise (D-079)', () => {
+  /** Every entity a finding names, with what it says about the group without it. */
+  const named = (evidence: unknown) => {
+    const e = evidence as { check: string; share?: number; valueWithout?: number; entitiesInGroup?: number; flip?: { share: number; valueWithout: number; entitiesInGroup: number } | null };
+    if (e.check === 'entity') return [{ share: e.share!, valueWithout: e.valueWithout!, entitiesInGroup: e.entitiesInGroup! }];
+    if (e.check === 'fragile' && e.flip) return [e.flip];
+    return [];
+  };
+
+  it('no entity finding has a 100% share, an empty "without it", or a top group with one entity', () => {
+    let seen = 0;
+    const check = (where: string, evidence: unknown) => {
+      for (const n of named(evidence)) {
+        seen++;
+        expect(n.share, where).toBeLessThan(1);
+        expect(n.valueWithout, where).not.toBe(0);
+        expect(n.entitiesInGroup, where).toBeGreaterThanOrEqual(2);
+      }
+    };
+    for (const d of datasets) {
+      const profile = profileDataset(d.columns, d.rows);
+      for (const view of viewsFor(d)) for (const f of runChecks(view, profile, d.rows, d.roles).findings) check(`${d.name}, ${JSON.stringify(view)}`, f.evidence);
+    }
+    // And on every Bookshop chart of one or two columns, by revenue and by count.
+    for (const c of bookshop.columns) {
+      for (const fields of [[c, 'revenue'], [c]]) {
+        for (const f of runChecks({ fields, aggregate: 'sum', filters: [] }, bookshop.profile, bookshop.rows, bookshop.roles).findings) check(`Bookshop ${fields.join(' by ')}`, f.evidence);
+      }
+    }
+    expect(seen).toBeGreaterThan(0); // not vacuous
   });
 });

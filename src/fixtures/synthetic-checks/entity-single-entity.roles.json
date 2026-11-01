@@ -1,0 +1,13 @@
+{
+  "columns": {
+    "genre": {
+      "role": "category"
+    },
+    "author": {
+      "role": "entity"
+    },
+    "revenue": {
+      "role": "money"
+    }
+  }
+}

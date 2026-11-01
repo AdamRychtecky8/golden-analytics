@@ -122,3 +122,17 @@ describe('the single-cycle fixture, by the numbers', () => {
     expect(f.evidence).toEqual({ check: 'cycle', first: '2025-01-15', last: '2025-11-15', days: 304, threshold: 366 });
   });
 });
+
+describe('a finding must be able to have been otherwise', () => {
+  it('a top group with a single entity: no entity finding, and the skip says why', () => {
+    const run = fixture('entity-single-entity');
+    expect(run.findings.map((f) => f.id)).not.toContain('entity');
+    expect(run.skipped).toContainEqual({ id: 'entity', reason: 'the top group (SciFi) has only one author, so one holding all of it says nothing' });
+  });
+
+  it('a top group with two entities still fires as misleading', () => {
+    const f = fixture('entity-two-entities').findings.find((x) => x.id === 'entity')!;
+    expect(f.severity).toBe('misleading');
+    expect(f.evidence).toMatchObject({ entity: 'Ann', entitiesInGroup: 2, rankWithout: 2, valueWithout: 20 });
+  });
+});

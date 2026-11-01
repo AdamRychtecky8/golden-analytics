@@ -84,6 +84,8 @@ export type Evidence =
       entityValue: number; // the entity's part of the group's value
       share: number; // entityValue / groupValue
       rankWithout: number; // the group's rank once the entity's rows are removed everywhere
+      valueWithout: number; // the group's value without the entity
+      entitiesInGroup: number; // different entities in the group (always at least 2)
       threshold: number;
     }
   | {
@@ -95,7 +97,7 @@ export type Evidence =
       threshold: number; // NARROW_LEAD
       narrow: boolean; // ratio < threshold
       // Set when removing the top group's largest entity (under half the group) flips first place.
-      flip: { column: string; entity: string; share: number; rankWithout: number } | null;
+      flip: { column: string; entity: string; share: number; rankWithout: number; valueWithout: number; entitiesInGroup: number } | null;
     }
   | { check: 'cycle'; first: string; last: string; days: number; threshold: number }; // ISO days of the chart's first and last date
 
@@ -124,6 +126,14 @@ interface LargestEntity {
   value: number; // the entity's part of the top group's value
   share: number; // value / the top group's value
   rankWithout: number; // the top group's rank once the entity's rows are removed everywhere
+  valueWithout: number; // the top group's value without the entity
+  entitiesInGroup: number; // how many different entities of that column the top group has
+}
+
+/** The largest entity, or why there is no meaningful one. */
+interface LargestResult {
+  found: LargestEntity | null;
+  reason: string | null; // set when found is null for a reason worth logging
 }
 
 /** What every check gets: the chart, the data, its roles, and the chart's groups. */
@@ -132,7 +142,7 @@ interface CheckContext {
   profile: DataProfile;
   roles: Roles;
   g: Grouping;
-  largest: () => LargestEntity | null; // computed on first use, then remembered
+  largest: () => LargestResult; // computed on first use, then remembered
 }
 
 interface CheckDef {
@@ -293,16 +303,21 @@ function entityColumns({ g, roles }: Pick<CheckContext, 'g' | 'roles'>): { usabl
  * top group's rank once that entity's rows are removed everywhere in the chart. Null when
  * roles are unknown, the chart has no usable entity column, or the top group is empty.
  */
-function largestEntity(ctx: Omit<CheckContext, 'largest'>): LargestEntity | null {
+function largestEntity(ctx: Omit<CheckContext, 'largest'>): LargestResult {
+  const none = (reason: string | null = null): LargestResult => ({ found: null, reason });
   const { g } = ctx;
-  if (g.by !== 'category' || g.total === null) return null;
+  if (g.by !== 'category' || g.total === null) return none();
   const top = g.groups[0];
   const groupValue = top.value ?? 0;
-  if (groupValue <= 0) return null;
+  if (groupValue <= 0) return none();
   const field = g.field.name;
   const valueOf = (r: Row) => (g.measure ? parseNumber(r[g.measure.name])! : 1);
 
-  let best: { column: string; entity: string; value: number } | null = null;
+  // A finding must be able to have been otherwise (D-079). If the top group has only one
+  // entity in a column, that entity holds all of it by definition: one author's series is
+  // "100% that author" whatever the data says. Such a column is left out for this chart.
+  let best: { column: string; entity: string; value: number; entitiesInGroup: number } | null = null;
+  const single: string[] = [];
   for (const column of entityColumns(ctx).usable) {
     const parts = new Map<string, number>();
     for (const r of g.rows) {
@@ -310,23 +325,37 @@ function largestEntity(ctx: Omit<CheckContext, 'largest'>): LargestEntity | null
       const e = r[column].trim();
       parts.set(e, (parts.get(e) ?? 0) + valueOf(r));
     }
+    if (parts.size < 2) {
+      single.push(column);
+      continue;
+    }
     for (const [e, v] of [...parts].sort((a, b) => a[0].localeCompare(b[0]))) {
-      if (best === null || v > best.value) best = { column, entity: e, value: v };
+      if (best === null || v > best.value) best = { column, entity: e, value: v, entitiesInGroup: parts.size };
     }
   }
-  if (best === null) return null;
+  if (best === null) {
+    return none(single.length > 0 ? `the top group (${top.label}) has only one ${single.join(' or ')}, so one holding all of it says nothing` : null);
+  }
 
   // Remove the entity's rows everywhere in the chart, then rank the groups again (same
   // order as the chart: largest first, then by name). A group left with no rows counts as 0.
   const without = new Map(g.groups.map((x) => [x.label, 0]));
+  let topRecordsWithout = 0;
   for (const r of g.rows) {
     if (!isMissing(r[best.column]) && r[best.column].trim() === best.entity) continue;
     const k = r[field].trim();
     without.set(k, without.get(k)! + valueOf(r));
+    if (k === top.label) topRecordsWithout++;
   }
+  // "Without it, the group would rank Nth" must describe a group that still exists, and
+  // "it accounts for N%" must be a real share: the rest of the group has to hold something.
+  // (With negative values, like refunds, the rest can sum to zero or less and the "share"
+  // runs past 100%.)
+  if (topRecordsWithout === 0) return none(`removing ${best.entity} would leave the top group (${top.label}) empty`);
+  if (without.get(top.label)! <= 0) return none(`without ${best.entity}, the top group (${top.label}) would hold nothing or less, so its share isn't a share`);
   const order = [...without].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const rankWithout = order.findIndex(([label]) => label === top.label) + 1;
-  return { ...best, share: best.value / groupValue, rankWithout };
+  return { found: { ...best, share: best.value / groupValue, rankWithout, valueWithout: without.get(top.label)! }, reason: null };
 }
 
 const entity: CheckDef = {
@@ -339,13 +368,16 @@ const entity: CheckDef = {
     if (g.total === null) return 'the chart is a mean, which has no total to take a share of';
     if ((g.groups[0].value ?? 0) <= 0) return "the top group's value is zero or less";
     const { usable, determined } = entityColumns(ctx);
-    if (usable.length > 0) return null;
+    if (usable.length > 0) {
+      const { found, reason } = ctx.largest();
+      return found ? null : (reason ?? 'no entity in the top group to compare');
+    }
     if (determined.length === 0) return `no column besides "${g.field.name}" has the entity role`;
     return `"${g.field.name}" determines ${determined.map((c) => `"${c}"`).join(', ')} (one per group), so one entity always holds its whole group`;
   },
   run: (ctx) => {
     const { g } = ctx;
-    const best = ctx.largest();
+    const best = ctx.largest().found;
     // Under half the group, one entity doesn't "drive" it (a flip is the fragile-lead check's).
     if (best === null || best.share < ENTITY_SHARE) return null;
     const top = g.groups[0];
@@ -360,6 +392,8 @@ const entity: CheckDef = {
       entityValue: best.value,
       share: best.share,
       rankWithout: best.rankWithout,
+      valueWithout: best.valueWithout,
+      entitiesInGroup: best.entitiesInGroup,
       threshold: ENTITY_SHARE,
     };
     const said = `${best.entity} accounts for ${pct(best.share)} of ${m} in ${top.label}.`;
@@ -387,7 +421,7 @@ const fragile: CheckDef = {
     const narrow = ratio < NARROW_LEAD;
     // A lead can also be fragile with a clear gap, when one entity tips it. An entity that is
     // half the group or more is the entity check's ("driven by"), so it isn't repeated here.
-    const e = ctx.largest();
+    const e = ctx.largest().found;
     const flip = e !== null && e.share < ENTITY_SHARE && e.rankWithout > 1 ? e : null;
     if (!narrow && !flip) return null;
 
@@ -410,7 +444,7 @@ const fragile: CheckDef = {
         ratio,
         threshold: NARROW_LEAD,
         narrow,
-        flip: flip && { column: flip.column, entity: flip.entity, share: flip.share, rankWithout: flip.rankWithout },
+        flip: flip && { column: flip.column, entity: flip.entity, share: flip.share, rankWithout: flip.rankWithout, valueWithout: flip.valueWithout, entitiesInGroup: flip.entitiesInGroup },
       },
     };
   },
@@ -459,7 +493,7 @@ export function runChecks(view: ChartView, profile: DataProfile, rows: Row[], ro
   if (g.groups.length === 0) return skipAll('the chart has no groups');
 
   const base = { view, profile, roles, g };
-  let largest: LargestEntity | null | undefined; // undefined: not computed yet
+  let largest: LargestResult | undefined; // undefined: not computed yet
   const ctx: CheckContext = { ...base, largest: () => (largest === undefined ? (largest = largestEntity(base)) : largest) };
   const run: CheckRun = { findings: [], skipped: [] };
   for (const check of CHECKS) {

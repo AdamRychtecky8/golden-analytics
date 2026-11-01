@@ -23,7 +23,9 @@ const views = columns
 describe('datasetFindings on the Bookshop data', () => {
   const found = datasetFindings(views, profile, rows, roles);
 
-  it('reports Bianca Thompson once, across the eight charts she drives', () => {
+  it('reports Bianca Thompson once, across the six charts she drives', () => {
+    // Not the two series charts: her series has only her as author, so that finding is true
+    // by definition and isn't reported (D-079).
     expect(found.map((f) => f.entity)).toEqual(['Bianca Thompson']);
     const [bianca] = found;
     expect(bianca.column).toBe('author');
@@ -34,8 +36,6 @@ describe('datasetFindings on the Bookshop data', () => {
       'author country by revenue',
       'author country',
       'award winner by revenue',
-      'series by revenue',
-      'series',
     ]);
     expect(bianca.views.every((v) => v.checks.includes('entity'))).toBe(true);
   });
