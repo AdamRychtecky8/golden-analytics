@@ -58,7 +58,7 @@ Four sections, in this order: **Key talking points**, **Caution around these**, 
 
 **The headline** may never assert what a caution warns against, or what the can't-tell line says can't be known. With a caution, the headline is that caution's "instead"; for a single-cycle trend, it describes shape (peak and low), never change from first to last period. Either way it is locked: the AI may not reword it. Property tests check both rules on generated datasets.
 
-**Key talking points:** the headline plus up to three points: routed findings first (concentration, an entity caveat), then facts (the top group's share and value, the runner-up; for trends, the peak and low). A point never repeats the headline or a caution's claim.
+**Key talking points:** the headline plus up to three points: routed findings first (concentration, an entity caveat), then facts (the top group's share and value, the runner-up; for trends, the peak and low). A point never repeats the headline or a caution's claim. With two groups, there is no runner-up point when the concentration point already names the other group. A comparison with only one group (never offered by the menu; possible from Build my own chart or a typed question inside a slice) has nothing to rank: its headline is "All {many} here are {group}", with no share, runner-up, or comparison line (D-080).
 
 **If they ask:** at most two, from repairs ("What about items sold?") and routed findings. The entity question is dropped when the dataset line already says it; a question whose answer a point already gives is dropped.
 
@@ -66,7 +66,7 @@ Four sections, in this order: **Key talking points**, **Caution around these**, 
 
 **Dataset line:** when this chart is one that an entity shaping several charts affects, one line above the sections names it ("One author, Bianca Thompson, accounts for 33% of all revenue in this data and shapes several of these charts."), and that chart's entity caution refers to it ("the author noted above") instead of repeating it.
 
-**Wording rules** (Adam's review): no possessives on group names ("of {measure} in {group}"); "accounts for"; never a pluralized column name; "a few more {rows}", not "sales"; "leads in {measure}"; money with the contract's currency, or "{value} in {measure}" without one; a flag's group by its contract label, or "{column}: {value}"; on a chart over time, a period is named with its unit ("Mar 2025 was our best month").
+**Wording rules** (Adam's review): no possessives on group names ("of {measure} in {group}"); "accounts for"; never a pluralized column name; "a few more {rows}", not "sales"; "leads in {measure}"; money with the contract's currency, or "{value} in {measure}" without one; a flag's group by its contract label, or "{column}: {value}"; verbs agree with a plural label (the contract's "plural": true; "Award winners bring in…"), and on a yes/no chart no sentence puts the column right after a group's name; on a chart over time, a period is named with its unit ("Mar 2025 was our best month").
 
 **AI phrasing (optional).** With a key, `/api/card` may reword only Key talking points (not a locked headline) and If they ask, for the persona. It sees the code's templates and the facts they use, never rows. Each block must use exactly the same slots as the code's version, no digits of its own, and at most 60 words, or it keeps the code wording. AI-worded blocks are marked AI. Cautions, the can't-tell line, and the dataset line are never sent.
 
@@ -174,7 +174,7 @@ Bookshop reveals failure modes; every fix must work on any dataset. Rule: **app 
 
 ## Data
 Bookshop sales (fictional, 2193), one row per item sold, joined by `scripts/prepare-bookshop.py`, with a roles file declaring each column's role (date, money, price, rate, category, entity, flag, id), facet (offering: genre, format, series; source: publisher, author; place: author country; award winner is a flag with no facet), and rowNoun ("item sold" / "items sold"). Real values only: planted effects exist only in test fixtures.
-The contract may also give a currency symbol (Bookshop has none, so amounts read "261,964 in revenue") and names for a flag's groups (Bookshop: award winner → "award winners" / "non-winners").
+The contract may also give a currency symbol (Bookshop has none, so amounts read "261,964 in revenue") and names for a flag's groups, optionally plural (Bookshop: award winner → "award winners" / "non-winners", plural).
 Excluded: marketing spend and ratings (reason: TODO(adam)); BookshopLibraries (holdings, not sales; future work).
 
 ## Out of scope (future work)
@@ -183,7 +183,6 @@ Arbitrary datasets (needs an upstream semantic classifier to write the roles fil
 With more time:
 - Edit an asked question's filters in "Build my own chart" (today it chooses fields only, so "Change it" was left out of the ask confirmation).
 - A contract flag to never send a column's values to the AI (e.g. customer names).
-- Verb agreement for plural flag labels ("Non-winners leads" should read "lead").
 
 ## Build phases
 0. This spec + DECISIONS entry for the pivot. Tag `slider-concept` before removing anything.

@@ -512,6 +512,14 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **Property tests find the cases you didn't think of.** The fix for one author per group passed every hand-written test. The property test over generated data then found the same flaw in a new form: with negative values (refunds), an entity "accounted for 161%" of its group. Asserting the *principle* ("share below 100%, a real remainder") rather than the one example is what caught it.
 
+### Plural names and one-group charts (D-080)
+
+**Verb agreement without letting the AI pick numbers.** A template writes a verb as `[is|are:top_item]`. `fillTemplate` replaces it with the second word when that slot's fact is marked `plural` (a contract's plural group name, "award winners"), else the first. It only chooses between two words the template already contains, so the digit and slot rules are untouched. *See:* `AGREE` in [templates.ts](../src/templates.ts).
+
+**Reading every card, not just testing some.** Tests checked agreement for the slots that had markers. Reading every award-winner card as text found the one without a marker ("next is non-winners") and a verb that followed the measure rather than the group ("items sold splits"). Some bugs only show up in the finished sentence.
+
+**Nothing to rank, no ranking words.** A comparison with one group can't have a "most", a "top", or a share other than 100%. Its card says what the chart is ("All items sold here are non-winners") and nothing more, and a property test fails if any one-group card uses ranking words.
+
 ### The prep script (Python)
 
 **Reading .xlsx without a library.** An .xlsx file is a zip archive of XML files: `xl/workbook.xml` lists the sheets, each sheet is `xl/worksheets/sheetN.xml`, and text cells hold an index into `xl/sharedStrings.xml`. The script opens the zip with `zipfile` and walks the rows with `xml.etree.ElementTree.iterparse`, which reads one row at a time instead of the whole 9 MB sheet. *See:* `Workbook` in [prepare-bookshop.py](../scripts/prepare-bookshop.py).
@@ -661,3 +669,8 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 **A finding must be able to have been otherwise**
 
 75. **Why isn't "Bianca Thompson accounts for 100% of The Mallemaroking Saga" a caution?** → D-079, `largestEntity`. Could that sentence ever have been false? What did the earlier, column-level guard check, and why did it miss this case?
+
+**Plural names and one-group charts**
+
+76. **How does "Award winners bring in…" get "bring", not "brings", without the AI choosing?** → `AGREE` in [templates.ts](../src/templates.ts), the contract's `"plural": true`, D-080.
+77. **Can the menu ever show a chart with only one group? How do you know?** → `buildOptions` needs 2 to 12 groups in the slice; the check across every single-filter slice (AI_LOG #19). Where can one still come from, and what does its card say?

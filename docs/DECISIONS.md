@@ -394,6 +394,11 @@ Decision: The entity check and the fragile lead's flip (largestEntity) only use 
 Why: TODO(adam)
 Status: decided
 
+## D-080 — 2026-11-01 — Plural group names, one-group cards, and the runner-up point
+Decision: A flag's labels in the contract may say "plural": true (Bookshop: award winner → "award winners" / "non-winners"); templates mark verbs as [singular|plural:slot] and fillTemplate picks the form from that slot's group, so "Award winners bring in the most revenue". On a yes/no chart no sentence puts the column right after a group's name: claims read "{group} [sells|sell] the most", "{group} [is|are] the stronger group", "{group} [is|are] on top", and the can't-tell line "This shows the split of {measure} by {field}, not why" (averages: "This shows how {measure} differs by {field}, not why"). The menu never offers a one-group comparison (checked across every single-filter slice); a one-group chart from Build my own chart or a typed question gets "All {many} here are {group}", no share or runner-up points, and the general can't-tell line, and the small-group check never calls a lone group "ranked first"; a property test checks no one-group card states a ranking or a 100% share. On two-group charts the runner-up point is dropped when the concentration point names the other group.
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)
