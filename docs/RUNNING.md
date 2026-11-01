@@ -82,7 +82,7 @@ No test calls the real API.
 | `npm run prep:bookshop` | Rebuilds `src/data/bookshop-sales.csv` from `data/raw/Bookshop.xlsx` (see below) |
 | `npm run options:bookshop` | Prints the Bookshop options menu (each option's question, findings, and whether it is eligible) and each persona's highlight and reason, using the rules (no API key needed), then every sentence the rules can produce (each purpose × kind × facet, the repair lines, and "best place to start") filled in with Bookshop values |
 | `npm run cards:bookshop` | Prints Bookshop cards as text (every menu question, plus one inside a slice), with the standard wording, for reading it all at once |
-| `npm run eval:ask` | Runs the 26 typed-question cases in `docs/eval/ask-cases.json` against the real model and prints a pass rate and every miss. Needs `ANTHROPIC_API_KEY` in `.env`; costs about 20 small calls per run, so it is not part of `npm test` |
+| `npm run eval:ask` | Runs the typed-question cases in `docs/eval/ask-cases.json` (those not marked offline-only) against the real model and prints a pass rate and every miss; each run is also saved to `.eval-runs/` (gitignored). Needs `ANTHROPIC_API_KEY` in `.env`; costs about 20 small calls per run, so it is not part of `npm test` |
 | `npm run sample` | Regenerates `src/data/sample-sales-synthetic.csv` from `scripts/make-sample.mjs`. It's seeded, so the output is identical every time. The tests use this file; the app no longer shows it |
 
 The build warns that one file is larger than 500 kB. That's the Vega charting library; it's expected and harmless for now.

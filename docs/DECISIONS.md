@@ -399,6 +399,11 @@ Decision: A flag's labels in the contract may say "plural": true (Bookshop: awar
 Why: TODO(adam)
 Status: decided
 
+## D-081 — 2026-11-01 — The AI names its measure; a contradiction is refused
+Decision: The AI's chart spec is { group_by, measure, aggregate, filters }: group_by is a category or date column or "" (the spread of one number); measure is a number column or "count"; aggregate is "sum" or "mean" for a number and "count" exactly for "count". Code turns it into a view. A sum or mean of "count", or a count that names a number, is a contradiction: refused with a code message, never built as a count. A reply in the old shape (no measure) is refused. Clarify candidates and alternatives use the same shape. Messages: "The translation asked for a total but didn't say of what, so it wasn't built. Try naming the number, like revenue." (and the average form, "like price"); "The translation asked to count {many} but also named {field}, so it wasn't built."; "{field} isn't a number, so it can't be added up or averaged."; tooMany now reads "A question here can use at most 3 filters." The three replies from the first live run are offline cases, with the same mistake in the new shape. Eval cases may list accepted answers: build-in-slice accepts the items-sold build or a clarify offering revenue and items sold; causal accepts revenue or items sold by award winner. Each eval run is saved to .eval-runs/ (gitignored).
+Why: Adam: the live eval passed 17/20, and all three misses were the measure left out with a sum or mean, which the old validator accepted as a count chart: "Fix the cause, not the symptom." The accepted answers: "sales" honestly means either revenue or items sold in this data.
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)

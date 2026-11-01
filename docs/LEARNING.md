@@ -520,6 +520,14 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **Nothing to rank, no ranking words.** A comparison with one group can't have a "most", a "top", or a share other than 100%. Its card says what the chart is ("All items sold here are non-winners") and nothing more, and a property test fails if any one-group card uses ranking words.
 
+### Make the mistake unsayable (D-081)
+
+**A default that hides a mistake.** In the old shape, a chart with no number column was a count. So when the AI forgot the number ("fields": ["genre"], "aggregate": "sum"), the reply looked exactly like a deliberate count, and the validator had nothing to object to. Now the AI must write measure "count" to count, so leaving the number out can't pass as a choice, and "a total of count" is a contradiction code can refuse. *See:* `AskSpec` and `validateSpec` in [ask.ts](../src/ask.ts).
+
+**Accepted answers are a judgment, written down.** Some questions honestly allow more than one chart ("sales" can mean revenue or items sold). A case's `accept` list names exactly which other answers count, and a clarify must offer exactly the listed charts; anything else is still a miss. *See:* `missReason` in [askEval.ts](../src/askEval.ts).
+
+**Run it more than once.** A model can answer differently each time. Three runs gave the same single miss, which says the model reads that question consistently, not randomly.
+
 ### The prep script (Python)
 
 **Reading .xlsx without a library.** An .xlsx file is a zip archive of XML files: `xl/workbook.xml` lists the sheets, each sheet is `xl/worksheets/sheetN.xml`, and text cells hold an index into `xl/sharedStrings.xml`. The script opens the zip with `zipfile` and walks the rows with `xml.etree.ElementTree.iterparse`, which reads one row at a time instead of the whole 9 MB sheet. *See:* `Workbook` in [prepare-bookshop.py](../scripts/prepare-bookshop.py).
@@ -674,3 +682,8 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 
 76. **How does "Award winners bring in…" get "bring", not "brings", without the AI choosing?** → `AGREE` in [templates.ts](../src/templates.ts), the contract's `"plural": true`, D-080.
 77. **Can the menu ever show a chart with only one group? How do you know?** → `buildOptions` needs 2 to 12 groups in the slice; the check across every single-filter slice (AI_LOG #19). Where can one still come from, and what does its card say?
+
+**The AI's measure**
+
+78. **What did the old validator get wrong about "fields": ["genre"] with "aggregate": "sum"? Why is a new rule not enough, and what changed instead?** → D-081, `AskSpec`, `validateSpec` in [ask.ts](../src/ask.ts); the `first-run-*` and `new-format-*` cases.
+79. **Why does build-in-slice accept two answers but still miss "revenue by format"?** → the `accept` list in [ask-cases.json](eval/ask-cases.json), `missReason` in [askEval.ts](../src/askEval.ts), AI_LOG #20.
