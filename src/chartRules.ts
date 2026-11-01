@@ -121,8 +121,6 @@ export interface ChartOptions {
   // The key of the highlighted mark, or null. Each datum gets a `key` field so a click
   // can name exactly one mark (or one series, for multi-line charts).
   highlight: string | null;
-  // Chart height in pixels. Defaults to the story card's size; path cards use a smaller one.
-  height?: number;
 }
 
 const TIME_FORMAT: Record<TimeUnit, string> = { day: '%b %d, %Y', month: '%b %Y', year: '%Y' };
@@ -210,7 +208,7 @@ export function buildChart(fields: ColumnProfile[], rows: Row[], options: ChartO
   // The builders return plain objects rather than Vega-Lite's own (very large) types, to
   // keep them readable. The tests check the specs' contents; `as unknown as` tells
   // TypeScript we've taken on that responsibility.
-  const spec = { ...built, usermeta, height: chartHeight(rule, built, options.height ?? HEIGHT), width: 'container' } as unknown as TopLevelSpec;
+  const spec = { ...built, usermeta, height: chartHeight(rule, built), width: 'container' } as unknown as TopLevelSpec;
   return { rule, title, notes, spec };
 }
 
@@ -218,11 +216,11 @@ export function buildChart(fields: ColumnProfile[], rows: Row[], options: ChartO
 // never overlaps the next one (20 titles squeezed into 150 px did).
 const MIN_ROW_PX = 17;
 
-function chartHeight(rule: RuleId, built: object, requested: number): number {
+function chartHeight(rule: RuleId, built: object): number {
   const values = (built as { data: { values: Record<string, unknown>[] } }).data.values;
-  if (rule === 'sorted-bars' || rule === 'count-bars') return Math.max(requested, values.length * MIN_ROW_PX);
-  if (rule === 'count-heatmap') return Math.max(requested, new Set(values.map((v) => v.y)).size * MIN_ROW_PX);
-  return requested;
+  if (rule === 'sorted-bars' || rule === 'count-bars') return Math.max(HEIGHT, values.length * MIN_ROW_PX);
+  if (rule === 'count-heatmap') return Math.max(HEIGHT, new Set(values.map((v) => v.y)).size * MIN_ROW_PX);
+  return HEIGHT;
 }
 
 type Builder = (fields: ColumnProfile[], rows: Row[], options: ChartOptions, notes: string[]) => object;

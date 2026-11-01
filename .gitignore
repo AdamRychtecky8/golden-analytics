@@ -26,3 +26,6 @@ project-email.md
 SWE-intern.md
 docs/context/DATA511-viz-principles.md
 docs/MAIN_Prompts.md
+
+# Cleanup baseline reports (npm run cards:bookshop, options:bookshop at tag pre-cleanup)
+.baseline/

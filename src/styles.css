@@ -516,11 +516,6 @@ textarea {
   font-weight: 600;
   margin: 0 0 6px;
 }
-.card-later {
-  margin: 0;
-  font-size: 13px;
-  color: var(--navy-soft);
-}
 .findings {
   margin: 0;
   padding-left: 18px;

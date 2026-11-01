@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ALL_ROUTES, ROUTES, buildCard, type Card } from './card';
+import { ROUTES, buildCard, type Card } from './card';
 import { CHECK_IDS, SEVERITIES, runChecks } from './checks';
 import { datasetFindings } from './datasetFindings';
 import { degenerateDatasets, randomDataset, type Generated } from './fixtures/generateDataset';
@@ -26,6 +26,7 @@ const allText = (c: Card) =>
 
 describe('routing', () => {
   it('has a section for every check and severity, so no finding can silently disappear', () => {
+    const ALL_ROUTES = CHECK_IDS.flatMap((id) => SEVERITIES.map((s) => ({ id, severity: s, section: ROUTES[id]?.[s] })));
     expect(ALL_ROUTES).toHaveLength(CHECK_IDS.length * SEVERITIES.length);
     for (const r of ALL_ROUTES) expect(['talk', 'caution', 'ask', 'cannot'], `${r.id}/${r.severity}`).toContain(r.section);
   });

@@ -81,7 +81,7 @@ export function chartForView(
   view: ChartView,
   profile: DataProfile,
   rows: Row[],
-  options: { highlight: string | null; height?: number },
+  options: { highlight: string | null },
 ): ChartResult | null {
   const cols: ColumnProfile[] = [];
   for (const name of view.fields) {

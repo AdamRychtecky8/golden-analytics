@@ -23,7 +23,6 @@ const twoPlaces = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, max
 /** Big totals as whole numbers (261,964); small values and means with cents (13.59). */
 const amount = (x: number, mean: boolean) => (mean || Math.abs(x) < 100 ? twoPlaces.format(x) : whole.format(x));
 const percent = (x: number) => `${Math.round(x * 100)}%`;
-export const percentText = percent;
 const signedPercent = (x: number) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(Math.round(x * 100))}%`;
 
 /**

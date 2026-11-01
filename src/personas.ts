@@ -49,11 +49,6 @@ export function customPersona(domain: Domain, role: Role, purpose: Purpose, name
   };
 }
 
-/** One line for display: "Store owner · retail · deciding where to invest". */
-export function describePersona(p: Persona): string {
-  return `${p.name} · ${p.domain} · ${p.purpose}`;
-}
-
 // Persona colors (Adam's choice): muted tints, never the accent orange, red, or green, so a
 // persona can't be mistaken for data emphasis or a warning. They appear only in the map and
 // the persona chip, never in charts, and always with the persona's initial, so color is

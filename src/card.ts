@@ -2,7 +2,7 @@ import type { Row } from './aggregate';
 import { ASKED_CANNOT } from './askText';
 import { CAUTIONS, CANNOT, DATASET_LINE, ASK, TALK } from './cardText';
 import { chooseRule } from './chartRules';
-import { CHECK_IDS, SEVERITIES, runChecks, type CheckId, type Evidence, type Finding, type Severity } from './checks';
+import { runChecks, type CheckId, type Evidence, type Finding, type Severity } from './checks';
 import type { DatasetFinding } from './datasetFindings';
 import { computeFacts, type Fact } from './facts';
 import { groupView, periodLabel } from './groups';
@@ -397,6 +397,3 @@ function highlightKey(entries: CautionEntry[], g: ReturnType<typeof groupView>):
   const peak = valued.reduce((a, b) => (b.value! > a.value! ? b : a));
   return String(Date.parse(peak.label)); // line marks are keyed by the period's start time
 }
-
-/** Every check and severity has a route (the routing test walks this). */
-export const ALL_ROUTES = CHECK_IDS.flatMap((id) => SEVERITIES.map((s) => ({ id, severity: s, section: ROUTES[id]?.[s] })));

@@ -164,8 +164,8 @@ describe('chart height', () => {
   it('gives each bar enough room for its label', () => {
     const many: Row[] = Array.from({ length: 20 }, (_, i) => ({ name: `n${i}` }));
     const p = profileDataset(['name'], many);
-    expect((buildChart(p.columns, many, { ...sum, height: 150 })!.spec as any).height).toBe(20 * 17);
-    expect((buildChart([col('region')], rows, { ...sum, height: 150 })!.spec as any).height).toBe(150);
+    expect((buildChart(p.columns, many, sum)!.spec as any).height).toBe(20 * 17);
+    expect((buildChart([col('region')], rows, sum)!.spec as any).height).toBe(260);
   });
 });
 
