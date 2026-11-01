@@ -9,9 +9,8 @@ const TYPE_LABEL: Record<ColumnProfile['type'], string> = {
 };
 
 /**
- * "Build my own chart": the old field picker, cut down to choosing up to two fields. The
- * choice stays local until "Show chart", which adds one node to the map; the checks run
- * on it like on any menu question.
+ * "Build my own chart": choose up to two fields. The choice stays local until "Show chart",
+ * which adds one node to the map; the checks run on it like on any menu question.
  */
 export function BuildChart({ profile, onShow }: { profile: DataProfile; onShow: (fields: string[]) => void }) {
   const [open, setOpen] = useState(false);

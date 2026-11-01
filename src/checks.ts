@@ -8,7 +8,7 @@ import { roleOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
 // apply as findings, labeled as a check (never as AI). They catch the common ways a ranking
 // misleads: a few expensive items outranking many cheap ones, a group too small to trust,
 // one group dwarfing the rest, and a group whose lead is really one author or title.
-// The card lists them under "Don't say this"; story facts (facts.ts) read them too.
+// The card routes them to its sections (card.ts); facts (facts.ts) read them too.
 //
 // Each check is registered with its preconditions and a run function. A check whose
 // preconditions aren't met is skipped with a reason; the reasons are for tests and logs,
@@ -69,7 +69,7 @@ export interface LabeledCount {
   records: number;
 }
 
-// The numbers behind each finding, so later phases can phrase it from facts and slots.
+// The numbers behind each finding, so the card can phrase it from facts and slots.
 export type Evidence =
   | { check: 'mix'; measure: string; groups: RankedGroup[] } // #1 change: the #1 by value, then the #1 by count
   | { check: 'small'; threshold: number; small: LabeledCount[]; smallest: LabeledCount; top: LabeledCount; topIsSmall: boolean; period: boolean }

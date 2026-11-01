@@ -1,7 +1,7 @@
 // Generates src/data/sample-sales-synthetic.csv: 200 rows of SYNTHETIC retail sales.
 // Seeded, so running it again produces the exact same file (npm run sample).
 //
-// Patterns built in on purpose, so later phases have something real to find:
+// Patterns built in on purpose:
 // - Outdoor sells more units in summer (May–August).
 // - Electronics spikes in November–December.
 // - The West region sells about 30% more units than the others.

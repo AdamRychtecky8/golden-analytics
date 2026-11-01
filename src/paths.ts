@@ -59,7 +59,7 @@ export function summarizeProfile(profile: DataProfile): AiContext['profile'] {
 }
 
 // ---------------------------------------------------------------------------------------
-// Turning a path into rows and a chart.
+// Turning a view into rows and a chart.
 
 /** The rows every filter keeps. Values are compared trimmed, the way the profiler counts them. */
 export function filterRows(rows: Row[], filters: PathFilter[]): Row[] {

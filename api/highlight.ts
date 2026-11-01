@@ -14,8 +14,8 @@ import {
   type AiEnv,
 } from './_shared.ts';
 
-// The highlight's AI call (SPEC "The highlight"): the same server-side pattern as
-// api/suggest.ts. Code has already built the options and removed every ineligible one; the
+// The highlight's AI call (SPEC "The highlight"), with the shared server-side helpers in
+// api/_shared.ts. Code has already built the options and removed every ineligible one; the
 // AI only picks one of those for the persona and says why. It never writes an option, and
 // it never sees rows. The browser checks the id and the reason (src/highlight.ts).
 

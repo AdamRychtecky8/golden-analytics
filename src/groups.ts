@@ -5,7 +5,7 @@ import type { ColumnProfile, DataProfile } from './profile';
 
 // The groups behind a chart, as plain numbers: each bar's category or each line's period,
 // with how many records it holds and its value. The insight checks (checks.ts) and the
-// story facts (facts.ts) both read these, computed the same way buildChart computes them.
+// card facts (facts.ts) both read these, computed the same way buildChart computes them.
 
 export interface Group {
   label: string; // "Hardcover", or a period's start date as an ISO day for time charts

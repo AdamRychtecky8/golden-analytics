@@ -131,7 +131,7 @@ export function aggregateLabel(how: Aggregate, field: string): string {
   return `${how === 'sum' ? 'Sum' : 'Mean'} of ${field}`;
 }
 
-/** A short plain title for a chart, used for previews and chart ideas. */
+/** A short plain title for a chart: buildChart's title before any filter is added. */
 export function chartTitle(fields: ColumnProfile[], requested: Aggregate): string | null {
   const rule = chooseRule(fields.map((f) => f.type));
   if (!rule) return null;
