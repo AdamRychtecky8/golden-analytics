@@ -404,6 +404,11 @@ Decision: The AI's chart spec is { group_by, measure, aggregate, filters }: grou
 Why: Adam: the live eval passed 17/20, and all three misses were the measure left out with a sum or mean, which the old validator accepted as a count chart: "Fix the cause, not the symptom." The accepted answers: "sales" honestly means either revenue or items sold in this data.
 Status: decided
 
+## D-082 — 2026-11-01 — Cleanup: identical output, one filler, views and aiProfile, the app's name
+Decision: A cleanup with no behavior change, checked after every commit: tests pass, the build succeeds, and npm run cards:bookshop and options:bookshop are byte-identical to .baseline/ (saved from the tag pre-cleanup; gitignored). Removed dead code and slider-era comments; one set of formatters (src/format.ts) and one slice phrase (whereText). Code's own message templates (menu questions, highlight reasons, typed-question messages) share one fillSlots: a missing slot is never blanked or printed as "undefined"; the menu leaves that option out, the highlight shows no reason, a typed question becomes "couldn't be used", each lists the slot in unrendered, tests fail, and development builds warn in the console. The card groups a chart with the role-adjusted profile, like the checks and facts (a fixture where a column's role disagrees with its name). Performance: the whole-data menu is built once per dataset, dataset findings reuse the menu's checks, and a card or option groups its rows once; a proposed fourth fix (largestEntity's per-column scan) measured no gain and was not committed. src/paths.ts is now src/views.ts (PathFilter → ViewFilter), and what the AI may see is src/aiProfile.ts. The app is named "Golden Standard: before you present it".
+Why: TODO(adam)
+Status: decided
+
 ---
 
 ## Parking lot (ideas not yet decided)
