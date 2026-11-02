@@ -25,3 +25,4 @@ Each `name.csv` has a `name.roles.json` beside it. Rows are sorted in blocks of 
 | cycle-control | A trend over more than two years | 25 monthly rows, 2025-01-15 to 2027-01-15: 730 days | no cycle finding |
 | entity-single-entity | The top group has only one author | SciFi 300, all Ann; Mystery 250 (Cy 200, Di 50). "Ann is 100% of SciFi" is true by definition | no entity finding; skipped: only one author in the top group |
 | entity-two-entities | The top group has two authors, one dominant | SciFi 220 (Ann 200 = 91%, Bob 20); Mystery 200 (Cy 100, Di 100). Without Ann: SciFi 20 → 2nd | entity, misleading |
+| role-disagrees-with-name | A column named "price" (average-only by name) has the role money (summable) | Summed: A 4 × 10 = 40, B 30. Averaged it would be B 30, A 10 | the card sums, like the checks and facts: A on top; same card as when the column is called revenue (card.test.ts) |

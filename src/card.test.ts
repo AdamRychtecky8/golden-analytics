@@ -9,7 +9,7 @@ import { parseCsv } from './loadCsv';
 import { buildOptions } from './options';
 import type { ChartView } from './paths';
 import { profileDataset } from './profile';
-import { UNKNOWN_ROLES, bookshopRoles } from './roles';
+import { UNKNOWN_ROLES, bookshopRoles, parseRoles } from './roles';
 
 const loaded = parseCsv(readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8'), 'bookshop', true);
 if (!loaded.ok) throw new Error('bookshop failed to parse');
@@ -238,4 +238,27 @@ describe('a comparison with only one group', () => {
     }
     expect(seen).toBeGreaterThan(0);
   }, 30_000);
+});
+
+describe('a column whose role disagrees with its name', () => {
+  // "price" sounds average-only, but the contract says money (summable). Summed, store A
+  // leads (40 vs 30); averaged, B would (30 vs 10). Every part of the card must use the role.
+  const load = (csv: string, rolesJson: string) => {
+    const r = parseCsv(csv, 'f', true);
+    if (!r.ok) throw new Error();
+    const pr = parseRoles(JSON.parse(rolesJson), r.dataset.columns);
+    if (!pr.ok) throw new Error();
+    const p = profileDataset(r.dataset.columns, r.dataset.rows);
+    return buildCard({ fields: ['store', r.dataset.columns[1]], aggregate: 'sum', filters: [] }, p, r.dataset.rows, pr.roles, []);
+  };
+  const dir = new URL('./fixtures/synthetic-checks/', import.meta.url);
+  const csv = readFileSync(new URL('role-disagrees-with-name.csv', dir), 'utf8');
+  const rolesJson = readFileSync(new URL('role-disagrees-with-name.roles.json', dir), 'utf8');
+
+  it('reads the same as a column whose name agrees with the same role, apart from the name', () => {
+    const disagrees = load(csv, rolesJson);
+    const agrees = load(csv.replace('price', 'revenue'), rolesJson.replace('price', 'revenue'));
+    expect(disagrees.highlight).toBe('A');
+    expect(JSON.stringify(disagrees)).toBe(JSON.stringify(agrees).replaceAll('revenue', 'price'));
+  });
 });

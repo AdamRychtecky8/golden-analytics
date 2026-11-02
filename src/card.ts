@@ -9,7 +9,7 @@ import { ordinal, percent, whole } from './format';
 import { groupView, periodLabel } from './groups';
 import { whereText, type ChartView } from './paths';
 import type { DataProfile } from './profile';
-import { groupIsPlural, groupLabel, roleOf, rowNounOf, type Roles } from './roles';
+import { groupIsPlural, groupLabel, roleOf, rowNounOf, withRoleMeasures, type Roles } from './roles';
 import { fillTemplate } from './templates';
 
 // The present card (SPEC "The flow", step 4): Key talking points, Caution around these, If
@@ -105,7 +105,9 @@ export function buildCard(
     { id: 'one', label: 'what one row is called', display: noun.one },
   ];
   const add = (id: string, label: string, display: string) => extra.push({ id, label, display });
-  const g = groupView(view, profile, rows);
+  // The same groups the checks and facts use: with roles, a number's role (not its name)
+  // decides whether it is summed or averaged.
+  const g = groupView(view, withRoleMeasures(profile, roles), rows);
   const field = g?.field.name ?? view.fields[0];
   add('field', 'what the groups are', field);
   if (g?.timeUnit) add('unit', 'the length of one period', g.timeUnit);
