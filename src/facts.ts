@@ -1,7 +1,7 @@
 import { isMissing, parseNumber, type Row } from './aggregate';
 import { chooseRule, effectiveAggregate } from './chartRules';
 import { percent, signedPercent, twoPlaces, whole } from './format';
-import { groupView, periodLabel } from './groups';
+import { groupView, periodLabel, type Grouping } from './groups';
 import { filterRows, type ChartView } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
 import { currencyOf, groupLabel, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
@@ -28,7 +28,7 @@ const amount = (x: number, mean: boolean) => (mean || Math.abs(x) < 100 ? twoPla
  * "award winner: no", and a money amount carries the currency, or reads "261,964 in revenue"
  * without one (the *_amount facts).
  */
-export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[], roles: Roles = UNKNOWN_ROLES): Fact[] {
+export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[], roles: Roles = UNKNOWN_ROLES, grouping?: Grouping | null): Fact[] {
   profile = withRoleMeasures(profile, roles);
   const facts: Fact[] = [];
   const add = (id: string, label: string, display: string, value?: number) =>
@@ -41,7 +41,7 @@ export function computeFacts(view: ChartView, profile: DataProfile, rows: Row[],
   add('record_count', 'records in the chart', whole.format(subset.length));
   if (view.filters.length > 0) add('scope', 'the slice the chart looks at', view.filters.map((f) => f.value).join(', '));
 
-  const g = groupView(view, profile, rows);
+  const g = grouping !== undefined ? grouping : groupView(view, profile, rows);
   if (g && g.groups.length > 0) {
     const mean = g.aggregate === 'mean';
     const many = rowNounOf(roles).many;

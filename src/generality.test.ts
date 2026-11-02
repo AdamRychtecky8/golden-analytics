@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { runChecks } from './checks';
 import { datasetFindings } from './datasetFindings';
+import { computeFacts } from './facts';
 import { degenerateDatasets, mulberry32, randomDataset, type Generated } from './fixtures/generateDataset';
 import { groupView } from './groups';
 import { loadHighlight, rulesHighlight } from './highlight';
@@ -84,6 +85,14 @@ describe('generality: invariants on generated datasets', () => {
       const profile = profileDataset(d.columns, d.rows);
       expect(datasetFindings(checked(viewsFor(d), profile, d.rows, d.roles), d.rows)).toEqual(datasetFindings(checked(viewsFor(d), profile, d.rows, d.roles), d.rows));
     }
+  });
+
+  it('a grouping passed in gives the same findings and facts as one computed inside', () => {
+    forEveryView((d, view, profile) => {
+      const g = groupView(view, withRoleMeasures(profile, d.roles), d.rows);
+      expect(runChecks(view, profile, d.rows, d.roles, g)).toEqual(runChecks(view, profile, d.rows, d.roles));
+      expect(computeFacts(view, profile, d.rows, d.roles, g)).toEqual(computeFacts(view, profile, d.rows, d.roles));
+    });
   });
 
   it('is not passing vacuously: every check fires, and average-only measures are asked for sums', () => {

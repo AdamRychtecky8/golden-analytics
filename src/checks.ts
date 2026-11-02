@@ -480,14 +480,16 @@ const skipAll = (reason: string): CheckRun => ({ findings: [], skipped: CHECKS.m
 
 /**
  * Runs every check on a view's chart. Roles default to unknown (an uploaded CSV); checks
- * that need a role then skip. Columns with the "id" role are never scanned.
+ * that need a role then skip. Columns with the "id" role are never scanned. A caller that
+ * has already grouped the view may pass that grouping (groupView of the view with
+ * withRoleMeasures(profile, roles)), so the rows aren't grouped twice.
  */
-export function runChecks(view: ChartView, profile: DataProfile, rows: Row[], roles: Roles = UNKNOWN_ROLES): CheckRun {
+export function runChecks(view: ChartView, profile: DataProfile, rows: Row[], roles: Roles = UNKNOWN_ROLES, grouping?: Grouping | null): CheckRun {
   const idField = view.fields.find((f) => roleOf(roles, f) === 'id');
   if (idField) return skipAll(`"${idField}" has the id role: ids are counted, never checked`);
   // With roles, a number's role (not its name) decides whether it may be summed.
   profile = withRoleMeasures(profile, roles);
-  const g = groupView(view, profile, rows);
+  const g = grouping !== undefined ? grouping : groupView(view, profile, rows);
   if (!g) return skipAll('this chart has no single list of groups (scatter, histogram, or heatmap)');
   if (g.groups.length === 0) return skipAll('the chart has no groups');
 

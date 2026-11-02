@@ -99,15 +99,15 @@ export function buildCard(
   asked: { reframe: 'causal' | 'forecast' | null } | null = null,
 ): Card {
   const noun = rowNounOf(roles);
-  const base = computeFacts(view, profile, rows, roles);
+  // The view's groups, computed once for the facts, the checks, and the card: with roles, a
+  // number's role (not its name) decides whether it is summed or averaged.
+  const g = groupView(view, withRoleMeasures(profile, roles), rows);
+  const base = computeFacts(view, profile, rows, roles, g);
   const extra: Fact[] = [
     { id: 'many', label: 'what the rows are called', display: noun.many },
     { id: 'one', label: 'what one row is called', display: noun.one },
   ];
   const add = (id: string, label: string, display: string) => extra.push({ id, label, display });
-  // The same groups the checks and facts use: with roles, a number's role (not its name)
-  // decides whether it is summed or averaged.
-  const g = groupView(view, withRoleMeasures(profile, roles), rows);
   const field = g?.field.name ?? view.fields[0];
   add('field', 'what the groups are', field);
   if (g?.timeUnit) add('unit', 'the length of one period', g.timeUnit);
@@ -115,7 +115,7 @@ export function buildCard(
   const label = (x: string) => groupLabel(roles, field, x);
   if (view.filters.length > 0) add('scope_where', 'the slice', whereText(view.filters));
 
-  const findings = runChecks(view, profile, rows, roles).findings;
+  const findings = runChecks(view, profile, rows, roles, g).findings;
   const routed = (s: SectionId) => findings.filter((f) => ROUTES[f.id][f.severity] === s);
 
   // The dataset line: an entity this view's findings name, which shapes several charts.

@@ -1,6 +1,6 @@
 import { isMissing, type Row } from './aggregate';
 import { runChecks, type Finding } from './checks';
-import { groupView } from './groups';
+import { groupView, type Grouping } from './groups';
 import { filterRows, whereText, type ChartView, type PathFilter } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
 import { facetOf, roleOf, rowNounOf, withRoleMeasures, type Facet, type Roles } from './roles';
@@ -82,6 +82,7 @@ export function buildMenu(profile: DataProfile, rows: Row[], roles: Roles, filte
   const unrendered: string[] = [];
   const make = (kind: OptionKind, column: ColumnProfile, measure: string | null, repairs: string | null = null): Option | null => {
     const view: ChartView = { fields: measure ? [column.name, measure] : [column.name], aggregate: 'sum', filters };
+    const g = groupView(view, effective, rows); // once, for the checks and the effect size
     const flag = role(column) === 'flag';
     const template =
       kind === 'trend'
@@ -103,8 +104,8 @@ export function buildMenu(profile: DataProfile, rows: Row[], roles: Roles, filte
       column: column.name,
       measure,
       facet: kind === 'comparison' ? facetOf(roles, column.name) : null,
-      findings: runChecks(view, profile, rows, roles).findings,
-      effect: effectSize(kind, view, effective, rows),
+      findings: runChecks(view, profile, rows, roles, g).findings,
+      effect: effectSize(kind, g),
       repairs,
     };
   };
@@ -126,13 +127,12 @@ export function buildMenu(profile: DataProfile, rows: Row[], roles: Roles, filte
 }
 
 /**
- * The spec's effect size, a tie-breaker within one kind. Comparison: the effective number of
+ * An option's effect size, from its view's groups: a tie-breaker within one kind. Comparison: the effective number of
  * groups, 1 ÷ Σ share², which is how many real contenders there are (it rewards spread, never
  * dominance, which the concentration check penalizes). Trend: peak period ÷ trough period,
  * over periods with records. Null when the total or the trough is zero or less.
  */
-export function effectSize(kind: OptionKind, view: ChartView, profile: DataProfile, rows: Row[]): number | null {
-  const g = groupView(view, profile, rows);
+export function effectSize(kind: OptionKind, g: Grouping | null): number | null {
   if (!g || g.groups.length === 0) return null;
   if (kind === 'comparison') {
     if (g.total === null || g.total <= 0) return null;
