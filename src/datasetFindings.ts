@@ -4,7 +4,7 @@ import type { ChartView } from './paths';
 
 // Dataset-level findings: when the same entity drives findings in several charts, that's a
 // fact about the whole dataset ("one author drives a third of all revenue"), so the UI can
-// say it once instead of on every card. Engine only; nothing shows these yet.
+// say it once instead of on every card (the card's dataset line, card.ts).
 
 // Once is one chart's story; twice or more is a pattern in the data.
 export const DATASET_MIN_VIEWS = 2;
