@@ -31,7 +31,7 @@ interface FlowCardProps {
 }
 
 /**
- * The present card (SPEC "The flow", step 4): the question, the chart with the headline's
+ * The present card (DESIGN.md, "The card"): the question, the chart with the headline's
  * group in the accent, then Key talking points, Caution around these, If they ask, and What
  * this data can't tell you. Code writes every block from facts (card.ts); the AI may reword
  * some; every block is editable, and the user's words always win. A node with no question

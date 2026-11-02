@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './loadCsv';
 
-// Generality rule (SPEC "Generality"): app code is keyed to roles, facets, and data shape,
+// Generality rule (DESIGN.md, "Generality"): app code is keyed to roles, facets, and data shape,
 // never to column names or values. This test fails if a string literal in app code exactly
 // equals a Bookshop column name or category/entity/flag value (ignoring case), unless it is on
 // the allowlist below with a reason. Comments don't run, so Bookshop examples in comments are

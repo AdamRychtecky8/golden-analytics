@@ -3,7 +3,7 @@ import { currentNode, nodeById, nodeLabel, pathTo, questionsExplored, type FlowN
 import { layoutMap, moreId, type MapItem } from '../mapLayout';
 import { personaColor, personaInitial } from '../personas';
 
-// The map of everything explored (SPEC "The flow", step 5), as in the wireframe. Collapsed
+// The map of everything explored (DESIGN.md, "The flow", step 5). Collapsed
 // by default to one line: the path to the current question. Expanded: the whole tree, left
 // to right, one column per depth. Positions come from layoutMap (pure, tested); this
 // component only draws them.

@@ -40,7 +40,7 @@ export default function App() {
 
   const profile = useMemo(() => profileDataset(dataset.columns, dataset.rows), [dataset]);
   // The demo data comes with its contract; an uploaded CSV has none, so checks that need a
-  // role skip and the menu has no facets (SPEC "Generality").
+  // role skip and the menu has no facets (DESIGN.md, "Generality").
   const roles = useMemo(() => (dataset.demo ? bookshopRoles(dataset.columns) : UNKNOWN_ROLES), [dataset]);
   const labels = useMemo<LabelContext>(
     () => ({ many: rowNounOf(roles).many, typeOf: (f) => profile.columns.find((c) => c.name === f)?.type }),

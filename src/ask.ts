@@ -9,7 +9,7 @@ import { roleOf, rowNounOf, withRoleMeasures, type Facet, type Role, type Roles 
 import { fillSlots } from './templates';
 import { MAX_FILTERS, whereText, type ChartView, type ViewFilter } from './views';
 
-// "Ask your own question" (SPEC "Prompt-a-path"): the most regulated AI piece. The AI turns
+// "Ask your own question" (DESIGN.md, "Asking your own question"): the most regulated AI piece. The AI turns
 // the user's text into a structured result (build, clarify, reframe, refuse) and never
 // writes an answer or a number. Code then decides what the user sees: it validates every
 // chart the AI proposes, runs its own guard for causal and forecasting words on the user's

@@ -8,7 +8,7 @@ import { rowNounOf, type Facet, type Roles } from './roles';
 import { fillSlots } from './templates';
 import type { ViewFilter } from './views';
 
-// The highlight (SPEC "The highlight"): gates, then rank, no weights. Code decides which
+// The highlight (DESIGN.md, "The highlight"): gates, then rank, no weights. Code decides which
 // options are eligible (no misleading finding). The AI may pick one of those for the persona
 // and say why in one line with no digits; code checks its answer. Without a key, or if the
 // AI's answer fails a check, rules pick, the same way every time.

@@ -1,7 +1,7 @@
 import { DEFAULT_PERSONA, type Persona } from './personas';
 import { MAX_FILTERS, whereText, type ChartView, type ViewFilter } from './views';
 
-// The flow tree (SPEC "The flow", step 5). Every question the user looks at is a node, and
+// The flow tree (DESIGN.md, "The flow", step 5). Every question the user looks at is a node, and
 // nothing is ever deleted: branching from an earlier node adds a sibling, it doesn't
 // replace anything. A node stores only its spec (what to show, for whom); the chart, the
 // checks, the menu, and the highlight are recomputed from it by pure functions, so the tree
@@ -99,7 +99,7 @@ export interface LabelContext {
 }
 
 /**
- * A short label for the map, as in the wireframe: "Data", "format · items sold",
+ * A short label for the map: "Data", "format · items sold",
  * "revenue over time", "format is Hardcover" (a slice), "same view, as Researcher".
  */
 export function nodeLabel(n: FlowNode, ctx: LabelContext): string {

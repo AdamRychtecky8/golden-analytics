@@ -145,7 +145,7 @@ describe('labels and paths', () => {
   const types: Record<string, 'nominal' | 'quantitative' | 'temporal'> = { genre: 'nominal', format: 'nominal', revenue: 'quantitative', price: 'quantitative', 'sale date': 'temporal' };
   const ctx = { many: 'items sold', typeOf: (f: string) => types[f] };
 
-  it('labels each kind of node as the wireframe does, and lists the path from the root', () => {
+  it('labels each kind of node, and lists the path from the root', () => {
     const s = run([pick('a', ['genre', 'revenue']), deeper('genre', 'Fiction'), { type: 'persona', persona: PRESETS[2] }]);
     expect(pathTo(s, here(s)).map((n) => nodeLabel(n, ctx))).toEqual(['Data', 'genre · revenue', 'genre is Fiction', 'same view, as Researcher']);
   });

@@ -2,8 +2,9 @@
 
 ## What this project is
 Adam Rychtecky's submission for the Golden Analytics Software Engineer Intern (Summer 2027) technical challenge. Due **Nov 9, 2026**.
-- The brief: `docs/context/brief.md`
-- Company context and values: `docs/context/company.md`
+- The brief: `docs/context/brief.md` (local only, gitignored)
+- Company context and values: `docs/context/company.md` (local only, gitignored)
+- What the app is and why: `docs/DESIGN.md` (for reviewers; reasons live in `docs/DECISIONS.md`)
 
 The brief says the reviewers want proof that Adam guided the AI to build what *he* wanted, not what the AI wanted. Every rule below serves that.
 
@@ -21,7 +22,7 @@ The brief says the reviewers want proof that Adam guided the AI to build what *h
 
 ## Teaching (important)
 Adam reads React/TypeScript through AI; he does not write it from memory. The goal is reading literacy: enough to understand and defend every file in an interview.
-- **Explanations go in `docs/LEARNING.md`, not in chat.** When you add a file or a new pattern, update LEARNING.md (file map, pattern list, defend-this questions) in the same commit.
+- **Explanations go in `docs/LEARNING.md`, not in chat.** It is Adam's private study guide: gitignored, local only, so the review chat can't read it. When you add a file or a new pattern, update LEARNING.md (file map, pattern list, defend-this questions) in the same piece of work.
 - The first time a new pattern appears (a hook, prop types, a generic, a reducer, an effect…), explain it in 2–3 plain sentences: what it does and why it is here instead of the alternative.
 - Prefer simple, readable code over clever code. If something must be clever, comment why.
 - When asked "why does this work," answer the mechanism, not just the behavior.

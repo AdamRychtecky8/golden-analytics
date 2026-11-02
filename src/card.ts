@@ -12,7 +12,7 @@ import { groupIsPlural, groupLabel, roleOf, rowNounOf, withRoleMeasures, type Ro
 import { fillTemplate } from './templates';
 import { whereText, type ChartView } from './views';
 
-// The present card (SPEC "The flow", step 4): Key talking points, Caution around these, If
+// The present card (DESIGN.md, "The card"): Key talking points, Caution around these, If
 // they ask, What this data can't tell you. Code builds every block from facts (D-052): each
 // is a template whose slots name facts, filled by fillTemplate, so the card works with no AI
 // and every number on it is traceable. The AI may later rephrase some blocks (cardAi.ts).

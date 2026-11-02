@@ -16,7 +16,7 @@ interface MenuRailProps {
 }
 
 /**
- * The menu for the current scope, as in the wireframe: the highlighted question first, with
+ * The menu for the current scope: the highlighted question first, with
  * its label and reason, then every other option in menu order (a trap stays an ordinary
  * item, and a repair sits right after the option it repairs), any notice, and "Build my own
  * chart" at the bottom.

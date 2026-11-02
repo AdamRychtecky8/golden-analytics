@@ -1,5 +1,5 @@
 {
-  "about": "Evaluation set for 'Ask your own question' (SPEC Prompt-a-path, D-077). Each case: the prompt, the slice the user is in (scope), what code should end up showing (expect; arrays mean any of these), and a faked AI reply (fake) for the unit tests. fakeOnly cases use a deliberately wrong AI reply to prove code catches it; npm run eval:ask skips them, since a real model shouldn't produce them. Specs: fields in any order, aggregate defaults to sum, filters in any order.",
+  "about": "Evaluation set for 'Ask your own question' (DESIGN.md, D-077). Each case: the prompt, the slice the user is in (scope), what code should end up showing (expect; arrays mean any of these), and a faked AI reply (fake) for the unit tests. fakeOnly cases use a deliberately wrong AI reply to prove code catches it; npm run eval:ask skips them, since a real model shouldn't produce them. Specs: fields in any order, aggregate defaults to sum, filters in any order.",
   "cases": [
     {
       "id": "build-plain",

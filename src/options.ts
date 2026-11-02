@@ -6,7 +6,7 @@ import { facetOf, roleOf, rowNounOf, withRoleMeasures, type Facet, type Roles } 
 import { fillSlots } from './templates';
 import { filterRows, whereText, type ChartView, type ViewFilter } from './views';
 
-// The menu of options (SPEC "The flow", step 1). Code builds every option from the data's
+// The menu of options (DESIGN.md, "The flow", step 1). Code builds every option from the data's
 // columns, roles, and shape; the AI may later pick one of them, but never writes one. Each
 // option carries its checks' findings, so code can tell which ones are safe to recommend.
 

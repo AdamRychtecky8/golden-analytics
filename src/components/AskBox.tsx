@@ -14,7 +14,7 @@ interface AskBoxProps {
 }
 
 /**
- * "Ask your own question" (SPEC "Prompt-a-path"). The AI only translates the question; code
+ * "Ask your own question" (DESIGN.md, "Asking your own question"). The AI only translates the question; code
  * decides the result and writes every message (ask.ts). Nothing is built until the user
  * clicks "Use this": the translated chart is shown in plain words first.
  */
