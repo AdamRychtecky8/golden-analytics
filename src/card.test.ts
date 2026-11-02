@@ -16,7 +16,7 @@ if (!loaded.ok) throw new Error('bookshop failed to parse');
 const { columns, rows } = loaded.dataset;
 const profile = profileDataset(columns, rows);
 const roles = bookshopRoles(columns);
-const dataset = datasetFindings(buildOptions(profile, rows, roles).map((o) => o.view), profile, rows, roles);
+const dataset = datasetFindings(buildOptions(profile, rows, roles), rows);
 const view = (fields: string[], filters: ChartView['filters'] = []): ChartView => ({ fields, aggregate: 'sum', filters });
 const card = (fields: string[]) => buildCard(view(fields), profile, rows, roles, dataset);
 const allText = (c: Card) =>

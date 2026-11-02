@@ -1,10 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { Row } from './aggregate';
+import { runChecks } from './checks';
 import { DATASET_MIN_VIEWS, datasetFindings } from './datasetFindings';
 import { parseCsv } from './loadCsv';
-import { profileDataset } from './profile';
-import { bookshopRoles, parseRoles, roleOf, UNKNOWN_ROLES } from './roles';
+import type { ChartView } from './paths';
+import { profileDataset, type DataProfile } from './profile';
+import { bookshopRoles, parseRoles, roleOf, UNKNOWN_ROLES, type Roles } from './roles';
+
+/** Each view with its checks' findings, as datasetFindings takes them. */
+const checked = (vs: ChartView[], p: DataProfile, rs: Row[], r: Roles) => vs.map((view) => ({ view, findings: runChecks(view, p, rs, r).findings }));
 
 const loaded = parseCsv(readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8'), 'bookshop', true);
 if (!loaded.ok) throw new Error('bookshop failed to parse');
@@ -21,7 +26,7 @@ const views = columns
   ]);
 
 describe('datasetFindings on the Bookshop data', () => {
-  const found = datasetFindings(views, profile, rows, roles);
+  const found = datasetFindings(checked(views, profile, rows, roles), rows);
 
   it('reports Bianca Thompson once, across the six charts she drives', () => {
     // Not the two series charts: her series has only her as author, so that finding is true
@@ -57,7 +62,7 @@ describe('datasetFindings on the Bookshop data', () => {
   });
 
   it('finds nothing without roles, since no column is known to be an entity', () => {
-    expect(datasetFindings(views, profile, rows, UNKNOWN_ROLES)).toEqual([]);
+    expect(datasetFindings(checked(views, profile, rows, UNKNOWN_ROLES), rows)).toEqual([]);
   });
 });
 
@@ -79,7 +84,7 @@ describe('datasetFindings, synthetic', () => {
     );
     if (!r.ok) throw new Error();
     const vs = ['genre', 'store'].map((c) => ({ fields: [c, 'revenue'], aggregate: 'sum' as const, filters: [] }));
-    const found = datasetFindings(vs, profileDataset(cols, data), data, r.roles);
+    const found = datasetFindings(checked(vs, profileDataset(cols, data), data, r.roles), data);
     expect(found).toHaveLength(1);
     expect(found[0]).toMatchObject({ entity: 'Ann', shares: [{ measure: 'revenue', share: 30 / 145 }] });
     expect(found[0].views.map((v) => v.checks)).toEqual([['fragile'], ['fragile']]);

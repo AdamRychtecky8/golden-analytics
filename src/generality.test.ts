@@ -9,8 +9,12 @@ import type { ChartView } from './paths';
 import { readFileSync } from 'node:fs';
 import { parseCsv } from './loadCsv';
 import { PRESETS, customPersona } from './personas';
-import { profileDataset } from './profile';
-import { bookshopRoles, withRoleMeasures } from './roles';
+import { profileDataset, type DataProfile } from './profile';
+import { bookshopRoles, withRoleMeasures, type Roles } from './roles';
+import type { Row } from './aggregate';
+
+/** Each view with its checks' findings, as datasetFindings takes them. */
+const checked = (vs: ChartView[], p: DataProfile, rs: Row[], r: Roles) => vs.map((view) => ({ view, findings: runChecks(view, p, rs, r).findings }));
 
 // Property tests: invariants that must hold on any dataset, not just Bookshop. The datasets
 // are generated from seeds (src/fixtures/generateDataset.ts); a failure names the seed and
@@ -56,7 +60,7 @@ describe('generality: invariants on generated datasets', () => {
     forEveryView((d, view, profile) => {
       runChecks(view, profile, d.rows, d.roles);
     });
-    for (const d of datasets) datasetFindings(viewsFor(d), profileDataset(d.columns, d.rows), d.rows, d.roles);
+    for (const d of datasets) datasetFindings(checked(viewsFor(d), profileDataset(d.columns, d.rows), d.rows, d.roles), d.rows);
   });
 
   it('an average-only measure is never summed, by roles when known and by name when not', () => {
@@ -78,7 +82,7 @@ describe('generality: invariants on generated datasets', () => {
     });
     for (const d of datasets) {
       const profile = profileDataset(d.columns, d.rows);
-      expect(datasetFindings(viewsFor(d), profile, d.rows, d.roles)).toEqual(datasetFindings(viewsFor(d), profile, d.rows, d.roles));
+      expect(datasetFindings(checked(viewsFor(d), profile, d.rows, d.roles), d.rows)).toEqual(datasetFindings(checked(viewsFor(d), profile, d.rows, d.roles), d.rows));
     }
   });
 

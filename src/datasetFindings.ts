@@ -1,8 +1,6 @@
 import { isMissing, parseNumber, type Row } from './aggregate';
-import { runChecks, type CheckId } from './checks';
+import type { CheckId, Finding } from './checks';
 import type { ChartView } from './paths';
-import type { DataProfile } from './profile';
-import type { Roles } from './roles';
 
 // Dataset-level findings: when the same entity drives findings in several charts, that's a
 // fact about the whole dataset ("one author drives a third of all revenue"), so the UI can
@@ -45,15 +43,15 @@ function shareOf(rows: Row[], column: string, entity: string, measure: string | 
 }
 
 /**
- * Runs the checks on every view and reports each entity that drives findings in at least
- * DATASET_MIN_VIEWS of them, most views first (then by column and name, so the order is fixed).
+ * Reports each entity that drives findings in at least DATASET_MIN_VIEWS of these charts,
+ * most views first (then by column and name, so the order is fixed). Each chart comes with
+ * the findings its checks already found (menu options carry them), so nothing is checked twice.
  */
-export function datasetFindings(views: ChartView[], profile: DataProfile, rows: Row[], roles: Roles): DatasetFinding[] {
+export function datasetFindings(checked: { view: ChartView; findings: Finding[] }[], rows: Row[]): DatasetFinding[] {
   const found = new Map<string, { column: string; entity: string; views: DatasetFinding['views']; measures: Set<string | null> }>();
-  for (const view of views) {
-    const run = runChecks(view, profile, rows, roles);
+  for (const { view, findings } of checked) {
     const inThisView = new Map<string, CheckId[]>();
-    for (const f of run.findings) {
+    for (const f of findings) {
       const named = namedEntity(f.evidence as { check: string } & Record<string, unknown>);
       if (!named) continue;
       const key = JSON.stringify([named.column, named.entity]);

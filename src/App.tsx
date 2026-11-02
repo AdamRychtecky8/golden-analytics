@@ -62,7 +62,7 @@ export default function App() {
   );
   const highlight = useHighlight(datasetId, profile, roles, node.persona, filters, options);
   // Entities that shape several charts, found once over the top-level menu (the whole data).
-  const shared = useMemo(() => datasetFindings(topOptions.map((o) => o.view), profile, dataset.rows, roles), [topOptions, profile, dataset.rows, roles]);
+  const shared = useMemo(() => datasetFindings(topOptions, dataset.rows), [topOptions, dataset.rows]);
 
   function switchDataset(next: Dataset) {
     setDataset(next);

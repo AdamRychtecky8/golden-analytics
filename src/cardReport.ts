@@ -20,7 +20,7 @@ export function cardsReport(): string {
   const profile = profileDataset(columns, rows);
   const roles = bookshopRoles(columns);
   const menu = buildOptions(profile, rows, roles);
-  const dataset = datasetFindings(menu.map((o) => o.view), profile, rows, roles);
+  const dataset = datasetFindings(menu, rows);
   const views = menu.map((o) => o.view);
   // A slice: the first comparison narrowed to its top group, seen through the next comparison.
   const first = menu.find((o) => o.kind === 'comparison');
