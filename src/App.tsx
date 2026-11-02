@@ -53,10 +53,16 @@ export default function App() {
   // slice hold equal but separate filter lists, so the memo is keyed on their content (as
   // text) and reads the filters back from it: moving between them doesn't rebuild the menu.
   const filterKey = JSON.stringify(filters);
-  const options = useMemo(() => buildOptions(profile, dataset.rows, roles, JSON.parse(filterKey)), [profile, dataset.rows, roles, filterKey]);
+  // The whole-data menu is built once per dataset: it is the top level's menu, and the
+  // dataset-level findings read it, so returning to the top doesn't rebuild it.
+  const topOptions = useMemo(() => buildOptions(profile, dataset.rows, roles), [profile, dataset.rows, roles]);
+  const options = useMemo(
+    () => (filterKey === '[]' ? topOptions : buildOptions(profile, dataset.rows, roles, JSON.parse(filterKey))),
+    [topOptions, profile, dataset.rows, roles, filterKey],
+  );
   const highlight = useHighlight(datasetId, profile, roles, node.persona, filters, options);
   // Entities that shape several charts, found once over the top-level menu (the whole data).
-  const shared = useMemo(() => datasetFindings(buildOptions(profile, dataset.rows, roles).map((o) => o.view), profile, dataset.rows, roles), [profile, dataset.rows, roles]);
+  const shared = useMemo(() => datasetFindings(topOptions.map((o) => o.view), profile, dataset.rows, roles), [topOptions, profile, dataset.rows, roles]);
 
   function switchDataset(next: Dataset) {
     setDataset(next);
