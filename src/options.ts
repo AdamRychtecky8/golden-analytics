@@ -1,7 +1,7 @@
 import { isMissing, type Row } from './aggregate';
 import { runChecks, type Finding } from './checks';
 import { groupView } from './groups';
-import { filterRows, type ChartView, type PathFilter } from './paths';
+import { filterRows, whereText, type ChartView, type PathFilter } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
 import { facetOf, roleOf, rowNounOf, withRoleMeasures, type Facet, type Roles } from './roles';
 
@@ -42,8 +42,7 @@ const fill = (template: string, slots: Record<string, string>) => template.repla
 /** A question inside a slice (approved by Adam): "…? " becomes "… where genre is Fiction and format is Hardcover?" */
 export function scopeQuestion(question: string, filters: PathFilter[]): string {
   if (filters.length === 0) return question;
-  const where = filters.map((f) => `${f.field} is ${f.value}`).join(' and ');
-  return `${question.replace(/\?$/, '')} where ${where}?`;
+  return `${question.replace(/\?$/, '')} where ${whereText(filters)}?`;
 }
 
 /**

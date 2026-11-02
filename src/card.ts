@@ -5,8 +5,9 @@ import { chooseRule } from './chartRules';
 import { runChecks, type CheckId, type Evidence, type Finding, type Severity } from './checks';
 import type { DatasetFinding } from './datasetFindings';
 import { computeFacts, type Fact } from './facts';
+import { ordinal, percent, whole } from './format';
 import { groupView, periodLabel } from './groups';
-import type { ChartView } from './paths';
+import { whereText, type ChartView } from './paths';
 import type { DataProfile } from './profile';
 import { groupIsPlural, groupLabel, roleOf, rowNounOf, type Roles } from './roles';
 import { fillTemplate } from './templates';
@@ -82,9 +83,6 @@ export interface Card {
   unrendered: CheckId[];
 }
 
-const percent = (x: number) => `${Math.round(x * 100)}%`;
-const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
-const whole = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
 /**
  * The card for a view. `dataset` is the dataset-level findings (datasetFindings over the
@@ -113,7 +111,7 @@ export function buildCard(
   if (g?.timeUnit) add('unit', 'the length of one period', g.timeUnit);
   // A yes/no group reads as the contract names it, or "award winner: no" (same as facts.ts).
   const label = (x: string) => groupLabel(roles, field, x);
-  if (view.filters.length > 0) add('scope_where', 'the slice', view.filters.map((f) => `${f.field} is ${f.value}`).join(' and '));
+  if (view.filters.length > 0) add('scope_where', 'the slice', whereText(view.filters));
 
   const findings = runChecks(view, profile, rows, roles).findings;
   const routed = (s: SectionId) => findings.filter((f) => ROUTES[f.id][f.severity] === s);

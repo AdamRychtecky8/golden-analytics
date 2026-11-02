@@ -1,5 +1,6 @@
 import { aggregateValues, allBuckets, bucketStart, isMissing, parseDate, parseNumber, type Aggregate, type Row, type TimeUnit } from './aggregate';
 import { chooseRule, effectiveAggregate } from './chartRules';
+import { isoDay } from './format';
 import { filterRows, type ChartView } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
 
@@ -65,7 +66,7 @@ export function groupView(view: ChartView, profile: DataProfile, rows: Row[]): G
     const byBucket = new Map<number, number[]>(buckets.map((b) => [b, []]));
     for (const r of subset) byBucket.get(bucketStart(parseDate(r[date.name])!, unit))!.push(measure ? parseNumber(r[measure.name])! : 1);
     const groups = [...byBucket].map(([start, nums]) => ({
-      label: new Date(start).toISOString().slice(0, 10),
+      label: isoDay(start),
       records: nums.length,
       value: measure ? aggregateValues(nums, how) : nums.length,
     }));

@@ -1,5 +1,6 @@
 import { isMissing, parseNumber, type Row } from './aggregate';
 import { chooseRule, effectiveAggregate } from './chartRules';
+import { percent, signedPercent, twoPlaces, whole } from './format';
 import { groupView, periodLabel } from './groups';
 import { filterRows, type ChartView } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
@@ -18,12 +19,8 @@ export interface Fact {
   plural?: boolean; // a group whose name is plural ("award winners"): templates say "are"
 }
 
-const whole = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-const twoPlaces = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** Big totals as whole numbers (261,964); small values and means with cents (13.59). */
 const amount = (x: number, mean: boolean) => (mean || Math.abs(x) < 100 ? twoPlaces.format(x) : whole.format(x));
-const percent = (x: number) => `${Math.round(x * 100)}%`;
-const signedPercent = (x: number) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(Math.round(x * 100))}%`;
 
 /**
  * Every fact code can state about a view's chart. Charts that compare nothing give only the

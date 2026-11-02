@@ -4,7 +4,7 @@ import { SECTION_TITLES } from './cardText';
 import { datasetFindings } from './datasetFindings';
 import { parseCsv } from './loadCsv';
 import { buildOptions } from './options';
-import type { ChartView } from './paths';
+import { whereText, type ChartView } from './paths';
 import { profileDataset } from './profile';
 import { bookshopRoles } from './roles';
 
@@ -31,7 +31,7 @@ export function cardsReport(): string {
 }
 
 function render(view: ChartView, card: Card): string {
-  const scope = view.filters.length > 0 ? ` (where ${view.filters.map((f) => `${f.field} is ${f.value}`).join(' and ')})` : '';
+  const scope = view.filters.length > 0 ? ` (where ${whereText(view.filters)})` : '';
   const out = [`=== ${view.fields.join(' by ')}${scope}   [highlighted mark: ${card.highlight ?? 'none'}]`];
   if (card.datasetLine) out.push(`  ▸ ${card.datasetLine.text}`);
   out.push(`  ${SECTION_TITLES.talk.toUpperCase()}`, `    Headline${card.headline.locked ? ' (locked)' : ''}: ${card.headline.text}`, ...card.points.map((p) => `    • ${p.text}`));

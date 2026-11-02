@@ -1,5 +1,6 @@
 import { isMissing, type Aggregate, type Row } from './aggregate';
 import { buildChart, type ChartResult } from './chartRules';
+import { isoDay } from './format';
 import type { ColumnProfile, DataProfile, FieldType } from './profile';
 import type { Persona } from './personas';
 
@@ -42,8 +43,6 @@ export interface AiContext {
   persona: Pick<Persona, 'domain' | 'role' | 'purpose'>;
 }
 
-const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-
 /** Copies only the summary fields out of the profile. Bins and anything row-level stay home. */
 export function summarizeProfile(profile: DataProfile): AiContext['profile'] {
   return {
@@ -52,7 +51,7 @@ export function summarizeProfile(profile: DataProfile): AiContext['profile'] {
       const base: ColumnSummary = { name: c.name, type: c.type, missing: c.missing, distinct: c.distinct };
       if (c.count === 0) return base;
       if (c.type === 'quantitative') return { ...base, measure: c.measure, min: c.min, max: c.max };
-      if (c.type === 'temporal') return { ...base, min: isoDate(c.min!), max: isoDate(c.max!) };
+      if (c.type === 'temporal') return { ...base, min: isoDay(c.min!), max: isoDay(c.max!) };
       return { ...base, topValues: c.topValues };
     }),
   };
@@ -66,6 +65,9 @@ export function filterRows(rows: Row[], filters: PathFilter[]): Row[] {
   if (filters.length === 0) return rows;
   return rows.filter((r) => filters.every((f) => !isMissing(r[f.field]) && r[f.field].trim() === f.value));
 }
+
+/** "genre is Fiction and format is Hardcover": a slice in words, wherever one is named. */
+export const whereText = (filters: PathFilter[]) => filters.map((f) => `${f.field} is ${f.value}`).join(' and ');
 
 /** "genre = Fiction · format = Hardcover", for titles. */
 export function describeFilters(filters: PathFilter[], joiner = ' · '): string {
@@ -92,7 +94,7 @@ export function chartForView(
   const subset = filterRows(rows, view.filters);
   const chart = buildChart(cols, subset, { aggregate: view.aggregate, ...options });
   if (!chart || view.filters.length === 0) return chart;
-  const where = view.filters.map((f) => `${f.field} is ${f.value}`).join(' and ');
+  const where = whereText(view.filters);
   return {
     ...chart,
     title: `${chart.title} · ${describeFilters(view.filters)}`,

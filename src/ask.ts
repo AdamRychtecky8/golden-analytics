@@ -1,8 +1,8 @@
 import { isMissing, type Row } from './aggregate';
 import { askAi, type AskOptions } from './aiRequest';
 import { ASK_TEXT } from './askText';
-import { canSum, chooseRule, usesAggregate } from './chartRules';
-import { MAX_FILTERS, summarizeProfile, type AiContext, type ChartView, type PathFilter } from './paths';
+import { canSum, chooseRule, effectiveAggregate, usesAggregate } from './chartRules';
+import { MAX_FILTERS, summarizeProfile, whereText, type AiContext, type ChartView, type PathFilter } from './paths';
 import type { Persona } from './personas';
 import type { ColumnProfile, DataProfile } from './profile';
 import { roleOf, rowNounOf, withRoleMeasures, type Facet, type Role, type Roles } from './roles';
@@ -298,14 +298,14 @@ export function describeSpec(spec: ChartView, profile: DataProfile, roles: Roles
   const date = cols.find((c) => c.type === 'temporal');
   const nums = cols.filter((c) => c.type === 'quantitative');
   const cats = cols.filter((c) => c.type === 'nominal');
-  const mean = spec.aggregate === 'mean' || nums.some((c) => c.measure !== 'additive');
+  const mean = effectiveAggregate(cols, spec.aggregate) === 'mean';
   const measure = nums[0] ? (mean ? `average ${nums[0].name}` : nums[0].name) : many;
   let text: string;
   if (date) text = `${measure} over time${cats[0] ? `, by ${cats[0].name}` : ''}`;
   else if (nums.length === 2) text = `${nums[0].name} against ${nums[1].name}`;
   else if (nums.length === 1 && cats.length === 0) text = `spread of ${nums[0].name}`;
   else text = `${measure} by ${cats.map((c) => c.name).join(' and ')}`;
-  const where = spec.filters.map((f) => `${f.field} is ${f.value}`).join(' and ');
+  const where = whereText(spec.filters);
   const sentence = where ? `${text}, where ${where}` : text;
   return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }

@@ -1,4 +1,4 @@
-import { MAX_FILTERS, type ChartView, type PathFilter } from './paths';
+import { MAX_FILTERS, whereText, type ChartView, type PathFilter } from './paths';
 import { DEFAULT_PERSONA, type Persona } from './personas';
 
 // The flow tree (SPEC "The flow", step 5). Every question the user looks at is a node, and
@@ -106,8 +106,7 @@ export function nodeLabel(n: FlowNode, ctx: LabelContext): string {
   if (n.how === 'root') return 'Data';
   if (n.how === 'persona') return `same view, as ${n.persona.name}`;
   if (n.how === 'deeper') {
-    const f = n.view.filters[n.view.filters.length - 1];
-    return `${f.field} is ${f.value}`;
+    return whereText(n.view.filters.slice(-1));
   }
   const { fields } = n.view;
   const date = fields.find((f) => ctx.typeOf(f) === 'temporal');

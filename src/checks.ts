@@ -1,4 +1,5 @@
 import { isMissing, parseDate, parseNumber, type Row } from './aggregate';
+import { isoDay, ordinal, percent, whole } from './format';
 import { groupView, periodLabel, type Group, type Grouping } from './groups';
 import type { ChartView } from './paths';
 import type { DataProfile } from './profile';
@@ -151,9 +152,6 @@ interface CheckDef {
   run: (ctx: CheckContext) => Finding | null; // null: it ran and found nothing
 }
 
-const num = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
-const pct = (x: number) => `${Math.round(x * 100)}%`;
-const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
 
 export function isMoney(name: string): boolean {
   const words = name.toLowerCase().split(/[^a-z]+/);
@@ -192,7 +190,7 @@ const mix: CheckDef = {
       return {
         id: 'mix',
         severity: 'misleading',
-        text: `${top.label} ranks first by ${m}, but ${most.label} has the most records (${num.format(most.records)} vs ${num.format(top.records)}): price, not volume, puts ${top.label} on top.`,
+        text: `${top.label} ranks first by ${m}, but ${most.label} has the most records (${whole.format(most.records)} vs ${whole.format(top.records)}): price, not volume, puts ${top.label} on top.`,
         evidence: { check: 'mix', measure: m, groups: [ranked(top, 1), ranked(most, byValue.indexOf(most) + 1)] },
         countView,
       };
@@ -265,7 +263,7 @@ const concentration: CheckDef = {
     return {
       id: 'concentration',
       severity: 'caveat', // true of the data as charted; worth saying, not wrong
-      text: `${top.label} holds ${pct(share)} of ${of}, so this chart is mostly about one group.`,
+      text: `${top.label} holds ${percent(share)} of ${of}, so this chart is mostly about one group.`,
       evidence: { check: 'concentration', measure: g.measure?.name ?? null, group: top.label, value, total: g.total!, share, threshold: CONCENTRATION },
     };
   },
@@ -397,7 +395,7 @@ const entity: CheckDef = {
       entitiesInGroup: best.entitiesInGroup,
       threshold: ENTITY_SHARE,
     };
-    const said = `${best.entity} accounts for ${pct(best.share)} of ${m} in ${top.label}.`;
+    const said = `${best.entity} accounts for ${percent(best.share)} of ${m} in ${top.label}.`;
     return best.rankWithout > 1
       ? // The chart's #1 is only #1 because of one entity that is most of it.
         { id: 'entity', severity: 'misleading', text: `${said} Without that ${best.column}, ${top.label} ranks ${ordinal(best.rankWithout)}.`, evidence }
@@ -430,7 +428,7 @@ const fragile: CheckDef = {
     if (ratio === 1) text = `${top.label} is tied with ${second.label}, so ordinary changes could decide first place.`;
     // Every narrow gap is under 10%, so one decimal keeps "4.6%" from rounding to "5%".
     else if (narrow) text = `${top.label} is only ${((ratio - 1) * 100).toFixed(1)}% ahead of ${second.label}, a lead small enough that ordinary changes could erase it.`;
-    else text = `${top.label} leads ${second.label} by ${pct(ratio - 1)}, but without ${flip!.entity} (one ${flip!.column}), ${top.label} ranks ${ordinal(flip!.rankWithout)}.`;
+    else text = `${top.label} leads ${second.label} by ${percent(ratio - 1)}, but without ${flip!.entity} (one ${flip!.column}), ${top.label} ranks ${ordinal(flip!.rankWithout)}.`;
 
     const side = (x: Group) => ({ label: x.label, value: x.value!, records: x.records });
     return {
@@ -465,7 +463,7 @@ const cycle: CheckDef = {
     }
     const days = Math.round((last - first) / 86_400_000);
     if (days > SINGLE_CYCLE_DAYS) return null;
-    const [from, to] = [first, last].map((t) => new Date(t).toISOString().slice(0, 10));
+    const [from, to] = [first, last].map(isoDay);
     return {
       id: 'cycle',
       severity: 'caveat', // the trend is drawn correctly; it just can't say why it moves

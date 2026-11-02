@@ -1,6 +1,6 @@
 import type { Highlight } from '../highlight';
 import type { Option } from '../options';
-import type { PathFilter } from '../paths';
+import { whereText, type PathFilter } from '../paths';
 import type { DataProfile } from '../profile';
 import { BuildChart } from './BuildChart';
 
@@ -28,7 +28,7 @@ export function MenuRail({ options, highlight, filters, currentOptionId, profile
   return (
     <aside className="rail" aria-label="Questions">
       <span className="label">Questions</span>
-      {filters.length > 0 && <p className="rail-scope">where {filters.map((f) => `${f.field} is ${f.value}`).join(' and ')}</p>}
+      {filters.length > 0 && <p className="rail-scope">where {whereText(filters)}</p>}
       {options.length === 0 && (
         <p className="empty-note">No ready-made questions fit here: no column has between 2 and 12 groups in this slice. Build your own chart below.</p>
       )}
