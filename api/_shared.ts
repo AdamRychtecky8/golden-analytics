@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import type { AiContext, ColumnSummary } from '../src/aiProfile.ts';
 // Type-only imports: erased when compiled, so this server file never pulls browser code in.
-import type { AiContext, ColumnSummary } from '../src/paths.ts';
 
 // What every AI handler in api/ shares: reading the request, the one model call, and the
 // error shapes. The leading underscore keeps Vercel from serving this file as an endpoint.

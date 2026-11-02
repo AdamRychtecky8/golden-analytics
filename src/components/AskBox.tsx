@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { MAX_ASK_CHARS, describeSpec, reframeOf, type AskResult } from '../ask';
 import { ASK_TEXT } from '../askText';
-import type { ChartView } from '../paths';
 import type { DataProfile } from '../profile';
 import type { Roles } from '../roles';
+import type { ChartView } from '../views';
 
 interface AskBoxProps {
   ai: boolean | undefined; // whether the server has an AI key

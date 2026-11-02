@@ -37,7 +37,7 @@ export function TopBar(props: TopBarProps) {
 
   return (
     <header className="topbar">
-      <span className="topbar-name">Before you present it</span>
+      <span className="topbar-name">Golden Standard: before you present it</span>
       <span className="dataset-name">
         {dataset.name} · {dataset.rows.length.toLocaleString('en-US')} rows
         {dataset.demo && ' · Fictional demo data'}

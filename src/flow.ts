@@ -1,5 +1,5 @@
-import { MAX_FILTERS, whereText, type ChartView, type PathFilter } from './paths';
 import { DEFAULT_PERSONA, type Persona } from './personas';
+import { MAX_FILTERS, whereText, type ChartView, type ViewFilter } from './views';
 
 // The flow tree (SPEC "The flow", step 5). Every question the user looks at is a node, and
 // nothing is ever deleted: branching from an earlier node adds a sibling, it doesn't
@@ -43,7 +43,7 @@ export interface FlowState {
 
 export type FlowAction =
   | { type: 'pick'; optionId: string; view: ChartView }
-  | { type: 'deeper'; filter: PathFilter }
+  | { type: 'deeper'; filter: ViewFilter }
   | { type: 'persona'; persona: Persona }
   | { type: 'custom'; fields: string[] }
   | { type: 'edit'; block: string; text: string }
@@ -55,7 +55,7 @@ export type FlowAction =
 
 export const MAX_CUSTOM_FIELDS = 2;
 
-const NO_VIEW = (filters: PathFilter[] = []): ChartView => ({ fields: [], aggregate: 'sum', filters });
+const NO_VIEW = (filters: ViewFilter[] = []): ChartView => ({ fields: [], aggregate: 'sum', filters });
 
 export function initialFlow(persona: Persona = DEFAULT_PERSONA): FlowState {
   const root: FlowNode = { id: 'n0', parentId: null, how: 'root', view: NO_VIEW(), persona, optionId: null, edits: {} };

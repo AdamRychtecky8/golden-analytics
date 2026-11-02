@@ -64,7 +64,7 @@ This runs every `*.test.ts` file once with Vitest. The main ones:
 - `src/checks.test.ts`, `src/checks.fixtures.test.ts`: every check on the Bookshop data and on synthetic fixtures.
 - `src/generality.test.ts`: invariants on 200 generated datasets plus degenerate ones.
 - `src/noBookshop.test.ts`: no Bookshop column names or values in app code.
-- `src/profile.test.ts`, `src/chartRules.test.ts`, `src/paths.test.ts`: parsing, chart rules, filtered charts.
+- `src/profile.test.ts`, `src/chartRules.test.ts`, `src/views.test.ts`: parsing, chart rules, filtered charts.
 - `src/card.test.ts`, `src/cardAi.test.ts`: the card's routing, the four Bookshop cards, the headline rule on generated datasets, and every AI fallback.
 - `src/ask.test.ts`: every eval case's faked AI reply through code's validation and guard, the guard words, every invalid chart, unreadable replies, and what the AI is sent.
 - `api/highlight.test.ts`, `api/card.test.ts`, `api/ask.test.ts`: the server handlers, with the Anthropic API faked.

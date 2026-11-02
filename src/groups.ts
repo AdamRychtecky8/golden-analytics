@@ -1,8 +1,8 @@
 import { aggregateValues, allBuckets, bucketStart, isMissing, parseDate, parseNumber, type Aggregate, type Row, type TimeUnit } from './aggregate';
 import { chooseRule, effectiveAggregate } from './chartRules';
 import { isoDay } from './format';
-import { filterRows, type ChartView } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
+import { filterRows, type ChartView } from './views';
 
 // The groups behind a chart, as plain numbers: each bar's category or each line's period,
 // with how many records it holds and its value. The insight checks (checks.ts) and the

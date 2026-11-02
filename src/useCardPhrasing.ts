@@ -1,9 +1,9 @@
 import type { Card } from './card';
 import { loadCardPhrasing, type CardPhrasing } from './cardAi';
-import type { ChartView } from './paths';
 import type { Persona } from './personas';
 import type { DataProfile } from './profile';
 import { useAsyncCache } from './useAsyncCache';
+import type { ChartView } from './views';
 
 /**
  * The AI's wording for a card: asked once per dataset, view, and persona, and remembered.

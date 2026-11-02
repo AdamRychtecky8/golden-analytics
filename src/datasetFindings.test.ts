@@ -4,9 +4,9 @@ import type { Row } from './aggregate';
 import { runChecks } from './checks';
 import { DATASET_MIN_VIEWS, datasetFindings } from './datasetFindings';
 import { parseCsv } from './loadCsv';
-import type { ChartView } from './paths';
 import { profileDataset, type DataProfile } from './profile';
 import { bookshopRoles, parseRoles, roleOf, UNKNOWN_ROLES, type Roles } from './roles';
+import type { ChartView } from './views';
 
 /** Each view with its checks' findings, as datasetFindings takes them. */
 const checked = (vs: ChartView[], p: DataProfile, rs: Row[], r: Roles) => vs.map((view) => ({ view, findings: runChecks(view, p, rs, r).findings }));

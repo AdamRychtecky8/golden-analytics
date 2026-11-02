@@ -2,9 +2,9 @@ import { isMissing, parseNumber, type Row } from './aggregate';
 import { chooseRule, effectiveAggregate } from './chartRules';
 import { percent, signedPercent, twoPlaces, whole } from './format';
 import { groupView, periodLabel, type Grouping } from './groups';
-import { filterRows, type ChartView } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
 import { currencyOf, groupLabel, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
+import { filterRows, type ChartView } from './views';
 
 // Facts: the numbers a card may use, computed in code from the same rows as the chart.
 // Card text is written as templates with slots like {top_share}, and code fills each slot

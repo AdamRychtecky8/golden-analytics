@@ -1,9 +1,9 @@
 import { isMissing, parseDate, parseNumber, type Row } from './aggregate';
 import { isoDay, ordinal, percent, whole } from './format';
 import { groupView, periodLabel, type Group, type Grouping } from './groups';
-import type { ChartView } from './paths';
 import type { DataProfile } from './profile';
 import { roleOf, UNKNOWN_ROLES, withRoleMeasures, type Roles } from './roles';
+import type { ChartView } from './views';
 
 // "Is this really an insight?" checks. Code runs them on every chart and returns any that
 // apply as findings, labeled as a check (never as AI). They catch the common ways a ranking

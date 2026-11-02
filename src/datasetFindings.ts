@@ -1,6 +1,6 @@
 import { isMissing, parseNumber, type Row } from './aggregate';
 import type { CheckId, Finding } from './checks';
-import type { ChartView } from './paths';
+import type { ChartView } from './views';
 
 // Dataset-level findings: when the same entity drives findings in several charts, that's a
 // fact about the whole dataset ("one author drives a third of all revenue"), so the UI can

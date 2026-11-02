@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Row } from './aggregate';
+import { summarizeProfile } from './aiProfile';
 import { profileDataset } from './profile';
-import { chartForView, filterRows, summarizeProfile } from './paths';
+import { chartForView, filterRows } from './views';
 
 const rows: Row[] = [
   { date: '2025-01-10', region: 'West', category: 'Home', units: '4', revenue: '100' },

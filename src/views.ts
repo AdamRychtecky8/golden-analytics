@@ -1,14 +1,12 @@
 import { isMissing, type Aggregate, type Row } from './aggregate';
 import { buildChart, type ChartResult } from './chartRules';
-import { isoDay } from './format';
-import type { ColumnProfile, DataProfile, FieldType } from './profile';
-import type { Persona } from './personas';
+import type { ColumnProfile, DataProfile } from './profile';
 
-// Views: what a chart shows (fields, sum or mean, filters), filtering rows to a slice,
-// drawing a view, and the profile summary an AI handler is allowed to see (D-011).
+// Views: what a chart shows (fields, sum or mean, filters), filtering rows to a slice, and
+// drawing a view. What the AI may see of the data is in aiProfile.ts.
 
 /** Keep only rows where a category column equals one of its actual values. */
-export interface PathFilter {
+export interface ViewFilter {
   field: string;
   value: string;
 }
@@ -17,60 +15,26 @@ export interface PathFilter {
 export interface ChartView {
   fields: string[];
   aggregate: Aggregate;
-  filters: PathFilter[]; // all must hold; empty = every row
+  filters: ViewFilter[]; // all must hold; empty = every row
 }
 
 // A view narrows the data by at most this many filters; each "go deeper" adds one (D-051, D-069).
 export const MAX_FILTERS = 3;
 
 // ---------------------------------------------------------------------------------------
-// What an AI handler is allowed to see (D-011): the profile and the persona, never raw rows.
-
-export interface ColumnSummary {
-  name: string;
-  type: FieldType;
-  missing: number;
-  distinct: number;
-  measure?: 'additive' | 'average'; // numbers only: whether a sum means anything (D-050)
-  min?: number | string; // numbers as numbers, dates as ISO strings
-  max?: number | string;
-  topValues?: { value: string; count: number }[];
-}
-
-/** What every AI request starts with: the profile summary and who the user is. */
-export interface AiContext {
-  profile: { rowCount: number; columns: ColumnSummary[] };
-  persona: Pick<Persona, 'domain' | 'role' | 'purpose'>;
-}
-
-/** Copies only the summary fields out of the profile. Bins and anything row-level stay home. */
-export function summarizeProfile(profile: DataProfile): AiContext['profile'] {
-  return {
-    rowCount: profile.rowCount,
-    columns: profile.columns.map((c) => {
-      const base: ColumnSummary = { name: c.name, type: c.type, missing: c.missing, distinct: c.distinct };
-      if (c.count === 0) return base;
-      if (c.type === 'quantitative') return { ...base, measure: c.measure, min: c.min, max: c.max };
-      if (c.type === 'temporal') return { ...base, min: isoDay(c.min!), max: isoDay(c.max!) };
-      return { ...base, topValues: c.topValues };
-    }),
-  };
-}
-
-// ---------------------------------------------------------------------------------------
 // Turning a view into rows and a chart.
 
 /** The rows every filter keeps. Values are compared trimmed, the way the profiler counts them. */
-export function filterRows(rows: Row[], filters: PathFilter[]): Row[] {
+export function filterRows(rows: Row[], filters: ViewFilter[]): Row[] {
   if (filters.length === 0) return rows;
   return rows.filter((r) => filters.every((f) => !isMissing(r[f.field]) && r[f.field].trim() === f.value));
 }
 
 /** "genre is Fiction and format is Hardcover": a slice in words, wherever one is named. */
-export const whereText = (filters: PathFilter[]) => filters.map((f) => `${f.field} is ${f.value}`).join(' and ');
+export const whereText = (filters: ViewFilter[]) => filters.map((f) => `${f.field} is ${f.value}`).join(' and ');
 
 /** "genre = Fiction · format = Hardcover", for titles. */
-export function describeFilters(filters: PathFilter[], joiner = ' · '): string {
+export function describeFilters(filters: ViewFilter[], joiner = ' · '): string {
   return filters.map((f) => `${f.field} = ${f.value}`).join(joiner);
 }
 

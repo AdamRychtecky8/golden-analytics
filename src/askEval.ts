@@ -1,5 +1,5 @@
 import type { AskResult } from './ask';
-import type { ChartView, PathFilter } from './paths';
+import type { ChartView, ViewFilter } from './views';
 
 // The evaluation set's shape and how a result is compared with what a case expects. Used by
 // the unit tests (with each case's faked AI reply) and by npm run eval:ask (with the model).
@@ -15,7 +15,7 @@ export interface Expectation {
 export interface AskCase {
   id: string;
   prompt: string;
-  scope?: PathFilter[];
+  scope?: ViewFilter[];
   fakeOnly?: boolean; // a deliberately wrong AI reply: unit tests only
   expect: Expectation;
   accept?: Expectation[]; // other answers that are also right, where the question honestly allows them (Adam decides)
@@ -23,7 +23,7 @@ export interface AskCase {
 }
 
 const oneOf = (want: string | string[] | undefined, got: string | null | undefined) => want === undefined || (Array.isArray(want) ? want : [want]).includes(got ?? '');
-const filterKey = (fs: PathFilter[]) => fs.map((f) => `${f.field}=${f.value}`).sort().join('|');
+const filterKey = (fs: ViewFilter[]) => fs.map((f) => `${f.field}=${f.value}`).sort().join('|');
 
 /** Same chart: the same fields in any order, the same aggregate, the same filters in any order. */
 export function sameSpec(a: ChartView, b: ChartView): boolean {

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it, vi } from 'vitest';
+import { summarizeProfile } from '../src/aiProfile';
 import type { AskRequest } from '../src/ask';
-import { summarizeProfile } from '../src/paths';
 import { profileDataset } from '../src/profile';
 import type { MessagesClient } from './_shared';
 import { ask } from './ask';

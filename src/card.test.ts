@@ -7,9 +7,9 @@ import { degenerateDatasets, randomDataset, type Generated } from './fixtures/ge
 import { groupView } from './groups';
 import { parseCsv } from './loadCsv';
 import { buildOptions } from './options';
-import type { ChartView } from './paths';
 import { profileDataset } from './profile';
 import { UNKNOWN_ROLES, bookshopRoles, parseRoles } from './roles';
+import type { ChartView } from './views';
 
 const loaded = parseCsv(readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8'), 'bookshop', true);
 if (!loaded.ok) throw new Error('bookshop failed to parse');

@@ -1,13 +1,13 @@
 import type { Highlight } from '../highlight';
 import type { Option } from '../options';
-import { whereText, type PathFilter } from '../paths';
 import type { DataProfile } from '../profile';
+import { whereText, type ViewFilter } from '../views';
 import { BuildChart } from './BuildChart';
 
 interface MenuRailProps {
   options: Option[];
   highlight: Highlight | null | undefined; // undefined while the AI is being asked
-  filters: PathFilter[];
+  filters: ViewFilter[];
   currentOptionId: string | null;
   profile: DataProfile;
   onPick: (option: Option) => void;

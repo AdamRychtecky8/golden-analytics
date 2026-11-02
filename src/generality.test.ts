@@ -6,13 +6,13 @@ import { degenerateDatasets, mulberry32, randomDataset, type Generated } from '.
 import { groupView } from './groups';
 import { loadHighlight, rulesHighlight } from './highlight';
 import { buildOptions, isEligible } from './options';
-import type { ChartView } from './paths';
 import { readFileSync } from 'node:fs';
 import { parseCsv } from './loadCsv';
 import { PRESETS, customPersona } from './personas';
 import { profileDataset, type DataProfile } from './profile';
 import { bookshopRoles, withRoleMeasures, type Roles } from './roles';
 import type { Row } from './aggregate';
+import type { ChartView } from './views';
 
 /** Each view with its checks' findings, as datasetFindings takes them. */
 const checked = (vs: ChartView[], p: DataProfile, rs: Row[], r: Roles) => vs.map((view) => ({ view, findings: runChecks(view, p, rs, r).findings }));

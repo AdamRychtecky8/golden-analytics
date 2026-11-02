@@ -1,4 +1,4 @@
-# SPEC — "Before you present it"
+# SPEC — "Golden Standard: before you present it"
 
 > Draft written by the review chat from Adam's decisions on Oct 30, 2026. Adam edits this; Claude Code builds from it. Anything marked TODO(adam) is undecided.
 
@@ -24,7 +24,7 @@ Smart, motivated business users with real questions and no data training. They m
 
 ## Layout and the tree (Phase 4, D-069 to D-072)
 The screen follows `docs/wireframe-phase4.svg`: the map on top, the menu rail on the left, one merged card on the right.
-- **Top bar:** the app name ("Before you present it"), the dataset, the persona chip (its color and initial), Load CSV, Use demo data, back/forward.
+- **Top bar:** the app name ("Golden Standard: before you present it"), the dataset, the persona chip (its color and initial), Load CSV, Use demo data, back/forward.
 - **Map:** collapsed by default to one line: the path to the current node as colored dots with short labels, plus "N questions explored". Expanded: the whole tree left to right, one column per depth; solid lines for a pick, go deeper, or build-your-own; dashed lines for a persona switch; a dashed box for a slice (no chart of its own); the current node outlined in the accent. Click any node to jump there. When the tree needs more rows than fit, branches off the current path fold into a "+N" marker that opens on click; the current path is never folded. The layout is a pure, tested function (`mapLayout.ts`).
 - **Persona colors:** fixed muted tints for the presets (Store owner slate blue, Marketing analyst plum, Researcher sand, Program manager muted teal), neutral grey for a built-your-own persona; never the accent orange, red, or green. Only in the map and the persona chip, never in charts, and always with the persona's initial.
 - **Menu rail:** the options for the current node's scope, the highlight first with its label ("Highlighted" or "Best place to start") and reason, any notice, and "Build my own chart" (up to 2 fields) at the bottom.

@@ -1,10 +1,10 @@
 import { isMissing, type Row } from './aggregate';
 import { runChecks, type Finding } from './checks';
 import { groupView, type Grouping } from './groups';
-import { filterRows, whereText, type ChartView, type PathFilter } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
 import { facetOf, roleOf, rowNounOf, withRoleMeasures, type Facet, type Roles } from './roles';
 import { fillSlots } from './templates';
+import { filterRows, whereText, type ChartView, type ViewFilter } from './views';
 
 // The menu of options (SPEC "The flow", step 1). Code builds every option from the data's
 // columns, roles, and shape; the AI may later pick one of them, but never writes one. Each
@@ -40,7 +40,7 @@ const QUESTIONS = {
 
 
 /** A question inside a slice (approved by Adam): "…? " becomes "… where genre is Fiction and format is Hardcover?" */
-export function scopeQuestion(question: string, filters: PathFilter[]): string {
+export function scopeQuestion(question: string, filters: ViewFilter[]): string {
   if (filters.length === 0) return question;
   return `${question.replace(/\?$/, '')} where ${whereText(filters)}?`;
 }
@@ -52,12 +52,12 @@ export function scopeQuestion(question: string, filters: PathFilter[]): string {
  * there is none. With filters, groups are counted inside the slice, a filtered column is not
  * offered again (it has one value there), and every view and question carries the filters.
  */
-export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles, filters: PathFilter[] = []): Option[] {
+export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles, filters: ViewFilter[] = []): Option[] {
   return buildMenu(profile, rows, roles, filters).options;
 }
 
 /** The menu, plus the ids of options left out because their question had a missing slot (always empty, or a test fails). */
-export function buildMenu(profile: DataProfile, rows: Row[], roles: Roles, filters: PathFilter[] = []): { options: Option[]; unrendered: string[] } {
+export function buildMenu(profile: DataProfile, rows: Row[], roles: Roles, filters: ViewFilter[] = []): { options: Option[]; unrendered: string[] } {
   const effective = withRoleMeasures(profile, roles);
   const role = (c: ColumnProfile) => roleOf(roles, c.name);
   const many = rowNounOf(roles).many;

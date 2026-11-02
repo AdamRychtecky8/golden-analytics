@@ -7,10 +7,10 @@ import type { DatasetFinding } from './datasetFindings';
 import { computeFacts, type Fact } from './facts';
 import { ordinal, percent, whole } from './format';
 import { groupView, periodLabel } from './groups';
-import { whereText, type ChartView } from './paths';
 import type { DataProfile } from './profile';
 import { groupIsPlural, groupLabel, roleOf, rowNounOf, withRoleMeasures, type Roles } from './roles';
 import { fillTemplate } from './templates';
+import { whereText, type ChartView } from './views';
 
 // The present card (SPEC "The flow", step 4): Key talking points, Caution around these, If
 // they ask, What this data can't tell you. Code builds every block from facts (D-052): each

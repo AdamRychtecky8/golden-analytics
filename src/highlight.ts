@@ -1,11 +1,12 @@
+import { summarizeProfile, type AiContext } from './aiProfile';
 import { askAi, type AskOptions } from './aiRequest';
 import type { CheckId, Severity } from './checks';
 import { isEligible, type Option, type OptionKind } from './options';
-import { summarizeProfile, type AiContext, type PathFilter } from './paths';
 import type { Persona, Purpose } from './personas';
 import type { DataProfile } from './profile';
 import { rowNounOf, type Facet, type Roles } from './roles';
 import { fillSlots } from './templates';
+import type { ViewFilter } from './views';
 
 // The highlight (SPEC "The highlight"): gates, then rank, no weights. Code decides which
 // options are eligible (no misleading finding). The AI may pick one of those for the persona
@@ -170,7 +171,7 @@ export function checkAiPick(body: Record<string, unknown>, eligibleIds: string[]
 }
 
 /** Cache key: the same dataset, persona, and slice always get the same highlight. */
-export const highlightKey = (dataset: string | number, persona: Pick<Persona, 'domain' | 'role' | 'purpose'>, filters: PathFilter[] = []) =>
+export const highlightKey = (dataset: string | number, persona: Pick<Persona, 'domain' | 'role' | 'purpose'>, filters: ViewFilter[] = []) =>
   JSON.stringify([dataset, persona.domain, persona.role, persona.purpose, filters.map((f) => [f.field, f.value])]);
 
 export interface HighlightLoadOptions extends AskOptions {

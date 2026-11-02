@@ -195,7 +195,8 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 | [src/profile.ts](../src/profile.ts) | Detects each column's type; computes counts, missing, range, top values, bins. | Tells `chartRules` each field's type; the profile (not raw rows) is what the AI sees (D-011). |
 | [src/chartRules.ts](../src/chartRules.ts) | `chooseRule` maps field types to a chart; `buildChart` computes the numbers and the spec. | The rule table, with the reasoning in comments (D-012). Owns the chart colors. |
 | [src/personas.ts](../src/personas.ts) | The persona type, four presets, build-your-own lists, `customPersona()`, and each persona's color and initial. | The purpose drives the highlight (highlight.ts); colors appear only in the map and the chip (D-070). |
-| [src/paths.ts](../src/paths.ts) | The view type (fields, sum or mean, filters), `filterRows`, `chartForView`, and `summarizeProfile` (what an AI handler may see). | Shared by the options, the card, and the handlers. The Phase 2 path validator is gone. |
+| [src/views.ts](../src/views.ts) | The view type (fields, sum or mean, filters) and `ViewFilter`, `filterRows`, `whereText`, `chartForView`. | What a chart shows, shared by the menu, the card, and the flow. Called paths.ts and `PathFilter` until the cleanup (a slider-era name). |
+| [src/aiProfile.ts](../src/aiProfile.ts) | `summarizeProfile`, `AiContext`, `ColumnSummary`: what the AI is allowed to see. | One place answers "what can the AI see?": a summary of the profile and the persona, never rows (D-011). The server handlers import only its types. |
 | [src/aiRequest.ts](../src/aiRequest.ts) | `askAi`: post to an AI handler, with a timeout and one automatic retry. Never throws. | Used by the highlight and the card's phrasing. |
 | [src/useAsyncCache.ts](../src/useAsyncCache.ts) | A generic hook: load a value once per key, remember it. | The cache behind the highlight: one AI call per dataset, persona, and slice. |
 | [src/groups.ts](../src/groups.ts) | `groupView`: a chart's groups (bars or periods) with record counts and values. | One source of the numbers checks and facts use. |
@@ -249,7 +250,7 @@ The digit rule ([templates.ts:25](../src/templates.ts#L25)) is what makes this t
 |---|---|
 | [src/profile.test.ts](../src/profile.test.ts) | Parsing, type detection, missing counts, bins, CSV errors, that the sample profiles as expected, and that the Bookshop CSV has 56,350 rows, 2193 dates, and correct revenue on every row. |
 | [src/chartRules.test.ts](../src/chartRules.test.ts) | Every rule, the exact numbers each chart draws, honest labels, "Other" grouping, highlight colors, and that every spec renders in Vega. |
-| [src/paths.test.ts](../src/paths.test.ts) | Row filtering, filtered charts that name their filters, and that the profile summary holds no rows. |
+| [src/views.test.ts](../src/views.test.ts) | Row filtering, filtered charts that name their filters, and that the profile summary (aiProfile.ts) holds no rows. |
 | [src/checks.test.ts](../src/checks.test.ts) | Each check on the Bookshop data, including hardcover vs mass-market paperback, severities, skip reasons, the id rule, and the entity check (Bianca Thompson: genre and award winner); groups match the chart. |
 | [src/checks.fixtures.test.ts](../src/checks.fixtures.test.ts) | Every check fires with the expected severity on its planted synthetic fixture and stays quiet on its control; a CSV without roles skips the entity check and says why. |
 | [src/roles.test.ts](../src/roles.test.ts) | Roles files: accepted, rejected for missing/extra/unknown roles, Bookshop's loaded against its columns. |

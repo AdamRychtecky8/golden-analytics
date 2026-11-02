@@ -4,9 +4,9 @@ import { SECTION_TITLES } from './cardText';
 import { datasetFindings } from './datasetFindings';
 import { parseCsv } from './loadCsv';
 import { buildOptions } from './options';
-import { whereText, type ChartView } from './paths';
 import { profileDataset } from './profile';
 import { bookshopRoles } from './roles';
+import { whereText, type ChartView } from './views';
 
 // Bookshop cards as plain text, for reading the wording (npm run cards:bookshop): one card
 // per menu option, then one inside a slice (the first comparison's top group). Code text

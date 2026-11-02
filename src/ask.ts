@@ -1,12 +1,13 @@
 import { isMissing, type Row } from './aggregate';
+import { summarizeProfile, type AiContext } from './aiProfile';
 import { askAi, type AskOptions } from './aiRequest';
 import { ASK_TEXT } from './askText';
 import { canSum, chooseRule, effectiveAggregate, usesAggregate } from './chartRules';
-import { MAX_FILTERS, summarizeProfile, whereText, type AiContext, type ChartView, type PathFilter } from './paths';
 import type { Persona } from './personas';
 import type { ColumnProfile, DataProfile } from './profile';
 import { roleOf, rowNounOf, withRoleMeasures, type Facet, type Role, type Roles } from './roles';
 import { fillSlots } from './templates';
+import { MAX_FILTERS, whereText, type ChartView, type ViewFilter } from './views';
 
 // "Ask your own question" (SPEC "Prompt-a-path"): the most regulated AI piece. The AI turns
 // the user's text into a structured result (build, clarify, reframe, refuse) and never
@@ -36,10 +37,10 @@ export interface AskRequest extends AiContext {
   text: string;
   rowNoun: { one: string; many: string };
   columns: { name: string; role: Role | null; facet: Facet | null; values: string[] }[];
-  scope: PathFilter[]; // the slice the user is looking at
+  scope: ViewFilter[]; // the slice the user is looking at
 }
 
-export function buildAskRequest(text: string, profile: DataProfile, rows: Row[], roles: Roles, persona: Persona, scope: PathFilter[]): AskRequest {
+export function buildAskRequest(text: string, profile: DataProfile, rows: Row[], roles: Roles, persona: Persona, scope: ViewFilter[]): AskRequest {
   const facetOf = (c: string) => (roles.known ? (roles.facets[c] ?? null) : null);
   return {
     profile: summarizeProfile(profile),
@@ -84,7 +85,7 @@ export interface AskSpec {
   group_by: string; // a category or date column, or "" for none (the spread of one number)
   measure: string; // a number column, or "count"
   aggregate: 'sum' | 'mean' | 'count'; // "count" exactly when measure is "count"
-  filters: PathFilter[];
+  filters: ViewFilter[];
 }
 
 type Problem =
@@ -154,9 +155,9 @@ export function validateSpec(raw: unknown, profile: DataProfile, rows: Row[], ro
   const rule = chooseRule(cols.map((c) => c.type));
   if (!rule) return { ok: false, problem: { code: 'noChart' } };
 
-  const clean: PathFilter[] = [];
+  const clean: ViewFilter[] = [];
   for (const raw of filters) {
-    const f = raw as Partial<PathFilter> | null;
+    const f = raw as Partial<ViewFilter> | null;
     const field = typeof f?.field === 'string' ? f.field : '';
     const value = typeof f?.value === 'string' ? f.value.trim() : '';
     const c = col(field);
@@ -324,7 +325,7 @@ export function describeSpec(spec: ChartView, profile: DataProfile, roles: Roles
 }
 
 /** Sends the question and lets code decide (resolveAsk). Never throws. */
-export async function loadAsk(text: string, profile: DataProfile, rows: Row[], roles: Roles, persona: Persona, scope: PathFilter[], options: AskOptions = {}): Promise<AskResult> {
+export async function loadAsk(text: string, profile: DataProfile, rows: Row[], roles: Roles, persona: Persona, scope: ViewFilter[], options: AskOptions = {}): Promise<AskResult> {
   const reply = await askAi('/api/ask', buildAskRequest(text, profile, rows, roles, persona, scope), options);
   if (!reply.ok) return refuse('unreachable', ASK_TEXT.unreachable);
   return resolveAsk(reply.body.result, { text, profile, rows, roles });

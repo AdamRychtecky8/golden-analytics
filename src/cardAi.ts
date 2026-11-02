@@ -1,6 +1,6 @@
+import { summarizeProfile, type AiContext } from './aiProfile';
 import { askAi, type AskOptions } from './aiRequest';
 import type { Block, Card } from './card';
-import { summarizeProfile, type AiContext } from './paths';
 import type { Persona } from './personas';
 import type { DataProfile } from './profile';
 import { fillTemplate } from './templates';

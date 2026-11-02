@@ -10,10 +10,10 @@ import type { DatasetFinding } from '../datasetFindings';
 import { hasChart, type FlowNode } from '../flow';
 import type { Highlight } from '../highlight';
 import type { Option } from '../options';
-import { MAX_FILTERS, chartForView, filterRows, type ChartView, type PathFilter } from '../paths';
 import type { DataProfile } from '../profile';
 import type { Roles } from '../roles';
 import { useCardPhrasing } from '../useCardPhrasing';
+import { MAX_FILTERS, chartForView, filterRows, type ChartView, type ViewFilter } from '../views';
 import { Chart } from './Chart';
 
 interface FlowCardProps {
@@ -25,7 +25,7 @@ interface FlowCardProps {
   profile: DataProfile;
   rows: Row[];
   roles: Roles;
-  onDeeper: (filter: PathFilter) => void;
+  onDeeper: (filter: ViewFilter) => void;
   onPick: (option: Option) => void;
   onEdit: (block: string, text: string) => void;
 }
