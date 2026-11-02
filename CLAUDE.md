@@ -36,7 +36,7 @@ Any number shown to a user must be traceable to how it was computed. Validate in
 
 ## Logs — keep these current
 - **`docs/AI_PROCESS.md`** — Adam's account of how he used AI; the narrative above the "Log" section is his. After any major interaction (a new feature, a design proposal, any time Adam redirects or overrules you), append a short entry to the "Log" section at the end: date and title, what was asked, what the AI proposed, what Adam chose. Record his redirections faithfully; they are evidence for the submission. Do not write his reasoning for him: if he didn't state a reason, put `Why: TODO(adam)`. The earlier, longer log (`docs/AI_LOG.md`) is in git at the tag `pre-cleanup`.
-- **`docs/DECISIONS.md`** — When Adam makes a product or technical call, add a short record.
+- **`docs/DECISIONS.md`** — Fixed at the fifteen key decisions. Record new product or technical calls in AI_PROCESS.md's Log; add to DECISIONS.md only when Adam says so.
 - **`README.md`** is written by Adam, not AI. Do not create or edit it. Run instructions go in `docs/RUNNING.md`.
 
 ## Git rules
