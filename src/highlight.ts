@@ -5,6 +5,7 @@ import { summarizeProfile, type AiContext, type PathFilter } from './paths';
 import type { Persona, Purpose } from './personas';
 import type { DataProfile } from './profile';
 import { rowNounOf, type Facet, type Roles } from './roles';
+import { fillSlots } from './templates';
 
 // The highlight (SPEC "The highlight"): gates, then rank, no weights. Code decides which
 // options are eligible (no misleading finding). The AI may pick one of those for the persona
@@ -53,12 +54,11 @@ export const MAX_REASON_CHARS = 140;
 export interface Highlight {
   id: string;
   label: 'highlight' | 'best-place-to-start'; // the second when nothing is eligible
-  reason: string;
+  reason: string | null; // null only when the rules reason had a missing slot (then listed in unrendered)
   source: 'ai' | 'rules';
   notice: string | null; // one quiet line when rules picked although the AI was asked
+  unrendered?: string[]; // the reason's missing slots, when there are any (a test fails)
 }
-
-const fill = (template: string, slots: Record<string, string>) => template.replace(/\{(\w+)\}/g, (_, k: string) => slots[k]);
 
 /** Position in a list, with anything not listed after everything that is. */
 const rank = <T>(list: readonly T[], x: T) => (list.includes(x) ? list.indexOf(x) : list.length);
@@ -96,10 +96,12 @@ export function rulesHighlight(options: Option[], persona: Pick<Persona, 'purpos
       byEffect(a, b) ||
       order(a) - order(b),
   );
-  return { id: pick.id, label: 'highlight', reason: rulesReason(pick, options, persona.purpose, roles), source: 'rules', notice: null };
+  const reason = rulesReason(pick, options, persona.purpose, roles);
+  const rules: Highlight = { id: pick.id, label: 'highlight', reason: reason.text, source: 'rules', notice: null };
+  return reason.missing.length > 0 ? { ...rules, unrendered: reason.missing } : rules;
 }
 
-function rulesReason(pick: Option, options: Option[], purpose: Purpose, roles: Roles): string {
+function rulesReason(pick: Option, options: Option[], purpose: Purpose, roles: Roles): { text: string | null; missing: string[] } {
   const original = pick.repairs ? options.find((o) => o.id === pick.repairs) : undefined;
   const repair = original?.measure ? { many: rowNounOf(roles).many, measure: original.measure, column: original.column } : null;
   return reasonFor(pick, purpose, repair);
@@ -108,17 +110,21 @@ function rulesReason(pick: Option, options: Option[], purpose: Purpose, roles: R
 /**
  * The rules reason for an option: the facet line when the option's facet is one the purpose
  * prefers, otherwise the kind line, plus the repair line when the option repairs another.
+ * Null text, with the slots listed, when a slot is missing.
  */
 export function reasonFor(
   pick: Pick<Option, 'kind' | 'facet' | 'column'>,
   purpose: Purpose,
   repair: { many: string; measure: string; column: string } | null = null,
-): string {
+): { text: string | null; missing: string[] } {
   const why =
     pick.facet && PURPOSE_FACETS[purpose].includes(pick.facet)
-      ? fill(REASONS.facet, { column: pick.column, purpose })
-      : fill(REASONS.kind, { kind: pick.kind, purpose });
-  return repair ? `${why} ${fill(REASONS.repair, repair)}` : why;
+      ? fillSlots(REASONS.facet, { column: pick.column, purpose })
+      : fillSlots(REASONS.kind, { kind: pick.kind, purpose });
+  if (!repair) return why;
+  const more = fillSlots(REASONS.repair, repair);
+  const missing = [...why.missing, ...more.missing];
+  return missing.length > 0 ? { text: null, missing } : { text: `${why.text} ${more.text}`, missing };
 }
 
 // ---------------------------------------------------------------------------------------

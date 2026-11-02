@@ -6,6 +6,7 @@ import { MAX_FILTERS, summarizeProfile, whereText, type AiContext, type ChartVie
 import type { Persona } from './personas';
 import type { ColumnProfile, DataProfile } from './profile';
 import { roleOf, rowNounOf, withRoleMeasures, type Facet, type Role, type Roles } from './roles';
+import { fillSlots } from './templates';
 
 // "Ask your own question" (SPEC "Prompt-a-path"): the most regulated AI piece. The AI turns
 // the user's text into a structured result (build, clarify, reframe, refuse) and never
@@ -28,7 +29,7 @@ export type AskResult =
   | { kind: 'build'; spec: ChartView }
   | { kind: 'clarify'; message: string; candidates: ChartView[] }
   | { kind: 'reframe'; category: ReframeCategory; message: string; spec: ChartView }
-  | { kind: 'refuse'; category: RefuseCategory; message: string; spec: ChartView | null };
+  | { kind: 'refuse'; category: RefuseCategory; message: string; spec: ChartView | null; unrendered?: string[] }; // unrendered: a message's missing slots (a test fails)
 
 /** What the AI is sent: the question, the profile, the contract, the values, the current slice. */
 export interface AskRequest extends AiContext {
@@ -184,7 +185,7 @@ export interface AskContext {
   roles: Roles;
 }
 
-const fill = (template: string, slots: Record<string, string>) => template.replace(/\{(\w+)\}/g, (_, k: string) => slots[k] ?? '');
+type Fill = (template: string, slots: Record<string, string>) => string;
 
 /** Every slot a message may use, for one spec. */
 function slotsFor(spec: ChartView, ctx: AskContext): Record<string, string> {
@@ -199,7 +200,7 @@ function slotsFor(spec: ChartView, ctx: AskContext): Record<string, string> {
   };
 }
 
-function problemMessage(p: Problem, many: string): string {
+function problemMessage(p: Problem, many: string, fill: Fill): string {
   switch (p.code) {
     case 'tooMany':
       return ASK_TEXT.tooMany;
@@ -231,21 +232,33 @@ const refuse = (category: RefuseCategory, message: string, spec: ChartView | nul
  * is validated: an invalid build or reframe is refused with the code's reason; invalid
  * clarify candidates are dropped (one left becomes a plain build, none a refusal); an
  * invalid alternative on a refusal is dropped. The guard runs on the user's text: if it
- * fires on a build, the build becomes a causal or forecasting reframe.
+ * fires on a build, the build becomes a causal or forecasting reframe. If any message has a
+ * missing slot, the result is "unreadable" instead, with the slots listed in unrendered.
  */
 export function resolveAsk(reply: unknown, ctx: AskContext): AskResult {
+  const missing: string[] = [];
+  const fill: Fill = (template, slots) => {
+    const filled = fillSlots(template, slots);
+    missing.push(...filled.missing);
+    return filled.text ?? template; // never shown: the whole result is replaced below
+  };
+  const result = decide(reply, ctx, fill);
+  return missing.length === 0 ? result : { kind: 'refuse', category: 'unreadable', message: ASK_TEXT.unreadable, spec: null, unrendered: [...new Set(missing)] };
+}
+
+function decide(reply: unknown, ctx: AskContext, fill: Fill): AskResult {
   const r = reply as Record<string, unknown> | null;
   if (!r || typeof r !== 'object') return refuse('unreadable', ASK_TEXT.unreadable);
   const outcome = r.outcome;
   const category = r.category;
   const check = (spec: unknown) => validateSpec(spec, ctx.profile, ctx.rows, ctx.roles);
-  const why = (p: Problem) => problemMessage(p, rowNounOf(ctx.roles).many);
+  const why = (p: Problem) => problemMessage(p, rowNounOf(ctx.roles).many, fill);
 
   if (outcome === 'build') {
     const v = check(r.spec);
     if (!v.ok) return refuse('invalid', why(v.problem));
     const fired = guard(ctx.text);
-    if (fired) return reframe(fired, v.spec, ctx);
+    if (fired) return reframe(fired, v.spec, ctx, fill);
     return { kind: 'build', spec: v.spec };
   }
 
@@ -257,7 +270,7 @@ export function resolveAsk(reply: unknown, ctx: AskContext): AskResult {
     if (candidates.length === 0) return refuse('invalid', ASK_TEXT.unreadable);
     if (candidates.length === 1) {
       const fired = guard(ctx.text);
-      return fired ? reframe(fired, candidates[0], ctx) : { kind: 'build', spec: candidates[0] };
+      return fired ? reframe(fired, candidates[0], ctx, fill) : { kind: 'build', spec: candidates[0] };
     }
     // The ambiguous word must be one the user actually typed.
     const term = typeof r.term === 'string' && r.term.trim() !== '' && ctx.text.toLowerCase().includes(r.term.trim().toLowerCase()) ? r.term.trim() : null;
@@ -268,7 +281,7 @@ export function resolveAsk(reply: unknown, ctx: AskContext): AskResult {
     if (!REFRAME_CATEGORIES.includes(category as ReframeCategory)) return refuse('unreadable', ASK_TEXT.unreadable);
     const v = check(r.spec);
     if (!v.ok) return refuse('invalid', why(v.problem));
-    return reframe(category as ReframeCategory, v.spec, ctx);
+    return reframe(category as ReframeCategory, v.spec, ctx, fill);
   }
 
   if (outcome === 'refuse') {
@@ -284,7 +297,7 @@ export function resolveAsk(reply: unknown, ctx: AskContext): AskResult {
   return refuse('unreadable', ASK_TEXT.unreadable);
 }
 
-function reframe(category: ReframeCategory, spec: ChartView, ctx: AskContext): AskResult {
+function reframe(category: ReframeCategory, spec: ChartView, ctx: AskContext, fill: Fill): AskResult {
   return { kind: 'reframe', category, spec, message: fill(ASK_TEXT[category], slotsFor(spec, ctx)) };
 }
 

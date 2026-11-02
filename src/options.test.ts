@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './loadCsv';
-import { buildOptions, isEligible, scopeQuestion } from './options';
+import { buildMenu, buildOptions, isEligible, scopeQuestion } from './options';
 import { profileDataset } from './profile';
 import { bookshopRoles, parseRoles, UNKNOWN_ROLES } from './roles';
 
@@ -131,3 +131,10 @@ describe('a menu for a slice', () => {
   });
 });
 
+describe('no question has a missing slot', () => {
+  it('in the whole-data menu, a slice, and a dataset with no roles', () => {
+    expect(buildMenu(profile, rows, roles).unrendered).toEqual([]);
+    expect(buildMenu(profile, rows, roles, [{ field: 'genre', value: 'Fiction' }]).unrendered).toEqual([]);
+    expect(buildMenu(profile, rows, UNKNOWN_ROLES).unrendered).toEqual([]);
+  });
+});

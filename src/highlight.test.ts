@@ -144,3 +144,12 @@ describe('the highlight cache key', () => {
   });
 });
 
+describe('no rules reason has a missing slot', () => {
+  it('for every persona', () => {
+    for (const persona of [...PRESETS, customPersona('retail', 'owner', 'getting a feel for the data', 'Getting a feel')]) {
+      const h = rulesHighlight(options, persona, roles)!;
+      expect(h.unrendered, persona.name).toBeUndefined();
+      expect(h.reason, persona.name).toEqual(expect.any(String));
+    }
+  });
+});

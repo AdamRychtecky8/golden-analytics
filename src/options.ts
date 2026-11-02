@@ -4,6 +4,7 @@ import { groupView } from './groups';
 import { filterRows, whereText, type ChartView, type PathFilter } from './paths';
 import type { ColumnProfile, DataProfile } from './profile';
 import { facetOf, roleOf, rowNounOf, withRoleMeasures, type Facet, type Roles } from './roles';
+import { fillSlots } from './templates';
 
 // The menu of options (SPEC "The flow", step 1). Code builds every option from the data's
 // columns, roles, and shape; the AI may later pick one of them, but never writes one. Each
@@ -37,7 +38,6 @@ const QUESTIONS = {
   trendCount: 'How has the number of {many} changed over time?',
 };
 
-const fill = (template: string, slots: Record<string, string>) => template.replace(/\{(\w+)\}/g, (_, k: string) => slots[k]);
 
 /** A question inside a slice (approved by Adam): "…? " becomes "… where genre is Fiction and format is Hardcover?" */
 export function scopeQuestion(question: string, filters: PathFilter[]): string {
@@ -53,6 +53,11 @@ export function scopeQuestion(question: string, filters: PathFilter[]): string {
  * offered again (it has one value there), and every view and question carries the filters.
  */
 export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles, filters: PathFilter[] = []): Option[] {
+  return buildMenu(profile, rows, roles, filters).options;
+}
+
+/** The menu, plus the ids of options left out because their question had a missing slot (always empty, or a test fails). */
+export function buildMenu(profile: DataProfile, rows: Row[], roles: Roles, filters: PathFilter[] = []): { options: Option[]; unrendered: string[] } {
   const effective = withRoleMeasures(profile, roles);
   const role = (c: ColumnProfile) => roleOf(roles, c.name);
   const many = rowNounOf(roles).many;
@@ -74,7 +79,8 @@ export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles, fi
   const dates = effective.columns.filter((c) => c.type === 'temporal' && c.count > 0 && (!roles.known || role(c) === 'date'));
 
   const options: Option[] = [];
-  const make = (kind: OptionKind, column: ColumnProfile, measure: string | null, repairs: string | null = null): Option => {
+  const unrendered: string[] = [];
+  const make = (kind: OptionKind, column: ColumnProfile, measure: string | null, repairs: string | null = null): Option | null => {
     const view: ChartView = { fields: measure ? [column.name, measure] : [column.name], aggregate: 'sum', filters };
     const flag = role(column) === 'flag';
     const template =
@@ -83,9 +89,15 @@ export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles, fi
         : flag
           ? measure ? QUESTIONS.flagMoney : QUESTIONS.flagCount
           : measure ? QUESTIONS.comparisonMoney : QUESTIONS.comparisonCount;
+    const id = `${kind}:${column.name}:${measure ?? 'count'}`;
+    const asked = fillSlots(template, { column: column.name, measure: measure ?? '', many });
+    if (asked.text === null) {
+      unrendered.push(id);
+      return null;
+    }
     return {
-      id: `${kind}:${column.name}:${measure ?? 'count'}`,
-      question: scopeQuestion(fill(template, { column: column.name, measure: measure ?? '', many }), filters),
+      id,
+      question: scopeQuestion(asked.text, filters),
       kind,
       view,
       column: column.name,
@@ -99,15 +111,18 @@ export function buildOptions(profile: DataProfile, rows: Row[], roles: Roles, fi
 
   for (const column of categories) {
     const option = make('comparison', column, money?.name ?? null);
+    if (!option) continue;
     options.push(option);
     // A repair: only from a misleading finding whose check knows a sturdier view (today,
     // price/mix's count view). Other checks say what's wrong, not what's better. A repair
     // can't duplicate an option: mix needs a money measure, and then the menu has no counts.
     const sturdier = option.findings.find((f) => f.severity === 'misleading' && f.countView);
-    if (sturdier) options.push(make('comparison', column, null, option.id));
+    const repair = sturdier ? make('comparison', column, null, option.id) : null;
+    if (repair) options.push(repair);
   }
-  if (dates[0] && slice.length > 0) options.push(make('trend', dates[0], money?.name ?? null));
-  return options;
+  const trend = dates[0] && slice.length > 0 ? make('trend', dates[0], money?.name ?? null) : null;
+  if (trend) options.push(trend);
+  return { options, unrendered };
 }
 
 /**

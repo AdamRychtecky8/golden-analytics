@@ -12,6 +12,9 @@ import { FACETS, bookshopRoles, facetOf, rowNounOf, type Facet } from './roles';
 
 const fmt = (x: number | null) => (x === null ? 'none' : x.toFixed(2));
 
+/** A rules reason as text, or which slots it is missing. */
+const shown = (r: { text: string | null; missing: string[] }) => r.text ?? `(unrendered: ${r.missing.join(', ')})`;
+
 export function bookshopReport(): string {
   const loaded = parseCsv(demoText, 'bookshop-sales.csv', true);
   if (!loaded.ok) throw new Error(loaded.errors.join('; '));
@@ -36,7 +39,7 @@ export function bookshopReport(): string {
       continue;
     }
     const picked = options.find((o) => o.id === h.id)!;
-    out.push(`      ${h.label === 'highlight' ? 'Highlight' : 'Best place to start'}: ${h.id}`, `      "${picked.question}"`, `      Reason: ${h.reason}`);
+    out.push(`      ${h.label === 'highlight' ? 'Highlight' : 'Best place to start'}: ${h.id}`, `      "${picked.question}"`, `      Reason: ${h.reason ?? `(unrendered: ${h.unrendered!.join(', ')})`}`);
   }
 
   // Every sentence the rules can produce, for reading them all at once. Each facet is filled
@@ -49,14 +52,14 @@ export function bookshopReport(): string {
     out.push(`  ${purpose}`);
     for (const facet of [...FACETS, null]) {
       const column = columnFor(facet);
-      if (column) out.push(`      comparison, ${facet ?? 'no facet'} (${column}): ${reasonFor({ kind: 'comparison', facet, column }, purpose)}`);
+      if (column) out.push(`      comparison, ${facet ?? 'no facet'} (${column}): ${shown(reasonFor({ kind: 'comparison', facet, column }, purpose))}`);
     }
-    if (trend) out.push(`      trend (${trend.column}): ${reasonFor(trend, purpose)}`);
+    if (trend) out.push(`      trend (${trend.column}): ${shown(reasonFor(trend, purpose))}`);
   }
   // The repair line, for each repair in the menu, and the best-place-to-start line.
   for (const o of options.filter((x) => x.repairs)) {
     const original = options.find((x) => x.id === o.repairs)!;
-    out.push(`  repair (${o.id}): ${reasonFor(o, 'deciding where to invest', { many: rowNounOf(roles).many, measure: original.measure!, column: original.column })}`);
+    out.push(`  repair (${o.id}): ${shown(reasonFor(o, 'deciding where to invest', { many: rowNounOf(roles).many, measure: original.measure!, column: original.column }))}`);
   }
   out.push(`  best place to start: ${REASONS.bestPlace}`);
   return out.join('\n');

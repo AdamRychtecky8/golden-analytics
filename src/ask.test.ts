@@ -30,6 +30,23 @@ describe('the evaluation set, against faked AI replies (no network)', () => {
   });
 });
 
+describe('no message has a missing slot', () => {
+  it('in any evaluation case', () => {
+    for (const c of cases) expect(resolveAsk(c.fake, ctx(c.prompt)), c.id).not.toHaveProperty('unrendered');
+  });
+
+  it('a template with a missing slot makes the whole result "unreadable", with the slot listed', () => {
+    const saved = ASK_TEXT.unknownField;
+    ASK_TEXT.unknownField = 'No column called {name} in {place}.';
+    try {
+      const r = resolveAsk({ outcome: 'build', category: 'none', spec: { group_by: 'genre', measure: 'profit', aggregate: 'sum', filters: [] }, candidates: [], term: '' }, ctx('q'));
+      expect(r).toEqual({ kind: 'refuse', category: 'unreadable', message: ASK_TEXT.unreadable, spec: null, unrendered: ['place'] });
+    } finally {
+      ASK_TEXT.unknownField = saved;
+    }
+  });
+});
+
 describe('the measure left out (the first live run\'s three misses, D-081)', () => {
   it.each([
     ['first-run-filter-no-measure', ASK_TEXT.noChart],

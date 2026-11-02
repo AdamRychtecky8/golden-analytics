@@ -40,9 +40,11 @@ export function MenuRail({ options, highlight, filters, currentOptionId, profile
             <button type="button" className="option option-highlight" aria-pressed={top.id === currentOptionId} onClick={() => onPick(top)}>
               <span className="label option-label">{highlight.label === 'highlight' ? 'Highlighted' : 'Best place to start'}</span>
               <span className="option-question">{top.question}</span>
-              <span className="option-reason">
-                {highlight.source === 'ai' && <span className="source source-ai">AI</span>} {highlight.reason}
-              </span>
+              {highlight.reason !== null && (
+                <span className="option-reason">
+                  {highlight.source === 'ai' && <span className="source source-ai">AI</span>} {highlight.reason}
+                </span>
+              )}
             </button>
           </li>
         )}

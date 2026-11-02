@@ -5,7 +5,7 @@ import { computeFacts, pearson, type Fact } from './facts';
 import { bookshopRoles, parseRoles } from './roles';
 import { parseCsv } from './loadCsv';
 import { profileDataset } from './profile';
-import { fillTemplate } from './templates';
+import { fillSlots, fillTemplate } from './templates';
 
 const text = readFileSync(new URL('./data/bookshop-sales.csv', import.meta.url), 'utf8');
 const loaded = parseCsv(text, 'bookshop', true);
@@ -168,3 +168,14 @@ describe('verb agreement in templates', () => {
   });
 });
 
+describe('fillSlots (code\'s own message templates)', () => {
+  it('fills every slot', () => {
+    expect(fillSlots('Which {column} has the most {many}?', { column: 'genre', many: 'items sold' })).toEqual({ text: 'Which genre has the most items sold?', missing: [] });
+  });
+  it('never blanks a missing slot or prints "undefined": no text, and the slot is listed', () => {
+    expect(fillSlots('{a} and {b} and {b}', { a: 'x' })).toEqual({ text: null, missing: ['b'] });
+  });
+  it('treats an empty string as a value, not a missing slot', () => {
+    expect(fillSlots('[{a}]', { a: '' })).toEqual({ text: '[]', missing: [] });
+  });
+});

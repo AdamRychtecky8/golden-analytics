@@ -529,6 +529,12 @@ Each entry: what it is, why it's used here, and where to see it first.
 
 **Run it more than once.** A model can answer differently each time. Three runs gave the same single miss, which says the model reads that question consistently, not randomly.
 
+### Cleanup: smaller code, identical output
+
+**A byte-identical baseline.** Before the cleanup, the two text reports (`npm run cards:bookshop`, `npm run options:bookshop`) were saved from the tag `pre-cleanup` into `.baseline/`. After every cleanup commit, both reports must match those files byte for byte, the tests must pass, and the build must succeed. A refactor that changed one word of a card would show up as a diff.
+
+**A missing slot is reported, never hidden.** Menu questions, highlight reasons, and typed-question messages are code templates with slots ("Which {column} has the most {many}?"). They used to be filled by three copies of a one-line `fill`, which printed a missing slot as "" in one copy and "undefined" in the other two. Now one `fillSlots` returns no text and lists the slot: the menu leaves that option out, the highlight shows no reason, a typed question becomes "couldn't be used", each records the slot in an `unrendered` list, tests fail on any of them, and development builds warn in the console. *See:* `fillSlots` in [templates.ts](../src/templates.ts), `buildMenu` in [options.ts](../src/options.ts).
+
 ### The prep script (Python)
 
 **Reading .xlsx without a library.** An .xlsx file is a zip archive of XML files: `xl/workbook.xml` lists the sheets, each sheet is `xl/worksheets/sheetN.xml`, and text cells hold an index into `xl/sharedStrings.xml`. The script opens the zip with `zipfile` and walks the rows with `xml.etree.ElementTree.iterparse`, which reads one row at a time instead of the whole 9 MB sheet. *See:* `Workbook` in [prepare-bookshop.py](../scripts/prepare-bookshop.py).
@@ -688,3 +694,8 @@ Questions a reviewer might ask. Try answering each one aloud, then check the poi
 
 78. **What did the old validator get wrong about "fields": ["genre"] with "aggregate": "sum"? Why is a new rule not enough, and what changed instead?** → D-081, `AskSpec`, `validateSpec` in [ask.ts](../src/ask.ts); the `first-run-*` and `new-format-*` cases.
 79. **Why does build-in-slice accept two answers but still miss "revenue by format"?** → the `accept` list in [ask-cases.json](eval/ask-cases.json), `missReason` in [askEval.ts](../src/askEval.ts), AI_LOG #20.
+
+**Cleanup**
+
+80. **How do you know the cleanup didn't change what the app says?** → `.baseline/`, the two reports, and the check after every commit (AI_LOG #21).
+81. **What happens if someone adds a slot to a menu question and forgets to pass it?** → `fillSlots` in [templates.ts](../src/templates.ts), `buildMenu`'s `unrendered`, the "no question has a missing slot" test.
