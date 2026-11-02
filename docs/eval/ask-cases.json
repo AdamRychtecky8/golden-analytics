@@ -43,6 +43,7 @@
       "scope": [{ "field": "genre", "value": "Fiction" }],
       "expect": { "outcome": "build", "spec": { "fields": ["format"], "aggregate": "sum", "filters": [{ "field": "genre", "value": "Fiction" }] } },
       "accept": [
+        { "outcome": "build", "spec": { "fields": ["format", "revenue"], "aggregate": "sum", "filters": [{ "field": "genre", "value": "Fiction" }] } },
         {
           "outcome": "clarify",
           "candidates": [

@@ -172,3 +172,11 @@ Asked: An audit only, first: dead code, slider-era leftovers, duplication, struc
 AI proposed: The audit, with measured timings (Bookshop took about 3.6 s to open; the whole-data menu was built twice, each card grouped its rows three times) and four performance fixes. It also found that the card grouped charts with the raw profile while the checks and facts used the role-adjusted one, and flagged it as a possible bug, not cleanup. It asked how a missing template slot should be reported outside the card, offering three options.
 Adam chose / changed: Approved, with decisions: the tab title; renaming paths.ts to views.ts and PathFilter to ViewFilter and moving the AI summary into its own file, as the last commit; the raw-profile fix as its own commit with a fixture where a role disagrees with a name; a missing slot reported, never blanked or printed as "undefined" (option A: left out and listed), plus a console warning in development builds; the order of the commits; and permission to fix CLAUDE.md's stale handler names. Later he renamed the app "Golden Standard: before you present it". The raw-profile test failed before its fix ("A alone accounts for 57% of price; A has the rest"). Fix 4 (largestEntity's per-column scan) measured no gain (749 ms to 728 ms, within noise, then 717 ms with a second change), so Claude Code reversed it, following Adam's rule to fix only what's measured slow. D-082.
 Why: TODO(adam)
+
+## #22 — 2026-11-02 — Revenue by format accepted for "Which format sells the most here?"
+Tool: Claude Code (VS Code)
+Asked: Adam wrote in DESIGN.md that the eval reaches 20 of 20 counting one reading he accepted. Claude Code pointed out that the eval set didn't record it: build-in-slice's miss on all three earlier runs was revenue by format, which its accept list didn't include, so a run would still report 19 of 20. It offered two options: add the answer to the accept list, or reword the doc.
+AI proposed: The two options above, without choosing.
+Adam chose / changed: Added revenue by format (Fiction filter) to build-in-slice's accept list. One live run then reported 20 of 20.
+Why: "Sales" honestly means revenue or items sold in this data.
+

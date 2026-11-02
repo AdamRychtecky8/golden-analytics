@@ -78,7 +78,7 @@ describe('cases with more than one right answer', () => {
   });
   it('still misses an answer outside the list, with the main expectation\'s reason', () => {
     const r = missReason(inSlice, { kind: 'build', spec: { fields: ['genre'], aggregate: 'sum', filters: fiction } });
-    expect(r).toMatch(/^chart .* \(or one of 1 other accepted answers\)$/);
+    expect(r).toMatch(/^chart .* \(or one of 2 other accepted answers\)$/);
   });
 });
 
