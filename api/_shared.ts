@@ -4,6 +4,8 @@ import type { AiContext, ColumnSummary } from '../src/aiProfile.ts';
 
 // What every AI handler in api/ shares: reading the request, the one model call, and the
 // error shapes. The leading underscore keeps Vercel from serving this file as an endpoint.
+// Handlers import it as './_shared.js': Vercel compiles each file to .js without rewriting
+// import paths, and TypeScript, Vite and Vitest all map the .js back to this .ts file.
 // Each handler runs on the server, so the API key never reaches the browser, and copies
 // only named fields out of the request, so nothing else (rows included) reaches a prompt.
 

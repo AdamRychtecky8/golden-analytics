@@ -12,7 +12,7 @@ import {
   type AiEnv,
   type ErrorBody,
   type MessagesClient,
-} from './_shared.ts';
+} from './_shared.js';
 
 // The card's optional AI call: rephrase the talking points and the anticipated questions
 // for the persona. It receives the code's templates and the facts they use, never rows,

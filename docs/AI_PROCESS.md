@@ -69,3 +69,11 @@ The AI made mistakes, and catching them is part of the process:
 ## Log
 
 The full log of every interaction is in the git history at the tag `pre-cleanup`: [docs/AI_LOG.md](https://github.com/AdamRychtecky8/golden-analytics/blob/pre-cleanup/docs/AI_LOG.md) (entries #1–#19); entries #20–#22 are in the last version before it was removed ([b5724a2](https://github.com/AdamRychtecky8/golden-analytics/blob/b5724a2/docs/AI_LOG.md)). New entries go below.
+
+### 2026-11-02 — Preparing the Vercel deployment
+
+- **Asked:** make the repo deployable on Vercel without deploying or installing anything: check the build and the four handlers as Vercel functions, add `vercel.json` only if required, report bundle size, confirm and test the no-key / bad-key fallback, add a Deploy section to RUNNING.md, update DESIGN.md's Limits line, and list the dashboard steps.
+- **Found and fixed:** the handlers imported `./_shared.ts`, which Vercel's compiled output would not contain; changed to `./_shared.js` (verified by compiling `api/` to plain JS and calling each `POST` under Node). The `api/*.test.ts` files would have become endpoints; added `.vercelignore`. No `vercel.json` needed (Vite and `api/` are detected).
+- **Reported, not changed:** the JS bundle is 9.0 MB (663 KB gzipped); the Bookshop CSV, inlined with `?raw`, is 7.9 MB of that (271 KB gzipped). Corrected RUNNING.md, which blamed the size warning on Vega alone.
+- **Added:** `api/fallback.test.ts` (status without a key, a 401 through every handler, the typed-question "unreachable" message).
+- **Adam chose:** no size optimization for now ("Don't optimize unless I ask"); he deploys from the dashboard himself. Why: TODO(adam)

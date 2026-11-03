@@ -32,7 +32,7 @@ The AI then picks the highlight, may reword the card's talking points and questi
 npm test
 ```
 
-Runs every `*.test.ts` with Vitest, including property tests on 200 generated datasets. No test calls the real API. `npm run build` type-checks and builds `dist/` (the warning about a file over 500 kB is the Vega library).
+Runs every `*.test.ts` with Vitest, including property tests on 200 generated datasets. No test calls the real API. `npm run build` type-checks and builds `dist/` (the warning about a file over 500 kB is expected: the Bookshop CSV, 7.9 MB, is bundled into the JavaScript, along with the Vega library).
 
 ## Evaluating typed questions
 
@@ -50,3 +50,12 @@ Sends the cases in `docs/eval/ask-cases.json` (all but the offline-only ones, ab
 | `npm run options:bookshop` | Prints the menu, its findings, and each persona's highlight and reason |
 | `npm run prep:bookshop` | Rebuilds `src/data/bookshop-sales.csv` and its contract `bookshop-sales.roles.json` from `data/raw/Bookshop.xlsx`, checking every join; how and why are in the comment at the top of `scripts/prepare-bookshop.py` |
 | `npm run sample` | Regenerates the small synthetic CSV the tests use (seeded, identical every time) |
+
+## Deploy
+
+The repo deploys to Vercel as is; no `vercel.json` is needed. Vercel detects Vite, runs `npm run build`, serves `dist/`, and turns each file in `api/` into a function at `/api/<name>` (files starting with `_` are skipped, and `.vercelignore` leaves out the tests).
+
+1. Import the GitHub repo as a new Vercel project. Keep the detected settings: framework Vite, build command `npm run build`, output directory `dist`.
+2. Optional: under Settings → Environment Variables, add `ANTHROPIC_API_KEY` (and `ANTHROPIC_MODEL` if you want a different model), then redeploy. Variables apply only to deployments made after they are added.
+
+Without a key, or with a wrong one, the deployed app behaves like the local one without a key: rules pick the highlight, the card keeps its standard wording, and typed questions show "AI is off" (no key) or "couldn't be reached" (a key the API rejects).

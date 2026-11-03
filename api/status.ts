@@ -1,4 +1,4 @@
-import { envFromProcess } from './_shared.ts';
+import { envFromProcess } from './_shared.js';
 
 // Whether the server has an AI key, so the browser can say up front that typed questions
 // need AI (instead of letting the user type, then failing). Never returns the key itself.

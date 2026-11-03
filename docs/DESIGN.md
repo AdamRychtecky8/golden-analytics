@@ -61,7 +61,7 @@ Real Bookshop sales (fictional data, dated 2193), one row per item sold, joined 
 - An uploaded CSV has no contract, so checks that need roles skip and summable measures are guessed from column names (English words).
 - The checks look at one chart at a time, except the dataset-level entity line.
 - Bookshop covers one year, so every trend carries the single-cycle caveat.
-- The handlers are written for Vercel but not deployed; the app runs locally.
+- Deployed on Vercel at TODO(adam): deployment URL. The Bookshop CSV ships inside the app's JavaScript, so the first load is about 660 KB compressed (9 MB unpacked).
 - No automated end-to-end browser tests; the UI was checked in a headless browser by hand.
 
 ## With more time

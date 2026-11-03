@@ -12,7 +12,7 @@ import {
   type ErrorBody,
   type MessagesClient,
   type AiEnv,
-} from './_shared.ts';
+} from './_shared.js';
 
 // The highlight's AI call (DESIGN.md, "The highlight"), with the shared server-side helpers in
 // api/_shared.ts. Code has already built the options and removed every ineligible one; the

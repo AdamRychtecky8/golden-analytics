@@ -12,7 +12,7 @@ import {
   type AiEnv,
   type ErrorBody,
   type MessagesClient,
-} from './_shared.ts';
+} from './_shared.js';
 
 // "Ask your own question": the AI turns the user's text into a structured result. It sees the
 // question, the profile, the dataset contract, and category values, never rows. It returns
