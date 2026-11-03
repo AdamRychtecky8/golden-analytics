@@ -109,7 +109,6 @@ FLAG_LABELS = {"award winner": {"yes": "award winners", "no": "non-winners", "pl
 #   period or currency in the sheet.
 #   Ratings has one row per review (50,330 rows, several per book), not per sale.
 #   Neither has one value per sale row.
-#   Why: TODO(adam)
 
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 REL_ID = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
