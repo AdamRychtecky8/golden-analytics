@@ -22,7 +22,7 @@ The brief says the reviewers want proof that Adam guided the AI to build what *h
 
 ## Teaching (important)
 Adam reads React/TypeScript through AI; he does not write it from memory. The goal is reading literacy: enough to understand and defend every file in an interview.
-- **Explanations go in `docs/LEARNING.md`, not in chat.** It is Adam's private study guide: gitignored, local only, so the review chat can't read it. When you add a file or a new pattern, update LEARNING.md (file map, pattern list, defend-this questions) in the same piece of work.
+- **Explanations go in `docs/LEARNING.md`, not in chat.** It is Adam's private study guide: gitignored, local only, so the review chat can't read it (older versions are in git history). When you add a file or a new pattern, update LEARNING.md (file map, pattern list, defend-this questions) in the same piece of work.
 - The first time a new pattern appears (a hook, prop types, a generic, a reducer, an effect…), explain it in 2–3 plain sentences: what it does and why it is here instead of the alternative.
 - Prefer simple, readable code over clever code. If something must be clever, comment why.
 - When asked "why does this work," answer the mechanism, not just the behavior.
