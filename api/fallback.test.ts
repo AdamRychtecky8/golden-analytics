@@ -15,7 +15,7 @@ import { POST as status } from './status';
 // What a deployment does when ANTHROPIC_API_KEY is unset or wrong. The real API is never
 // called: a wrong key is faked as the 401 the SDK throws.
 
-const BAD_KEY = 'sk-ant-not-a-real-key';
+const BAD_KEY = 'not-a-real-key';
 const rows = [
   { format: 'Hardcover', revenue: '100' },
   { format: 'Paperback', revenue: '555' },
