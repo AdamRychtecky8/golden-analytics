@@ -20,7 +20,7 @@ I tagged the old version in git (`slider-concept`) so the pivot is visible in th
 
 ## The line between code and AI
 
-The rule I designed around: **code decides what's true and how it's drawn; the AI decides what's relevant and how it's said.** I did this because I have not worked much with industry level chat bots and ensuring safety checks around them. Therefore, for now I wanted the code to be the final check to ensure nothing malicious slips through in either direction.
+The rule I designed around: **code decides what's true and how it's drawn; the AI decides what's relevant and how it's said.** I did this because I have not worked much with industry-level chatbots and ensuring safety checks around them. Therefore, for now I wanted the code to be the final check to ensure nothing malicious slips through in either direction.
 
 In practice:
 - **Code** builds the question menu, computes every number, and runs every check.
@@ -64,7 +64,7 @@ The AI made mistakes, and catching them is part of the process:
 - Claude Code said the workbook had no marketing data. It had only checked six of thirteen sheets. I knew the Publisher sheet had a marketing column, asked it to recheck, and it corrected itself.
 - It once committed with a failing test, and once committed before I'd reviewed a change I had asked to see. Both were disclosed and logged, and I added "wait even if it matches" to the rules.
 - It also caught things I accepted: a guard so "one author is 100% of their own title" can't fire, a gap where a narrow lead slipped between two checks (which became the "fragile lead" check), and a real bug during cleanup where the card and the checks used different versions of the column roles.
-- The main idea is to constantly go back and forth between claude code who has access to the codebase and claude chat who is brainstorming and grounded in the project files. Having the two check each others work with me serving as the top level guidance is how I currently go about my work. I would love to learn new ways to keep my work more robust and become even more efficient.
+- The main idea is to constantly go back and forth between Claude Code who has access to the codebase and Claude chat who is brainstorming and grounded in the project files. Having the two check each other's work with me serving as the top level guidance is how I currently go about my work. I would love to learn new ways to keep my work more robust and become even more efficient.
 
 ## Log
 
