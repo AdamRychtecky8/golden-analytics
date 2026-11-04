@@ -22,7 +22,7 @@ The app opens at http://localhost:5173 with the Bookshop demo data (56,350 ficti
 2. Set `ANTHROPIC_API_KEY`. `ANTHROPIC_MODEL` is optional (default `claude-haiku-5-5`).
 3. Restart `npm run dev`; it reads `.env` only at start.
 
-The AI then picks the highlight, may reword the card's talking points and questions (marked **AI**), and enables "Ask your own question". The key stays in `.env` (gitignored) and the server-side handlers in `api/`; the browser never sees it, and no request ever contains data rows. Answers are cached per dataset, persona, and slice, so revisiting costs nothing. `npm run preview` has no `/api` server and always uses the rules.
+The AI then picks the highlight, may reword the card's talking points and its "If they ask" questions and answers (marked **AI**), and enables "Ask your own question". The key stays in `.env` (gitignored) and the server-side handlers in `api/`; the browser never sees it, and no request ever contains data rows. Answers are cached per dataset, persona, and slice, so revisiting costs nothing. `npm run preview` has no `/api` server and always uses the rules.
 
 **Your own data:** Load CSV in the top bar. The file must be a clean CSV: one header row with unique names, numbers written plainly (`1234.5`), dates as ISO (`2025-03-14`). Empty cells are allowed and reported; a malformed file is rejected with the lines at fault. An upload has no dataset contract, so checks that need roles skip.
 

@@ -42,7 +42,7 @@ Gates, then rank; no weighted score ([decision 9](DECISIONS.md#9-gates-then-rank
 
 ## The card
 
-Code builds every block from facts, so the card works with no AI and every number traces to rows. Cautions read "Tempting to say" → "Why to be careful" → "Say instead" ([decision 7](DECISIONS.md#7-cautions-reveal-what-the-chart-hides-each-finding-is-routed-to-the-section-where-it-helps)). The headline may never assert what a caution warns against or what the data can't tell; when a caution applies, the headline is its "Say instead", locked from AI rewording, and property tests check the rule on generated datasets ([decision 11](DECISIONS.md#11-the-headline-is-locked-and-safety-text-is-never-sent-to-the-ai)). With a key, the AI may reword only the talking points and questions, with the same slots; cautions and the can't-tell line are never sent. A user's edit always wins.
+Code builds every block from facts, so the card works with no AI and every number traces to rows. Cautions read "Tempting to say" → "Why to be careful" → "Say instead" ([decision 7](DECISIONS.md#7-cautions-reveal-what-the-chart-hides-each-finding-is-routed-to-the-section-where-it-helps)). The headline may never assert what a caution warns against or what the data can't tell; when a caution applies, the headline is its "Say instead", locked from AI rewording, and property tests check the rule on generated datasets ([decision 11](DECISIONS.md#11-the-headline-is-locked-and-safety-text-is-never-sent-to-the-ai)). With a key, the AI may reword only the talking points and the "If they ask" questions and answers, with the same slots; cautions and the can't-tell line are never sent. A user's edit always wins.
 
 ## Asking your own question
 
