@@ -46,7 +46,7 @@ export const REASONS = {
 export const HIGHLIGHT_NOTICES = {
   noKey: 'AI highlighting is off (no API key), so rules picked this.',
   unavailable: 'The AI couldn’t be reached, so rules picked this.',
-  rejected: 'The AI’s pick didn’t pass the checks, so rules picked this.',
+  rejected: 'The AI’s pick didn’t pass validation, so rules picked this.',
 };
 
 // About two lines on the card. The AI's reason is rejected past this. The prompt in
