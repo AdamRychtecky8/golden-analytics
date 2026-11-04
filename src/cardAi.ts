@@ -29,7 +29,7 @@ export interface CardPhrasing {
 export const CARD_AI_NOTICES = {
   noKey: 'AI phrasing is off (no API key), so the card uses its standard wording.',
   unavailable: 'The AI couldn’t be reached, so the card uses its standard wording.',
-  partial: 'Some AI wording didn’t pass the checks; those lines keep the standard wording.',
+  partial: 'Some AI wording didn’t pass validation; those lines keep the standard wording.',
 };
 
 /** The blocks the AI may rephrase: talking points (unless locked) and the questions and answers. */
