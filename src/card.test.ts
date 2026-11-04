@@ -157,7 +157,7 @@ describe('an asked question that code reframed', () => {
   it('causal: the can’t-tell line answers the question that was asked', () => {
     const c = buildCard(view(['award winner', 'revenue']), profile, rows, roles, dataset, { reframe: 'causal' });
     expect(c.cannot[0].text).toBe(
-      'You asked whether award winner affects revenue. This shows that revenue differs between award winners and non-winners, not that one causes the difference: other differences between the groups could explain it.',
+      'You asked about a cause. This shows that revenue differs between award winners and non-winners, not that one causes the difference: other differences between the groups could explain it.',
     );
   });
 
@@ -171,7 +171,7 @@ describe('an asked question that code reframed', () => {
   it('causal, on a column that is not a flag: the general line', () => {
     const c = buildCard(view(['format', 'revenue']), profile, rows, roles, dataset, { reframe: 'causal' });
     expect(c.cannot[0].text).toBe(
-      'You asked whether format affects revenue. This shows that revenue differs by format, not that format causes the difference: other differences between the groups could explain it.',
+      'You asked about a cause. This shows that revenue differs by format, not that format causes the difference: other differences between the groups could explain it.',
     );
   });
 

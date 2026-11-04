@@ -37,10 +37,10 @@ export const ASK_TEXT = {
   filterNotCategory: '{field} can\'t be used as a filter here; only categories can.',
 };
 
-// The card's can't-tell line for a question code reframed (pending Adam's approval).
+// The card's can't-tell line for a question code reframed (Adam approved the wording).
 export const ASKED_CANNOT = {
-  causal: 'You asked whether {field} affects {measure}. This shows that {measure} differs by {field}, not that {field} causes the difference: other differences between the groups could explain it.',
+  causal: 'You asked about a cause. This shows that {measure} differs by {field}, not that {field} causes the difference: other differences between the groups could explain it.',
   // A yes/no column whose two groups have contract names ("award winners", "non-winners").
-  causalFlag: 'You asked whether {field} affects {measure}. This shows that {measure} differs between {flag_a} and {flag_b}, not that one causes the difference: other differences between the groups could explain it.',
+  causalFlag: 'You asked about a cause. This shows that {measure} differs between {flag_a} and {flag_b}, not that one causes the difference: other differences between the groups could explain it.',
   forecast: "This shows how {measure} has changed so far; it can't say what comes next.",
 };
