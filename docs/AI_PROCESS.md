@@ -83,3 +83,13 @@ The full log of every interaction is in the git history at the tag `pre-cleanup`
 - **Asked:** propose and rank 2–3 demo flows for the video, script the recommended one, run it headlessly on the live site (1920 wide, 125% zoom, and locally without a key), repeat each AI step, and red-team every screen. Report only.
 - **AI proposed:** Adam's draft flow (Store owner → genre trap → go deeper into SciFi/Fantasy → map → Marketing analyst → "Did winning an award cause the sales?"), ranked above a format-trap flow and a variant that asks from the top level. Main finding: 8 of 33 live AI highlights were rejected because the reason ran past the 140-character cap (the prompt asked for "under 20 words", which often runs longer).
 - **Adam chose:** keep his draft flow, and fix nine issues from the red-team, including: **raise the highlight reason cap to 160 characters and have the prompt ask for one sentence under 160 characters** (the prompt and the check now state the same limit, and a test keeps them equal). Why: TODO(adam)
+
+### 2026-11-03 — The highlight reason limit: a limit in the prompt acted as a target
+
+- **Measured:** the same 15 live AI highlights each time (Store owner at the top level, Store owner in the SciFi/Fantasy slice, Marketing analyst in the slice; 5 runs at 125% zoom).
+  - Before any change (prompt "under 20 words", check 140 characters): 8 of 33 rejected across the earlier runs, lengths 120–143.
+  - Prompt "under 160 characters", check 160: **6 of 15 rejected**, lengths 127–169. The model wrote toward the stated limit, so more replies went over it.
+  - Prompt "under 20 words", check 160: **0 of 15 rejected**, lengths 110–149.
+- **AI proposed:** three ways out: have the prompt ask for less than the check allows, go back to words with the 160 check, or retry once on a rejection.
+- **Adam chose:** the prompt asks for "under 20 words" again and the code keeps the 160-character check. A limit stated in the prompt acted as a target, so the prompt now asks for less than the code accepts. Why: TODO(adam)
+- **Also chose in this round:** "would trail {other group}" for the fragile-lead sentence as well; the RUNNING.md correction; "didn't pass validation" for the card notice too; and the asked can't-tell line now opens "You asked about a cause." instead of naming the column.
