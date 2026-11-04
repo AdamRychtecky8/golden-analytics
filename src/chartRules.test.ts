@@ -99,6 +99,22 @@ describe('line over time', () => {
   });
 });
 
+describe('names from the dataset contract', () => {
+  const named = { ...sum, highlight: 'West', many: 'items sold', groupName: (_c: string, v: string) => (v === 'West' ? 'Western stores' : v) };
+
+  it('titles count axes with the row noun, and keeps "records" without one', () => {
+    const spec = (o: object) => (buildChart([col('region')], rows, { ...sum, ...o })!.spec as any).encoding.x.title;
+    expect(spec({ many: 'items sold' })).toBe('Items sold');
+    expect(spec({})).toBe('Count of records');
+  });
+
+  it('draws a group by its name but keeps its value as the key, so clicks and the highlight still match', () => {
+    const values = (buildChart([col('region'), col('revenue')], rows, named)!.spec as any).data.values;
+    expect(values[0]).toMatchObject({ category: 'Western stores', key: 'West' });
+    expect(values.map((v: any) => v.category)).toContain('East');
+  });
+});
+
 describe('counts', () => {
   it('counts records per category', () => {
     expect(valuesOf(['region']).map((v) => [v.category, v.count])).toEqual([

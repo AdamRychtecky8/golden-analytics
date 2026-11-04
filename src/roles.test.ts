@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './loadCsv';
 import { profileDataset } from './profile';
-import { bookshopRoles, currencyOf, facetOf, groupIsPlural, groupLabel, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
+import { bookshopRoles, chartGroupName, currencyOf, facetOf, groupIsPlural, groupLabel, parseRoles, roleOf, rowNounOf, UNKNOWN_ROLES, withRoleMeasures } from './roles';
 
 describe('parseRoles', () => {
   const columns = ['date', 'store', 'revenue'];
@@ -75,6 +75,15 @@ describe('parseRoles', () => {
     expect(groupLabel(r.roles, 'store', 'no')).toBe('store: no');
     expect(groupLabel(r.roles, 'date', 'x')).toBe('x');
     expect(parseRoles({ columns: { ...cols, revenue: { role: 'money', labels: { a: 'b' } } } }, columns).ok).toBe(false);
+  });
+
+  it('names flag groups on a chart by the contract, capitalized, and leaves unnamed values bare', () => {
+    const cols = { date: { role: 'date' }, store: { role: 'flag', labels: { yes: 'open stores' } }, revenue: { role: 'money' } };
+    const r = parseRoles({ columns: cols }, columns);
+    if (!r.ok) throw new Error(r.errors.join('; '));
+    expect(chartGroupName(r.roles, 'store', 'yes')).toBe('Open stores');
+    expect(chartGroupName(r.roles, 'store', 'no')).toBe('no');
+    expect(chartGroupName(UNKNOWN_ROLES, 'store', 'yes')).toBe('yes');
   });
 
   it('marks a flag\'s names as plural when the contract says so; the fallback is singular', () => {

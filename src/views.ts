@@ -1,5 +1,5 @@
 import { isMissing, type Aggregate, type Row } from './aggregate';
-import { buildChart, type ChartResult } from './chartRules';
+import { buildChart, type ChartOptions, type ChartResult } from './chartRules';
 import { whole } from './format';
 import type { ColumnProfile, DataProfile } from './profile';
 
@@ -48,7 +48,7 @@ export function chartForView(
   view: ChartView,
   profile: DataProfile,
   rows: Row[],
-  options: { highlight: string | null },
+  options: Pick<ChartOptions, 'highlight' | 'many' | 'groupName'>,
 ): ChartResult | null {
   const cols: ColumnProfile[] = [];
   for (const name of view.fields) {

@@ -11,7 +11,7 @@ import { hasChart, type FlowNode } from '../flow';
 import type { Highlight } from '../highlight';
 import type { Option } from '../options';
 import type { DataProfile } from '../profile';
-import type { Roles } from '../roles';
+import { chartGroupName, rowNounOf, type Roles } from '../roles';
 import { useCardPhrasing } from '../useCardPhrasing';
 import { MAX_FILTERS, chartForView, filterRows, type ChartView, type ViewFilter } from '../views';
 import { Chart } from './Chart';
@@ -46,7 +46,10 @@ function Answer({ node, dataset, options, datasetFindings, profile, rows, roles,
     () => buildCard(node.view, profile, rows, roles, datasetFindings, node.asked ? { reframe: node.asked.reframe } : null),
     [node.view, profile, rows, roles, datasetFindings, node.asked],
   );
-  const chart = useMemo(() => chartForView(node.view, profile, rows, { highlight: card.highlight }), [node.view, profile, rows, card.highlight]);
+  const chart = useMemo(
+    () => chartForView(node.view, profile, rows, { highlight: card.highlight, ...chartNames(roles) }),
+    [node.view, profile, rows, roles, card.highlight],
+  );
   // A typed question is titled by the chart it became, in plain words; the user's words follow.
   const question = node.asked
     ? describeSpec(node.view, profile, roles)
@@ -202,7 +205,7 @@ function Preview({ options, highlight, datasetFindings, profile, rows, roles, on
   const chart = useMemo(() => {
     if (!option) return null;
     const mark = buildCard(option.view, profile, rows, roles, datasetFindings).highlight;
-    return chartForView(option.view, profile, rows, { highlight: mark });
+    return chartForView(option.view, profile, rows, { highlight: mark, ...chartNames(roles) });
   }, [option, profile, rows, roles, datasetFindings]);
 
   if (options.length === 0) {
@@ -240,6 +243,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       {children}
     </section>
   );
+}
+
+/**
+ * How the contract names things on a chart: the rows ("items sold", for count axes) and a
+ * flag's groups ("Award winners"). An upload has no contract, so its charts keep "records"
+ * and the raw values.
+ */
+function chartNames(roles: Roles) {
+  return {
+    many: roles.known ? rowNounOf(roles).many : undefined,
+    groupName: (column: string, value: string) => chartGroupName(roles, column, value),
+  };
 }
 
 /** The category column a bar click filters on, or null when the chart has no bars. */

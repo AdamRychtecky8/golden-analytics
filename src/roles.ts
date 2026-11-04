@@ -140,6 +140,16 @@ export function groupLabel(roles: Roles, column: string, value: string): string 
   return (roles.known ? roles.labels[column]?.[value] : undefined) ?? `${column}: ${value}`;
 }
 
+/**
+ * What a chart calls a group: a flag's contract name, capitalized like the other axis labels
+ * ("Award winners" for "yes"), else the value itself. Unlike groupLabel, an unnamed flag
+ * value stays bare: on a chart, the axis title already names the column.
+ */
+export function chartGroupName(roles: Roles, column: string, value: string): string {
+  const name = roles.known && roleOf(roles, column) === 'flag' ? roles.labels[column]?.[value] : undefined;
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : value;
+}
+
 /** Whether a group's name is plural ("award winners"), so a sentence says "are", not "is". */
 export function groupIsPlural(roles: Roles, column: string, value: string): boolean {
   return roles.known && roles.pluralLabels.includes(column) && roles.labels[column]?.[value] !== undefined;

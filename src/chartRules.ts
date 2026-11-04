@@ -121,7 +121,22 @@ export interface ChartOptions {
   // The key of the highlighted mark, or null. Each datum gets a `key` field so a click
   // can name exactly one mark (or one series, for multi-line charts).
   highlight: string | null;
+  // What the dataset contract calls its rows, plural ("items sold"): the count axis is
+  // titled with it. Without one, counts are "records".
+  many?: string;
+  // What to call a group on the chart, e.g. a yes/no value by its contract name ("Award
+  // winners" for "yes"). Only the drawn label changes: each mark's key stays the value, so
+  // clicks and the highlight still name the real group.
+  groupName?: (column: string, value: string) => string;
 }
+
+/** The count axis title, and the tooltip title for row counts. */
+function countTitles(many: string | undefined): { axis: string; tooltip: string } {
+  if (!many) return { axis: 'Count of records', tooltip: 'Records' };
+  const name = many.charAt(0).toUpperCase() + many.slice(1); // "Items sold"
+  return { axis: name, tooltip: name };
+}
+const nameOf = (options: ChartOptions, column: string, value: string) => options.groupName?.(column, value) ?? value;
 
 const TIME_FORMAT: Record<TimeUnit, string> = { day: '%b %d, %Y', month: '%b %Y', year: '%Y' };
 const NUMBER_FORMAT = ',.2~f';
@@ -322,10 +337,11 @@ const BUILDERS: Record<RuleId, Builder> = {
     };
   },
 
-  'sorted-bars'([cat, num], rows, { aggregate, highlight }) {
+  'sorted-bars'([cat, num], rows, options) {
+    const { aggregate, highlight } = options;
     const { kept, otherLabel, other } = topWithOther(groupBy(rows, cat.name), MAX_BARS, (g) => g.length);
     const toDatum = (label: string, group: Row[]) => ({
-      category: label,
+      category: nameOf(options, cat.name, label),
       value: aggregateValues(group.map((r) => parseNumber(r[num.name])!), aggregate),
       rows: group.length,
       key: label,
@@ -347,7 +363,7 @@ const BUILDERS: Record<RuleId, Builder> = {
         tooltip: [
           { field: 'category', title: cat.name },
           { field: 'value', type: 'quantitative', title: label, format: NUMBER_FORMAT },
-          { field: 'rows', type: 'quantitative', title: 'Records' },
+          { field: 'rows', type: 'quantitative', title: countTitles(options.many).tooltip },
         ],
       },
     };
@@ -390,12 +406,13 @@ const BUILDERS: Record<RuleId, Builder> = {
     };
   },
 
-  histogram([num], rows, { highlight }) {
+  histogram([num], rows, { highlight, many }) {
+    const titles = countTitles(many);
     const bins = binNumbers(rows.map((r) => parseNumber(r[num.name])!));
     // Every value is the same: a histogram would have one zero-width bar, so show the
     // single value as one labeled bar instead.
     if (bins.length === 1 && bins[0].x0 === bins[0].x1) {
-      return BUILDERS['count-bars']([num], rows, { aggregate: 'sum', highlight }, []);
+      return BUILDERS['count-bars']([num], rows, { aggregate: 'sum', highlight, many }, []);
     }
     const values = bins.map((b) => ({ ...b, key: String(b.x0) }));
     return {
@@ -404,37 +421,40 @@ const BUILDERS: Record<RuleId, Builder> = {
       encoding: {
         x: { field: 'x0', type: 'quantitative', bin: { binned: true }, title: num.name },
         x2: { field: 'x1' },
-        y: { field: 'count', type: 'quantitative', title: 'Count of records', scale: { zero: true } },
+        y: { field: 'count', type: 'quantitative', title: titles.axis, scale: { zero: true } },
         color: markColor(highlight),
         tooltip: [
           { field: 'x0', type: 'quantitative', title: 'From' },
           { field: 'x1', type: 'quantitative', title: 'To (exclusive)' },
-          { field: 'count', type: 'quantitative', title: 'Records' },
+          { field: 'count', type: 'quantitative', title: titles.tooltip },
         ],
       },
     };
   },
 
-  'count-bars'([cat], rows, { highlight }) {
+  'count-bars'([cat], rows, options) {
+    const { highlight } = options;
+    const titles = countTitles(options.many);
     const { kept, otherLabel, other } = topWithOther(groupBy(rows, cat.name), MAX_BARS, (g) => g.length);
-    const values = kept.map(([label, group]) => ({ category: label, count: group.length, key: label }));
+    const values = kept.map(([label, group]) => ({ category: nameOf(options, cat.name, label), count: group.length, key: label }));
     if (otherLabel) values.push({ category: otherLabel, count: other.length, key: otherLabel });
     return {
       data: { values },
       mark: { type: 'bar' },
       encoding: {
         y: { field: 'category', type: 'nominal', sort: null, title: cat.name },
-        x: { field: 'count', type: 'quantitative', title: 'Count of records', scale: { zero: true } },
+        x: { field: 'count', type: 'quantitative', title: titles.axis, scale: { zero: true } },
         color: markColor(highlight),
         tooltip: [
           { field: 'category', title: cat.name },
-          { field: 'count', type: 'quantitative', title: 'Records' },
+          { field: 'count', type: 'quantitative', title: titles.tooltip },
         ],
       },
     };
   },
 
-  'count-line'([date], rows, { highlight }) {
+  'count-line'([date], rows, { highlight, many }) {
+    const titles = countTitles(many);
     const { times, unit, buckets } = timeBuckets(date, rows);
     const counts = new Map<number, number>(buckets.map((b) => [b, 0]));
     for (const t of times) counts.set(bucketStart(t, unit), counts.get(bucketStart(t, unit))! + 1);
@@ -443,15 +463,17 @@ const BUILDERS: Record<RuleId, Builder> = {
     const values = [...counts].map(([period, count]) => ({ period, count, key: String(period) }));
     return {
       data: { values },
-      encoding: { x: timeAxis(date, unit), y: { field: 'count', type: 'quantitative', title: 'Count of records' } },
+      encoding: { x: timeAxis(date, unit), y: { field: 'count', type: 'quantitative', title: titles.axis } },
       layer: lineLayers(highlight === null ? { value: NAVY } : { value: GREY }, markColor(highlight), [
         timeTooltip(unit),
-        { field: 'count', type: 'quantitative', title: 'Records' },
+        { field: 'count', type: 'quantitative', title: titles.tooltip },
       ]),
     };
   },
 
-  'count-line-by-category'([date, cat], rows, { highlight }, notes) {
+  'count-line-by-category'([date, cat], rows, options, notes) {
+    const { highlight } = options;
+    const titles = countTitles(options.many);
     const { times, unit, buckets } = timeBuckets(date, rows);
     const indexed = rows.map((r, i) => ({ ...r, __t: String(times[i]) }));
     const { kept, otherLabel, other } = topWithOther(groupBy(indexed, cat.name), MAX_SERIES, (g) => g.length);
@@ -466,14 +488,14 @@ const BUILDERS: Record<RuleId, Builder> = {
         counts.set(b, counts.get(b)! + 1);
       }
       // The key is the category, so clicking any point highlights that whole series.
-      for (const [period, count] of counts) values.push({ period, count, category: label, key: label });
+      for (const [period, count] of counts) values.push({ period, count, category: nameOf(options, cat.name, label), key: label });
     }
 
     const palette = {
       field: 'category',
       type: 'nominal',
       title: cat.name,
-      sort: series.map(([label]) => label),
+      sort: series.map(([label]) => nameOf(options, cat.name, label)),
       scale: { range: SERIES_COLORS },
     };
     // With a highlight, the chosen series is orange and every other series grey.
@@ -482,13 +504,13 @@ const BUILDERS: Record<RuleId, Builder> = {
       data: { values },
       encoding: {
         x: timeAxis(date, unit),
-        y: { field: 'count', type: 'quantitative', title: 'Count of records' },
+        y: { field: 'count', type: 'quantitative', title: titles.axis },
         detail: { field: 'category', type: 'nominal' },
       },
       layer: lineLayers(color, color, [
         timeTooltip(unit),
         { field: 'category', title: cat.name },
-        { field: 'count', type: 'quantitative', title: 'Records' },
+        { field: 'count', type: 'quantitative', title: titles.tooltip },
       ]),
     };
   },
