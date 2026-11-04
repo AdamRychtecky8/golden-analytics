@@ -77,3 +77,9 @@ The full log of every interaction is in the git history at the tag `pre-cleanup`
 - **Reported, not changed:** the JS bundle is 9.0 MB (663 KB gzipped); the Bookshop CSV, inlined with `?raw`, is 7.9 MB of that (271 KB gzipped). Corrected RUNNING.md, which blamed the size warning on Vega alone.
 - **Added:** `api/fallback.test.ts` (status without a key, a 401 through every handler, the typed-question "unreachable" message).
 - **Adam chose:** no size optimization for now ("Don't optimize unless I ask"); he deploys from the dashboard himself. Why: TODO(adam)
+
+### 2026-11-03 — Video prep: demo flow, test runs, and fixes
+
+- **Asked:** propose and rank 2–3 demo flows for the video, script the recommended one, run it headlessly on the live site (1920 wide, 125% zoom, and locally without a key), repeat each AI step, and red-team every screen. Report only.
+- **AI proposed:** Adam's draft flow (Store owner → genre trap → go deeper into SciFi/Fantasy → map → Marketing analyst → "Did winning an award cause the sales?"), ranked above a format-trap flow and a variant that asks from the top level. Main finding: 8 of 33 live AI highlights were rejected because the reason ran past the 140-character cap (the prompt asked for "under 20 words", which often runs longer).
+- **Adam chose:** keep his draft flow, and fix nine issues from the red-team, including: **raise the highlight reason cap to 160 characters and have the prompt ask for one sentence under 160 characters** (the prompt and the check now state the same limit, and a test keeps them equal). Why: TODO(adam)

@@ -49,8 +49,9 @@ export const HIGHLIGHT_NOTICES = {
   rejected: 'The AI’s pick didn’t pass the checks, so rules picked this.',
 };
 
-// About one line on the card. The AI's reason is rejected past this.
-export const MAX_REASON_CHARS = 140;
+// About two lines on the card. The AI's reason is rejected past this. The prompt in
+// api/highlight.ts states the same limit (a test checks they match).
+export const MAX_REASON_CHARS = 160;
 
 export interface Highlight {
   id: string;
