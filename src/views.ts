@@ -1,5 +1,6 @@
 import { isMissing, type Aggregate, type Row } from './aggregate';
 import { buildChart, type ChartResult } from './chartRules';
+import { whole } from './format';
 import type { ColumnProfile, DataProfile } from './profile';
 
 // Views: what a chart shows (fields, sum or mean, filters), filtering rows to a slice, and
@@ -62,6 +63,6 @@ export function chartForView(
   return {
     ...chart,
     title: `${chart.title} · ${describeFilters(view.filters)}`,
-    notes: [`Only rows where ${where}: ${subset.length} of ${rows.length}.`, ...chart.notes],
+    notes: [`Only rows where ${where}: ${whole.format(subset.length)} of ${whole.format(rows.length)}.`, ...chart.notes],
   };
 }

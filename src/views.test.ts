@@ -49,6 +49,12 @@ describe('chartForView', () => {
     ]);
   });
 
+  it('writes the note’s counts with thousands separators, like the rest of the app', () => {
+    const many = Array.from({ length: 1500 }, (_, i) => ({ ...rows[i % 2] }));
+    const chart = chartForView({ fields: ['category', 'revenue'], aggregate: 'sum', filters: [{ field: 'region', value: 'West' }] }, profile, many, { highlight: null })!;
+    expect(chart.notes[0]).toBe('Only rows where region is West: 750 of 1,500.');
+  });
+
   it('returns null for fields the dataset does not have', () => {
     expect(chartForView({ fields: ['profit'], aggregate: 'sum', filters: [] }, profile, rows, { highlight: null })).toBeNull();
   });
