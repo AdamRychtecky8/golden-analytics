@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { describe, expect, it, vi } from 'vitest';
 import { summarizeProfile } from '../src/aiProfile';
-import { MAX_REASON_CHARS, type HighlightRequest } from '../src/highlight';
+import type { HighlightRequest } from '../src/highlight';
 import { profileDataset } from '../src/profile';
-import { REASON_CHARS, SYSTEM_PROMPT, highlight } from './highlight';
+import { SYSTEM_PROMPT, highlight } from './highlight';
 import type { MessagesClient } from './_shared';
 
 // The real API is never called: `highlight` takes the client as an argument.
@@ -62,9 +62,9 @@ describe('highlight handler', () => {
     expect(params.system).toMatch(/No digits/);
   });
 
-  it('asks for a reason no longer than the browser accepts', () => {
-    expect(REASON_CHARS).toBe(MAX_REASON_CHARS);
-    expect(SYSTEM_PROMPT).toContain(`under ${MAX_REASON_CHARS} characters`);
+  it('asks for the reason in words, not in characters (a character limit became a target)', () => {
+    expect(SYSTEM_PROMPT).toContain('under 20 words');
+    expect(SYSTEM_PROMPT).not.toMatch(/characters/);
   });
 
   it('tells the AI not to name checks, severities, or facets in the reason', () => {

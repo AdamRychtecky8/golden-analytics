@@ -20,9 +20,6 @@ import {
 // it never sees rows. The browser checks the id and the reason (src/highlight.ts).
 
 const MAX_TOKENS = 400; // one id and one sentence
-// The longest reason the browser accepts: MAX_REASON_CHARS in src/highlight.ts, written out
-// again because this file may only import types from src/ (a test checks they match).
-export const REASON_CHARS = 160;
 const MAX_OPTIONS = 30;
 const MAX_FINDINGS = 10;
 
@@ -93,7 +90,7 @@ Every option is safe: the app has removed any whose obvious reading would mislea
 Pick the one option most useful for this user's decision, given who they are and why they're here.
 Return:
 - id: copied exactly from the options. Never invent one.
-- reason: one sentence, under ${REASON_CHARS} characters, saying why it fits this user. No digits and no numbers at all: you haven't seen the results, so don't state or guess any. Don't describe what the chart will show.
+- reason: one sentence, under 20 words, saying why it fits this user. No digits and no numbers at all: you haven't seen the results, so don't state or guess any. Don't describe what the chart will show.
 Facets say what a category is: offering (what the business sells or does), source (who supplies or creates it), place (where).
 Findings, severities, and facets are for your choice only. Never name them in the reason: no "caveat", "misleading", "concentration", "cycle", "mix", "fragile", "entity", "facet", "offering", "source", or "place". Use the user's own words for the columns and their goal.`;
 

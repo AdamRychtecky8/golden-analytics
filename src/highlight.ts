@@ -50,7 +50,8 @@ export const HIGHLIGHT_NOTICES = {
 };
 
 // About two lines on the card. The AI's reason is rejected past this. The prompt in
-// api/highlight.ts states the same limit (a test checks they match).
+// api/highlight.ts asks for "under 20 words", which ran 120-143 characters live: asking in
+// characters made the model aim for the limit itself, and more replies went over it.
 export const MAX_REASON_CHARS = 160;
 
 export interface Highlight {
