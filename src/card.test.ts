@@ -161,6 +161,13 @@ describe('an asked question that code reframed', () => {
     );
   });
 
+  it('with two groups, an entity why names the group it would trail, not "rank 2nd"', () => {
+    const c = buildCard(view(['award winner', 'revenue']), profile, rows, roles, dataset);
+    const whys = c.cautions.flatMap((x) => x.whys.map((w) => w.text));
+    expect(whys.some((w) => w.endsWith('award winners would trail non-winners.'))).toBe(true);
+    expect(whys.some((w) => w.includes('would rank'))).toBe(false);
+  });
+
   it('causal, on a column that is not a flag: the general line', () => {
     const c = buildCard(view(['format', 'revenue']), profile, rows, roles, dataset, { reframe: 'causal' });
     expect(c.cannot[0].text).toBe(

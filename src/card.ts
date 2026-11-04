@@ -136,7 +136,7 @@ export function buildCard(
   }
 
   // Slot facts from each finding's evidence.
-  for (const f of findings) addEvidenceFacts(f, add, label, g?.groups.length ?? 0, g?.groups.length === 2 ? g.groups[1].label : null);
+  for (const f of findings) addEvidenceFacts(f, add, label, g?.groups.length ?? 0, g?.groups.length === 2 ? [g.groups[0].label, g.groups[1].label] : null);
   const unrendered: CheckId[] = [];
   // A group whose contract name is plural ("award winners") makes its verbs plural.
   const pluralNames = new Set((g?.groups ?? []).filter((x) => groupIsPlural(roles, field, x.label)).map((x) => label(x.label)));
@@ -156,7 +156,7 @@ export function buildCard(
   for (const kind of CAUTION_PRIORITY) {
     const f = routed('caution').find((x) => cautionKind(x) === kind);
     if (!f) continue;
-    const text = cautionText(kind, f, ds !== undefined, flag);
+    const text = cautionText(kind, f, ds !== undefined, flag, g?.groups.length === 2);
     const group = subjectOf(kind, f.evidence);
     let entry = entries.find((e) => e.group === group);
     const key = `caution.${group}`;
@@ -313,12 +313,19 @@ function cautionKind(f: Finding): CautionKind | null {
   return null;
 }
 
-function cautionText(kind: CautionKind, f: Finding, datasetLine: boolean, flag: boolean): { claim: string; why: string; instead: string } {
+function cautionText(kind: CautionKind, f: Finding, datasetLine: boolean, flag: boolean, twoGroups: boolean): { claim: string; why: string; instead: string } {
   if (kind === 'small' && (f.evidence as { period?: boolean }).period) return CAUTIONS.smallPeriod;
   // On a yes/no chart, the claim names the group without repeating the column after it.
   const claimed = <T extends { claim: string; claimFlag?: string }>(t: T) => (flag && t.claimFlag ? { ...t, claim: t.claimFlag } : t);
-  if (kind === 'entity') return claimed({ ...CAUTIONS.entity, why: datasetLine ? CAUTIONS.entity.whyDataset : CAUTIONS.entity.why });
-  if (kind === 'fragile') return (f.evidence as { narrow: boolean }).narrow ? CAUTIONS.fragileNarrow : CAUTIONS.fragileFlip;
+  // With two groups, falling to 2nd means trailing the other one: the sentence names it.
+  if (kind === 'entity') {
+    const t = CAUTIONS.entity;
+    return claimed({ ...t, why: datasetLine ? (twoGroups ? t.whyDatasetTwo : t.whyDataset) : twoGroups ? t.whyTwo : t.why });
+  }
+  if (kind === 'fragile') {
+    if ((f.evidence as { narrow: boolean }).narrow) return CAUTIONS.fragileNarrow;
+    return twoGroups ? { ...CAUTIONS.fragileFlip, why: CAUTIONS.fragileFlip.whyTwo } : CAUTIONS.fragileFlip;
+  }
   return claimed(CAUTIONS[kind]);
 }
 
@@ -358,9 +365,10 @@ function addEvidenceFacts(
   add: (id: string, label: string, display: string) => void,
   label: (x: string) => string,
   groupCount: number,
-  other: string | null, // the second group, when there are exactly two
+  two: [string, string] | null, // both groups, in order, when there are exactly two
 ): void {
   const e = f.evidence;
+  const other = two ? two[1] : null; // the second group
   if (e.check === 'mix') {
     if (f.severity === 'misleading') {
       const [top, most] = e.groups;
@@ -382,6 +390,7 @@ function addEvidenceFacts(
     add('entity_name', 'the entity', e.entity);
     add('entity_share', `its share of ${e.group}`, percent(e.share));
     add('entity_rank', `${e.group}'s rank without it`, ordinal(e.rankWithout));
+    if (two) add('entity_other', 'the group it would trail without that entity', label(two[0] === e.group ? two[1] : two[0]));
   } else if (e.check === 'small') {
     add('small_top', 'the top group', label(e.top.label));
     add('small_records', 'records in the top group', whole.format(e.top.records));

@@ -30,6 +30,9 @@ export const CAUTIONS = {
     why: 'One {entity_column}, {entity_name}, accounts for {entity_share} of {measure} in {entity_group}; without that {entity_column}, {entity_group} would rank {entity_rank}.',
     // When the dataset line above the sections already names the entity.
     whyDataset: 'The {entity_column} noted above accounts for {entity_share} of {measure} in {entity_group}; without that {entity_column}, {entity_group} would rank {entity_rank}.',
+    // With only two groups, "would rank 2nd" says less than naming the group it would trail.
+    whyTwo: 'One {entity_column}, {entity_name}, accounts for {entity_share} of {measure} in {entity_group}; without that {entity_column}, {entity_group} would trail {entity_other}.',
+    whyDatasetTwo: 'The {entity_column} noted above accounts for {entity_share} of {measure} in {entity_group}; without that {entity_column}, {entity_group} would trail {entity_other}.',
     instead: '{entity_group} [leads|lead:entity_group] in {measure}, but mostly because of one {entity_column}, {entity_name}.',
   },
   // Small group, when it's the one ranked first.
@@ -54,6 +57,7 @@ export const CAUTIONS = {
   fragileFlip: {
     claim: '{fragile_top} [is|are:fragile_top] clearly ahead of {fragile_second}.',
     why: 'The lead rests on one {flip_column}: without {flip_entity}, {fragile_top} would rank {flip_rank}.',
+    whyTwo: 'The lead rests on one {flip_column}: without {flip_entity}, {fragile_top} would trail {fragile_second}.',
     instead: '{fragile_top} [leads|lead:fragile_top] {fragile_second}, but the lead rests on {flip_entity}.',
   },
 };
