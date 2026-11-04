@@ -40,5 +40,7 @@ export const ASK_TEXT = {
 // The card's can't-tell line for a question code reframed (pending Adam's approval).
 export const ASKED_CANNOT = {
   causal: 'You asked whether {field} affects {measure}. This shows that {measure} differs by {field}, not that {field} causes the difference: other differences between the groups could explain it.',
+  // A yes/no column whose two groups have contract names ("award winners", "non-winners").
+  causalFlag: 'You asked whether {field} affects {measure}. This shows that {measure} differs between {flag_a} and {flag_b}, not that one causes the difference: other differences between the groups could explain it.',
   forecast: "This shows how {measure} has changed so far; it can't say what comes next.",
 };

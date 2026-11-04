@@ -114,6 +114,12 @@ export function buildCard(
   // A yes/no group reads as the contract names it, or "award winner: no" (same as facts.ts).
   const label = (x: string) => groupLabel(roles, field, x);
   if (view.filters.length > 0) add('scope_where', 'the slice', whereText(view.filters));
+  // A yes/no column's two groups by their contract names, for a sentence that names both.
+  const pair = namedFlagPair(roles, field, g?.groups.map((x) => x.label) ?? []);
+  if (pair) {
+    add('flag_a', 'the first yes/no group', pair[0]);
+    add('flag_b', 'the second yes/no group', pair[1]);
+  }
 
   const findings = runChecks(view, profile, rows, roles, g).findings;
   const routed = (s: SectionId) => findings.filter((f) => ROUTES[f.id][f.severity] === s);
@@ -199,7 +205,8 @@ export function buildCard(
               : CANNOT.general;
   // An asked causal question: its line replaces the general one. An asked forecast: its line
   // replaces the general trend line, and sits beside the single-cycle line when both apply.
-  const echo = asked?.reframe === 'causal' ? ASKED_CANNOT.causal : asked?.reframe === 'forecast' ? ASKED_CANNOT.forecast : null;
+  const causal = pair ? ASKED_CANNOT.causalFlag : ASKED_CANNOT.causal;
+  const echo = asked?.reframe === 'causal' ? causal : asked?.reframe === 'forecast' ? ASKED_CANNOT.forecast : null;
   const keepCycle = cycle && asked?.reframe === 'forecast';
   const cannotLine = block('cannot', echo && !keepCycle ? echo : cannotTemplate, { locked: true });
   if (cycle && !cannotLine) unrendered.push('cycle');
@@ -313,6 +320,20 @@ function cautionText(kind: CautionKind, f: Finding, datasetLine: boolean, flag: 
   if (kind === 'entity') return claimed({ ...CAUTIONS.entity, why: datasetLine ? CAUTIONS.entity.whyDataset : CAUTIONS.entity.why });
   if (kind === 'fragile') return (f.evidence as { narrow: boolean }).narrow ? CAUTIONS.fragileNarrow : CAUTIONS.fragileFlip;
   return claimed(CAUTIONS[kind]);
+}
+
+/**
+ * A flag column's two groups by their contract names, in the contract's order ("award
+ * winners", "non-winners"), or null when the column isn't a flag, the view doesn't have
+ * exactly two groups, or either group has no name in the contract.
+ */
+function namedFlagPair(roles: Roles, column: string, values: string[]): [string, string] | null {
+  if (!roles.known || roleOf(roles, column) !== 'flag' || values.length !== 2) return null;
+  const names = roles.labels[column];
+  if (!names || !values.every((v) => v in names)) return null;
+  const order = Object.keys(names);
+  const [a, b] = [...values].sort((x, y) => order.indexOf(x) - order.indexOf(y));
+  return [names[a], names[b]];
 }
 
 /** The group a caution is about, so cautions about the same group merge into one entry. */
