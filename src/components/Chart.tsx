@@ -20,11 +20,13 @@ const THEME: Config = {
     titleFontSize: 10,
     titleFontWeight: 'normal',
   },
-  // Number axes only: hide labels that would touch their neighbor (e.g. "0.000 0.005" on
-  // a narrow axis), keeping every other one. Category axes keep every label: each bar
-  // has room for its own (chartRules.ts), and dropping one would leave a bar unnamed.
+  // Number axes only: when labels would touch (e.g. "0.000 0.005" on a narrow axis), drop
+  // every other one, as often as needed. 'parity' keeps the spacing even; 'greedy' dropped
+  // whichever label collided, leaving gaps like "90,000 110,000" after "80,000 90,000".
+  // Category axes keep every label: each bar has room for its own (chartRules.ts), and
+  // dropping one would leave a bar unnamed.
   axisQuantitative: {
-    labelOverlap: 'greedy',
+    labelOverlap: 'parity',
     labelSeparation: 6,
   },
   legend: {
