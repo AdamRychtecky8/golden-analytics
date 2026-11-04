@@ -94,7 +94,8 @@ Pick the one option most useful for this user's decision, given who they are and
 Return:
 - id: copied exactly from the options. Never invent one.
 - reason: one sentence, under ${REASON_CHARS} characters, saying why it fits this user. No digits and no numbers at all: you haven't seen the results, so don't state or guess any. Don't describe what the chart will show.
-Facets say what a category is: offering (what the business sells or does), source (who supplies or creates it), place (where).`;
+Facets say what a category is: offering (what the business sells or does), source (who supplies or creates it), place (where).
+Findings, severities, and facets are for your choice only. Never name them in the reason: no "caveat", "misleading", "concentration", "cycle", "mix", "fragile", "entity", "facet", "offering", "source", or "place". Use the user's own words for the columns and their goal.`;
 
 function userMessage(r: HighlightRequest): string {
   return [

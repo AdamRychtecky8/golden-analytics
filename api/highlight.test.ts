@@ -66,4 +66,8 @@ describe('highlight handler', () => {
     expect(REASON_CHARS).toBe(MAX_REASON_CHARS);
     expect(SYSTEM_PROMPT).toContain(`under ${MAX_REASON_CHARS} characters`);
   });
+
+  it('tells the AI not to name checks, severities, or facets in the reason', () => {
+    for (const term of ['caveat', 'misleading', 'concentration', 'facet', 'source']) expect(SYSTEM_PROMPT).toContain(`"${term}"`);
+  });
 });
