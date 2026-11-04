@@ -325,10 +325,15 @@ textarea {
   text-align: left;
   cursor: pointer;
 }
+/* Up to two lines, then an ellipsis: "same view, as Marketing analyst" fits whole. Two
+   lines of 12px text (about 31px) sit inside the 36px node, with room for descenders. */
 .map-node-label {
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 /* A slice has no chart of its own: a dashed outline on white. */
 .map-node-slice {
