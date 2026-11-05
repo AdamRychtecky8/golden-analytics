@@ -55,4 +55,5 @@ The number of little ideas or paths to take while building this piece is almost 
 - [Design](docs/DESIGN.md): how it works
 - [Decisions](docs/DECISIONS.md): the 15 calls and what I rejected
 - [AI process](docs/AI_PROCESS.md): how I guided the AI
+- [Prompts](docs/PROMPTS.md): the three prompts that shaped the project
 - [Running](docs/RUNNING.md): setup, tests, eval

@@ -66,6 +66,8 @@ The AI made mistakes, and catching them is part of the process:
 - It also caught things I accepted: a guard so "one author is 100% of their own title" can't fire, a gap where a narrow lead slipped between two checks (which became the "fragile lead" check), and a real bug during cleanup where the card and the checks used different versions of the column roles.
 - The main idea is to constantly go back and forth between Claude Code who has access to the codebase and Claude chat who is brainstorming and grounded in the project files. Having the two check each other's work with me serving as the top level guidance is how I currently go about my work. I would love to learn new ways to keep my work more robust and become even more efficient.
 
+The three prompts that shaped the project most are in [PROMPTS.md](PROMPTS.md).
+
 ## Log
 
 The full log of every interaction is in the git history at the tag `pre-cleanup`: [docs/AI_LOG.md](https://github.com/AdamRychtecky8/golden-analytics/blob/pre-cleanup/docs/AI_LOG.md) (entries #1–#19); entries #20–#22 are in the last version before it was removed ([b5724a2](https://github.com/AdamRychtecky8/golden-analytics/blob/b5724a2/docs/AI_LOG.md)). New entries go below.
