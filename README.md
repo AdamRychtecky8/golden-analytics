@@ -1,13 +1,15 @@
 # Golden Standard: before you present it
 
-**Run it:** [docs/RUNNING.md](docs/RUNNING.md)
+**Try it:** [live demo](https://golden-analytics-ten.vercel.app/)
+
+**Run it locally:**
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Why I built this
+Tests, the AI eval, and setup details: [docs/RUNNING.md](docs/RUNNING.md)
 
 Most people that will be using this tool are smart as well as experienced in their domain, and that's exactly what puts them at risk: when you know your business, a confident reading often feels right even when the data doesn't actually back it up. As people are given more information (experience), their confidence rises even though their accuracy often does not (Oskamp, 1965). That confidence can often lead to mistakes through improper biases such as reading a total as a fact about everything inside it. For example, the bookshop owner's database shows Sci-Fi as the best genre, and by revenue it is, but one author accounts for a third of the revenue. Without her, it drops to fourth, which could lead to an improper decision such as stocking more Sci-Fi from other authors, whose books actually sell less than other genres.
 
