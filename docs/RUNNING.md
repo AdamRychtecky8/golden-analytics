@@ -48,7 +48,7 @@ Sends the cases in `docs/eval/ask-cases.json` (all but the offline-only ones, ab
 |---|---|
 | `npm run cards:bookshop` | Prints every Bookshop menu card as text (rules only, no key) |
 | `npm run options:bookshop` | Prints the menu, its findings, and each persona's highlight and reason |
-| `npm run prep:bookshop` | Rebuilds `src/data/bookshop-sales.csv` and its contract `bookshop-sales.roles.json` from `data/raw/Bookshop.xlsx`, checking every join; how and why are in the comment at the top of `scripts/prepare-bookshop.py` |
+| `npm run prep:bookshop` | Rebuilds `src/data/bookshop-sales.csv` and its contract `bookshop-sales.roles.json` from `data/raw/Bookshop.xlsx`, checking every join; how and why are in the comment at the top of `scripts/prepare-bookshop.py`. On Windows, where `python3` is often missing, run `python scripts/prepare-bookshop.py` instead |
 | `npm run sample` | Regenerates the small synthetic CSV the tests use (seeded, identical every time) |
 
 ## Deploy
